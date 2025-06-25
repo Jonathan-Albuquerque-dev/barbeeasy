@@ -48,7 +48,7 @@ export type Staff = {
   bio: string;
 };
 
-type Service = {
+export type Service = {
   id: string;
   name: string;
   duration: number;

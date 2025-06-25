@@ -2,12 +2,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getTodaysAppointments, getDashboardStats } from "@/lib/data";
+import { getTodaysAppointments, getDashboardStats, getServices } from "@/lib/data";
 import { Users, Calendar, DollarSign, Clock, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/auth-context";
-import { useEffect, useState } from "react";
-import type { AppointmentStatus, AppointmentDocument } from "@/lib/data";
+import { useEffect, useState, useMemo } from "react";
+import type { AppointmentStatus, AppointmentDocument, Service } from "@/lib/data";
 import { AppointmentStatusUpdater } from "@/components/appointments/appointment-status-updater";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -23,14 +23,18 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [appointments, setAppointments] = useState<PopulatedAppointment[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const servicePriceMap = useMemo(() => new Map(services.map(s => [s.name, s.price])), [services]);
 
   const fetchDashboardData = async () => {
       if (user?.uid) {
         setLoading(true);
-        const [fetchedStats, fetchedAppointments] = await Promise.all([
+        const [fetchedStats, fetchedAppointments, fetchedServices] = await Promise.all([
           getDashboardStats(user.uid),
-          getTodaysAppointments(user.uid)
+          getTodaysAppointments(user.uid),
+          getServices(user.uid)
         ]);
         
         // Sort appointments by time before setting the state
@@ -38,6 +42,7 @@ export default function DashboardPage() {
 
         setStats(fetchedStats);
         setAppointments(fetchedAppointments as PopulatedAppointment[]);
+        setServices(fetchedServices);
         setLoading(false);
       }
     }
@@ -138,7 +143,12 @@ export default function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {appointments.map((appointment) => (
+              {appointments.map((appointment) => {
+                const servicePrice = servicePriceMap.get(appointment.service) || 0;
+                const productsTotal = (appointment.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
+                const totalValue = servicePrice + productsTotal;
+
+                return (
                 <TableRow key={appointment.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -157,6 +167,7 @@ export default function DashboardPage() {
                         appointmentId={appointment.id} 
                         currentStatus={appointment.status} 
                         onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
+                        totalValue={totalValue}
                     />
                   </TableCell>
                   <TableCell className="text-right">
@@ -170,7 +181,7 @@ export default function DashboardPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
         </CardContent>

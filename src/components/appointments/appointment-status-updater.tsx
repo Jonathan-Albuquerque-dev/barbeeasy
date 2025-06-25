@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -26,9 +25,10 @@ interface AppointmentStatusUpdaterProps {
   appointmentId: string;
   currentStatus: AppointmentStatus;
   onStatusChange: (newStatus: AppointmentStatus) => void;
+  totalValue?: number;
 }
 
-export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatusChange }: AppointmentStatusUpdaterProps) {
+export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatusChange, totalValue = 0 }: AppointmentStatusUpdaterProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -112,18 +112,25 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
         <DialogHeader>
           <DialogTitle>Concluir Agendamento</DialogTitle>
           <DialogDescription>
-            Selecione a forma de pagamento para concluir este serviço.
+            Confirme o valor total e selecione a forma de pagamento.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-          <RadioGroup value={selectedPaymentMethod} onValueChange={(value) => setSelectedPaymentMethod(value as PaymentMethod)} className="gap-4">
-            {paymentMethods.map(method => (
-              <div key={method} className="flex items-center space-x-2">
-                <RadioGroupItem value={method} id={`payment-${method}-${appointmentId}`} />
-                <Label htmlFor={`payment-${method}-${appointmentId}`}>{method}</Label>
-              </div>
-            ))}
-          </RadioGroup>
+        <div className="py-4 space-y-6">
+            <div className="p-4 bg-muted/80 rounded-lg text-center">
+                <Label className="text-sm text-muted-foreground">Valor Total a Pagar</Label>
+                <p className="text-3xl font-bold tracking-tight">R$ {totalValue.toFixed(2)}</p>
+            </div>
+            <div>
+              <Label className="font-semibold">Forma de Pagamento</Label>
+              <RadioGroup value={selectedPaymentMethod} onValueChange={(value) => setSelectedPaymentMethod(value as PaymentMethod)} className="gap-4 mt-2">
+                {paymentMethods.map(method => (
+                  <div key={method} className="flex items-center space-x-2">
+                    <RadioGroupItem value={method} id={`payment-${method}-${appointmentId}`} />
+                    <Label htmlFor={`payment-${method}-${appointmentId}`} className="font-normal">{method}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
