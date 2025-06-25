@@ -924,7 +924,7 @@ export async function getSubscriptionStats(userId: string): Promise<Subscription
         ]);
 
         const subscribedClients = getDatas<Client>(clientsSnap);
-        const subscriptions = getDatas<Subscription>(subsSnap);
+        const subscriptions = getDatas<Subscription>(subscriptionsSnap);
         const subscriptionMap = new Map(subscriptions.map(s => [s.id, s.price]));
 
         const totalSubscribers = subscribedClients.length;
