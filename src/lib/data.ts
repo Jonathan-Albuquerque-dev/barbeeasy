@@ -486,8 +486,8 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
 
     try {
         await runTransaction(db, async (transaction) => {
+            // --- READ PHASE ---
             const appointmentSnap = await transaction.get(appointmentDocRef);
-
             if (!appointmentSnap.exists() || appointmentSnap.data().status === 'Concluído') {
                 if (appointmentSnap.data()?.status === 'Concluído') {
                     console.log("Agendamento já está concluído. Nenhuma ação tomada.");
@@ -497,76 +497,74 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
 
             const appointmentData = appointmentSnap.data() as AppointmentDocument;
             const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
-            const clientSnap = await transaction.get(clientDocRef);
+            const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
             
-            if (!clientSnap.exists()) {
-                throw new Error("Cliente não encontrado na transação.");
-            }
-            const clientData = clientSnap.data() as Client;
+            const [clientSnap, barbershopSettingsSnap] = await Promise.all([
+                transaction.get(clientDocRef),
+                transaction.get(barbershopSettingsDocRef)
+            ]);
+            
+            if (!clientSnap.exists()) throw new Error("Cliente não encontrado na transação.");
+            if (!barbershopSettingsSnap.exists()) throw new Error("Configurações da barbearia não encontradas.");
 
-            // --- Subscription Validation ---
+            const clientData = clientSnap.data() as Client;
+            const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
+            const soldProducts = appointmentData.soldProducts || [];
+
+            let subscriptionSnap;
             if (paymentMethod === 'Assinante') {
-                if (!clientData.subscriptionId) {
-                    throw new Error("Este cliente não é um assinante.");
-                }
+                if (!clientData.subscriptionId) throw new Error("Este cliente não é um assinante.");
                 const subscriptionDocRef = doc(db, getCollectionPath(userId, 'subscriptions'), clientData.subscriptionId);
-                const subscriptionSnap = await transaction.get(subscriptionDocRef);
-                if (!subscriptionSnap.exists()) {
-                    throw new Error("Plano de assinatura do cliente não encontrado.");
-                }
-                const subscriptionData = subscriptionSnap.data() as Subscription;
+                subscriptionSnap = await transaction.get(subscriptionDocRef);
+                if (!subscriptionSnap.exists()) throw new Error("Plano de assinatura do cliente não encontrado.");
+            }
+
+            const productReads = soldProducts.map(p => 
+                transaction.get(doc(db, getCollectionPath(userId, 'products'), p.productId))
+            );
+            const productSnaps = await Promise.all(productReads);
+
+            // --- LOGIC / VALIDATION PHASE ---
+            if (paymentMethod === 'Assinante') {
+                const subscriptionData = subscriptionSnap!.data() as Subscription;
                 const serviceIsIncluded = subscriptionData.includedServices.some(s => s.serviceName === appointmentData.service);
                 if (!serviceIsIncluded) {
                     throw new Error(`O serviço "${appointmentData.service}" não está incluso na assinatura deste cliente.`);
                 }
             }
 
-            // --- Product Stock Logic ---
-            const soldProducts = appointmentData.soldProducts || [];
-            if (soldProducts.length > 0) {
-                for (const soldProduct of soldProducts) {
-                    const productDocRef = doc(db, getCollectionPath(userId, 'products'), soldProduct.productId);
-                    const productSnap = await transaction.get(productDocRef);
-
-                    if (!productSnap.exists()) {
-                        throw new Error(`Produto "${soldProduct.name}" não foi encontrado no estoque.`);
-                    }
-
-                    const currentStock = productSnap.data().stock;
-                    if (currentStock < soldProduct.quantity) {
-                        throw new Error(`Estoque insuficiente para "${soldProduct.name}". Disponível: ${currentStock}, Pedido: ${soldProduct.quantity}.`);
-                    }
-
-                    // Decrement stock
-                    transaction.update(productDocRef, {
-                        stock: increment(-soldProduct.quantity)
-                    });
+            for (let i = 0; i < productSnaps.length; i++) {
+                const productSnap = productSnaps[i];
+                const soldProduct = soldProducts[i];
+                if (!productSnap.exists()) {
+                    throw new Error(`Produto "${soldProduct.name}" não foi encontrado no estoque.`);
+                }
+                const currentStock = productSnap.data().stock;
+                if (currentStock < soldProduct.quantity) {
+                    throw new Error(`Estoque insuficiente para "${soldProduct.name}". Disponível: ${currentStock}, Pedido: ${soldProduct.quantity}.`);
                 }
             }
-            
-            // --- Loyalty Points Logic ---
-            const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
-            const barbershopSettingsSnap = await transaction.get(barbershopSettingsDocRef);
-            if (!barbershopSettingsSnap.exists()) {
-                throw new Error("Configurações da barbearia não encontradas.");
-            }
-            const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
-            const loyaltySettings = barbershopSettings?.loyaltyProgram;
-            const loyaltyEnabled = loyaltySettings?.enabled || false;
 
+            // --- WRITE PHASE ---
+            for (let i = 0; i < productSnaps.length; i++) {
+                const productSnap = productSnaps[i];
+                const soldProduct = soldProducts[i];
+                transaction.update(productSnap.ref, {
+                    stock: increment(-soldProduct.quantity)
+                });
+            }
+
+            const loyaltySettings = barbershopSettings.loyaltyProgram;
+            const loyaltyEnabled = loyaltySettings?.enabled || false;
             if (loyaltyEnabled) {
                 if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
                     const rewardInfo = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
                     const pointsCost = Number(rewardInfo?.pointsCost || 0);
 
-                    if (pointsCost === 0) {
-                        throw new Error(`Este serviço não está configurado para resgate com pontos.`);
-                    }
+                    if (pointsCost === 0) throw new Error(`Este serviço não está configurado para resgate com pontos.`);
                     
-                    const currentPoints = Number(clientSnap.data()?.loyaltyPoints || 0);
-                    if (currentPoints < pointsCost) {
-                        throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${currentPoints}`);
-                    }
+                    const currentPoints = Number(clientData.loyaltyPoints || 0);
+                    if (currentPoints < pointsCost) throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${currentPoints}`);
                     
                     transaction.update(clientDocRef, { loyaltyPoints: increment(-pointsCost) });
 
@@ -587,7 +585,6 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
         });
     } catch(error) {
         console.error("Erro na transação de conclusão do agendamento:", error);
-        // Propaga o erro para a UI poder exibi-lo.
         throw error;
     }
 }
