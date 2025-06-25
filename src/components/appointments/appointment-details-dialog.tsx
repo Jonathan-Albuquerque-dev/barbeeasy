@@ -3,9 +3,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProducts, updateAppointmentProducts, Product, AppointmentDocument } from '@/lib/data';
+import { getProducts, updateAppointmentProducts, Product, AppointmentDocument, deleteAppointment } from '@/lib/data';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,17 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -44,6 +55,7 @@ export function AppointmentDetailsDialog({ appointment, onAppointmentUpdate, chi
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<SoldProduct[]>([]);
@@ -118,6 +130,30 @@ export function AppointmentDetailsDialog({ appointment, onAppointmentUpdate, chi
       setLoading(false);
     }
   };
+  
+  const handleDelete = async () => {
+    if (!user) return;
+    setDeleteLoading(true);
+    try {
+      await deleteAppointment(user.uid, appointment.id);
+      toast({
+        title: 'Sucesso!',
+        description: 'O agendamento foi excluído.',
+      });
+      onAppointmentUpdate();
+      setOpen(false); // Close the main dialog
+    } catch (error) {
+        console.error(error);
+        toast({
+            variant: 'destructive',
+            title: 'Erro',
+            description: 'Não foi possível excluir o agendamento.',
+        });
+    } finally {
+        setDeleteLoading(false);
+    }
+  };
+
 
   const totalProductsValue = useMemo(() => {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
@@ -225,13 +261,42 @@ export function AppointmentDetailsDialog({ appointment, onAppointmentUpdate, chi
             </div>
         </div>
         
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Cancelar</Button>
-          </DialogClose>
-          <Button onClick={handleSave} disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Venda'}
-          </Button>
+        <DialogFooter className="flex-col-reverse gap-2 pt-4 border-t sm:flex-row sm:justify-between">
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir Agendamento
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. Isso excluirá permanentemente o agendamento da sua base de dados.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            disabled={deleteLoading}
+                            className={buttonVariants({ variant: "destructive" })}
+                        >
+                            {deleteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sim, excluir'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <DialogClose asChild>
+                    <Button type="button" variant="outline">Fechar</Button>
+                </DialogClose>
+                <Button onClick={handleSave} disabled={loading}>
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Venda'}
+                </Button>
+            </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

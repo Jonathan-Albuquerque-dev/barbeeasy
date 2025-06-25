@@ -1,6 +1,6 @@
 
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -803,5 +803,15 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
     } catch (error) {
         console.error("Erro ao calcular comissões por período:", error);
         throw error;
+    }
+}
+
+export async function deleteAppointment(userId: string, appointmentId: string) {
+    const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
+    try {
+        await deleteDoc(appointmentDocRef);
+    } catch (error) {
+        console.error(`Erro ao excluir agendamento ${appointmentId}:`, error);
+        throw new Error("Não foi possível excluir o agendamento.");
     }
 }
