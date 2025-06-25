@@ -22,6 +22,7 @@ type Appointment = AppointmentDocument & {
     id: string;
     name: string;
     avatarUrl: string;
+    subscriptionId?: string;
   };
   barber: {
     id: string;
@@ -177,6 +178,7 @@ export function AppointmentCalendar() {
                     </div>
                     <div className="flex items-center gap-2">
                       <AppointmentStatusUpdater
+                        appointment={app}
                         appointmentId={app.id}
                         currentStatus={app.status}
                         onStatusChange={(newStatus) => handleStatusChange(app.id, newStatus)}

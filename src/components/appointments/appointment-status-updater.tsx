@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { updateAppointmentStatus, AppointmentStatus } from '@/lib/data';
+import { updateAppointmentStatus, AppointmentStatus, AppointmentDocument } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,20 +18,22 @@ type PaymentMethod = typeof paymentMethods[number];
 type CourtesyType = typeof courtesyTypes[number];
 
 interface AppointmentStatusUpdaterProps {
+  appointment: AppointmentDocument & { client: { subscriptionId?: string } };
   appointmentId: string;
   currentStatus: AppointmentStatus;
   onStatusChange: (newStatus: AppointmentStatus) => void;
   totalValue?: number;
 }
 
-export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatusChange, totalValue = 0 }: AppointmentStatusUpdaterProps) {
+export function AppointmentStatusUpdater({ appointment, appointmentId, currentStatus, onStatusChange, totalValue = 0 }: AppointmentStatusUpdaterProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('Dinheiro');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('Dinheiro');
   const [selectedCourtesyType, setSelectedCourtesyType] = useState<CourtesyType | null>(null);
 
+  const isSubscriber = !!appointment.client.subscriptionId;
 
   const handleStatusChange = async (newStatus: AppointmentStatus, paymentMethod?: string) => {
     if (!user || newStatus === currentStatus) return;
@@ -87,7 +89,7 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
           <div className="py-4 space-y-6">
               <div className="p-4 bg-muted/80 rounded-lg text-center">
                   <Label className="text-sm text-muted-foreground">Valor Total a Pagar</Label>
-                  <p className="text-3xl font-bold tracking-tight">R$ {(selectedPaymentMethod === 'Cortesia' ? 0 : totalValue).toFixed(2)}</p>
+                  <p className="text-3xl font-bold tracking-tight">R$ {(selectedPaymentMethod === 'Cortesia' || selectedPaymentMethod === 'Assinante' ? 0 : totalValue).toFixed(2)}</p>
               </div>
               <div>
                 <Label className="font-semibold">Forma de Pagamento</Label>
@@ -103,6 +105,12 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
                       <Label htmlFor={`payment-${method}-${appointmentId}`} className="font-normal">{method}</Label>
                     </div>
                   ))}
+                  {isSubscriber && (
+                    <div key="Assinante" className="flex items-center space-x-2">
+                        <RadioGroupItem value="Assinante" id={`payment-Assinante-${appointmentId}`} />
+                        <Label htmlFor={`payment-Assinante-${appointmentId}`} className="font-normal">Assinante</Label>
+                    </div>
+                  )}
                 </RadioGroup>
 
                 {selectedPaymentMethod === 'Cortesia' && (

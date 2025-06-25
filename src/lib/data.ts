@@ -369,7 +369,7 @@ async function populateAppointments(userId: string, appointments: AppointmentDoc
 
                 return {
                     ...app,
-                    client: getData<{id: string, name: string, avatarUrl: string}>(clientSnap) || { id: 'unknown', name: 'Cliente não encontrado', avatarUrl: ''},
+                    client: getData<{id: string, name: string, avatarUrl: string, subscriptionId?: string}>(clientSnap) || { id: 'unknown', name: 'Cliente não encontrado', avatarUrl: ''},
                     barber: getData<{id: string, name: string}>(barberSnap) || { id: 'unknown', name: 'Barbeiro não encontrado'},
                 };
             } catch (error) {
@@ -482,6 +482,11 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             if (!clientSnap.exists()) {
                 throw new Error("Cliente não encontrado na transação.");
             }
+            const clientData = clientSnap.data() as Client;
+
+            if (paymentMethod === 'Assinante' && !clientData.subscriptionId) {
+                throw new Error("Este cliente não é um assinante e não pode usar esta forma de pagamento.");
+            }
             
             const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
             const barbershopSettingsSnap = await transaction.get(barbershopSettingsDocRef);
@@ -510,7 +515,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                     
                     transaction.update(clientDocRef, { loyaltyPoints: increment(-pointsCost) });
 
-                } else if (!paymentMethod?.startsWith('Cortesia')) {
+                } else if (!paymentMethod?.startsWith('Cortesia') && paymentMethod !== 'Assinante') {
                     const serviceRule = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
                     const pointsToAdd = Number(serviceRule?.pointsGenerated ?? loyaltySettings?.pointsPerService ?? 1);
 

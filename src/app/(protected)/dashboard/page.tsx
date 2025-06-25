@@ -13,7 +13,7 @@ import { AppointmentDetailsDialog } from "@/components/appointments/appointment-
 import { Badge } from "@/components/ui/badge";
 
 type PopulatedAppointment = AppointmentDocument & {
-  client: { id: string; name: string; avatarUrl: string; };
+  client: { id: string; name: string; avatarUrl: string; subscriptionId?: string };
   barber: { id: string; name: string; };
 };
 type Stats = Awaited<ReturnType<typeof getDashboardStats>>;
@@ -173,6 +173,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center justify-end gap-2">
                       <AppointmentStatusUpdater
+                        appointment={appointment}
                         appointmentId={appointment.id}
                         currentStatus={appointment.status}
                         onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
