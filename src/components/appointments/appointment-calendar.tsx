@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
-import { getAppointmentsForDate } from '@/lib/data';
+import { getAppointmentsForDate, AppointmentStatus } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '../ui/badge';
 import { useAuth } from '@/contexts/auth-context';
 import { AddAppointmentDialog } from './add-appointment-dialog';
+import { AppointmentStatusUpdater } from './appointment-status-updater';
 
 type Appointment = {
   id: string;
@@ -18,7 +18,7 @@ type Appointment = {
   service: string;
   date: string;
   time: string;
-  status: 'Concluído' | 'Confirmado' | 'Pendente';
+  status: AppointmentStatus;
   client: {
     id: string;
     name: string;
@@ -48,6 +48,14 @@ export function AppointmentCalendar() {
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
+
+  const handleStatusChange = (appointmentId: string, newStatus: AppointmentStatus) => {
+    setAppointments(prevAppointments =>
+      prevAppointments.map(app =>
+        app.id === appointmentId ? { ...app, status: newStatus } : app
+      )
+    );
+  };
 
   return (
     <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -119,7 +127,11 @@ export function AppointmentCalendar() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold">{app.time}</p>
-                      <Badge variant="secondary">{app.status}</Badge>
+                      <AppointmentStatusUpdater
+                        appointmentId={app.id}
+                        currentStatus={app.status}
+                        onStatusChange={(newStatus) => handleStatusChange(app.id, newStatus)}
+                      />
                     </div>
                   </li>
                 ))}

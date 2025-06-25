@@ -2,12 +2,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { getTodaysAppointments, getDashboardStats } from "@/lib/data";
 import { Users, Calendar, DollarSign, Clock, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState } from "react";
+import type { AppointmentStatus } from "@/lib/data";
+import { AppointmentStatusUpdater } from "@/components/appointments/appointment-status-updater";
 
 type Appointment = Awaited<ReturnType<typeof getTodaysAppointments>>[0];
 type Stats = Awaited<ReturnType<typeof getDashboardStats>>;
@@ -18,8 +19,7 @@ export default function DashboardPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchDashboardData() {
+  const fetchDashboardData = async () => {
       if (user?.uid) {
         setLoading(true);
         const [fetchedStats, fetchedAppointments] = await Promise.all([
@@ -31,8 +31,24 @@ export default function DashboardPage() {
         setLoading(false);
       }
     }
+
+  useEffect(() => {
     fetchDashboardData();
   }, [user]);
+
+  const handleStatusChange = (appointmentId: string, newStatus: AppointmentStatus) => {
+    setAppointments(prevAppointments =>
+      prevAppointments.map(app =>
+        app.id === appointmentId ? { ...app, status: newStatus } : app
+      )
+    );
+
+    // Re-fetch stats to reflect changes in revenue or pending counts
+    if (user?.uid) {
+      getDashboardStats(user.uid).then(setStats);
+    }
+  };
+
 
   if (loading || !stats) {
     return (
@@ -126,11 +142,11 @@ export default function DashboardPage() {
                   <TableCell>{appointment.barber.name}</TableCell>
                   <TableCell>{appointment.time}</TableCell>
                   <TableCell>
-                    <Badge variant={appointment.status === "Concluído" ? "default" : appointment.status === "Confirmado" ? "secondary" : "outline"}
-                      className={appointment.status === "Concluído" ? "bg-primary/80" : ""}
-                    >
-                      {appointment.status}
-                    </Badge>
+                     <AppointmentStatusUpdater 
+                        appointmentId={appointment.id} 
+                        currentStatus={appointment.status} 
+                        onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

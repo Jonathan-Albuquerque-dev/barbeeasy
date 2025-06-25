@@ -1,5 +1,5 @@
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
 // Helper para construir o caminho da coleção para um usuário específico
@@ -64,6 +64,8 @@ type AppointmentDocument = {
   time: string;
   status: 'Concluído' | 'Confirmado' | 'Pendente';
 };
+
+export type AppointmentStatus = 'Concluído' | 'Confirmado' | 'Pendente';
 
 type Subscription = {
   id: string;
@@ -247,6 +249,16 @@ export async function addAppointment(userId: string, appointmentData: Omit<Appoi
     } catch (error) {
         console.error("Erro ao adicionar agendamento:", error);
         throw new Error("Não foi possível adicionar o agendamento.");
+    }
+}
+
+export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus) {
+    try {
+        const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
+        await updateDoc(appointmentDocRef, { status });
+    } catch (error) {
+        console.error(`Erro ao atualizar status do agendamento ${appointmentId}:`, error);
+        throw new Error("Não foi possível atualizar o status do agendamento.");
     }
 }
 
