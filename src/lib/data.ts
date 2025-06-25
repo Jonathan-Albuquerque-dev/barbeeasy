@@ -360,16 +360,25 @@ export async function addSubscription(userId: string, subscriptionData: Omit<Sub
     }
 }
 
-async function populateAppointments(userId: string, appointments: AppointmentDocument[]) {
+async function populateAppointments(userId: string, appointments: AppointmentDocument[], subscriptions: Subscription[]) {
+    const subscriptionsMap = new Map(subscriptions.map(sub => [sub.id, sub]));
+
     return Promise.all(
         appointments.map(async (app) => {
             try {
                 const clientSnap = await getDoc(doc(db, getCollectionPath(userId, 'clients'), app.clientId));
                 const barberSnap = await getDoc(doc(db, getCollectionPath(userId, 'staff'), app.barberId));
 
+                const baseClient = getData<{id: string, name: string, avatarUrl: string, subscriptionId?: string}>(clientSnap) || { id: 'unknown', name: 'Cliente não encontrado', avatarUrl: ''};
+                
+                const client = {
+                    ...baseClient,
+                    subscription: baseClient.subscriptionId ? subscriptionsMap.get(baseClient.subscriptionId) : undefined
+                };
+
                 return {
                     ...app,
-                    client: getData<{id: string, name: string, avatarUrl: string, subscriptionId?: string}>(clientSnap) || { id: 'unknown', name: 'Cliente não encontrado', avatarUrl: ''},
+                    client,
                     barber: getData<{id: string, name: string}>(barberSnap) || { id: 'unknown', name: 'Barbeiro não encontrado'},
                 };
             } catch (error) {
@@ -390,9 +399,15 @@ export async function getTodaysAppointments(userId: string) {
     const todayString = new Date().toISOString().split('T')[0];
     const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
     const q = query(appointmentsCol, where("date", "==", todayString));
-    const appointmentSnapshot = await getDocs(q);
+    
+    const [appointmentSnapshot, subscriptionsSnap] = await Promise.all([
+        getDocs(q),
+        getDocs(collection(db, getCollectionPath(userId, 'subscriptions')))
+    ]);
     const appointments = getDatas<AppointmentDocument>(appointmentSnapshot);
-    return await populateAppointments(userId, appointments);
+    const subscriptions = getDatas<Subscription>(subscriptionsSnap);
+
+    return await populateAppointments(userId, appointments, subscriptions);
   } catch (error) {
       console.error("Erro ao buscar agendamentos de hoje:", error);
       return [];
@@ -405,10 +420,15 @@ export async function getAppointmentsForDate(userId: string, date: Date) {
   try {
     const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
     const q = query(appointmentsCol, where("date", "==", dateString));
-    const appointmentSnapshot = await getDocs(q);
-    const appointments = getDatas<AppointmentDocument>(appointmentSnapshot);
 
-    return await populateAppointments(userId, appointments);
+    const [appointmentSnapshot, subscriptionsSnap] = await Promise.all([
+        getDocs(q),
+        getDocs(collection(db, getCollectionPath(userId, 'subscriptions')))
+    ]);
+    const appointments = getDatas<AppointmentDocument>(appointmentSnapshot);
+    const subscriptions = getDatas<Subscription>(subscriptionsSnap);
+
+    return await populateAppointments(userId, appointments, subscriptions);
   } catch (error) {
       console.error(`Erro ao buscar agendamentos para ${dateString}:`, error);
       // Retorna array vazio em caso de erro para não quebrar a UI
@@ -484,18 +504,30 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             }
             const clientData = clientSnap.data() as Client;
 
-            if (paymentMethod === 'Assinante' && !clientData.subscriptionId) {
-                throw new Error("Este cliente não é um assinante e não pode usar esta forma de pagamento.");
+            // --- Subscription Validation ---
+            if (paymentMethod === 'Assinante') {
+                if (!clientData.subscriptionId) {
+                    throw new Error("Este cliente não é um assinante.");
+                }
+                const subscriptionDocRef = doc(db, getCollectionPath(userId, 'subscriptions'), clientData.subscriptionId);
+                const subscriptionSnap = await transaction.get(subscriptionDocRef);
+                if (!subscriptionSnap.exists()) {
+                    throw new Error("Plano de assinatura do cliente não encontrado.");
+                }
+                const subscriptionData = subscriptionSnap.data() as Subscription;
+                const serviceIsIncluded = subscriptionData.includedServices.some(s => s.serviceName === appointmentData.service);
+                if (!serviceIsIncluded) {
+                    throw new Error(`O serviço "${appointmentData.service}" não está incluso na assinatura deste cliente.`);
+                }
             }
             
+            // --- Loyalty Points Logic ---
             const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
             const barbershopSettingsSnap = await transaction.get(barbershopSettingsDocRef);
-
             if (!barbershopSettingsSnap.exists()) {
                 throw new Error("Configurações da barbearia não encontradas.");
             }
             const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
-            
             const loyaltySettings = barbershopSettings?.loyaltyProgram;
             const loyaltyEnabled = loyaltySettings?.enabled || false;
 
@@ -563,7 +595,8 @@ export async function getDashboardStats(userId: string) {
         const todaysRevenue = todayAppointments
             .filter(a => a.status === 'Concluído' && !a.paymentMethod?.startsWith('Cortesia'))
             .reduce((sum, app) => {
-                const servicePrice = servicePriceMap.get(app.service) || 0;
+                const isSubscription = app.paymentMethod === 'Assinante';
+                const servicePrice = isSubscription ? 0 : (servicePriceMap.get(app.service) || 0);
                 const productsTotal = (app.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
                 return sum + servicePrice + productsTotal;
             }, 0);

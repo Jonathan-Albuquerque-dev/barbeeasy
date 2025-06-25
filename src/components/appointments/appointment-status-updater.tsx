@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { updateAppointmentStatus, AppointmentStatus, AppointmentDocument } from '@/lib/data';
+import { updateAppointmentStatus, AppointmentStatus, AppointmentDocument, Subscription } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ type PaymentMethod = typeof paymentMethods[number];
 type CourtesyType = typeof courtesyTypes[number];
 
 interface AppointmentStatusUpdaterProps {
-  appointment: AppointmentDocument & { client: { subscriptionId?: string } };
+  appointment: AppointmentDocument & { client: { subscriptionId?: string, subscription?: Subscription } };
   appointmentId: string;
   currentStatus: AppointmentStatus;
   onStatusChange: (newStatus: AppointmentStatus) => void;
@@ -33,7 +33,7 @@ export function AppointmentStatusUpdater({ appointment, appointmentId, currentSt
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('Dinheiro');
   const [selectedCourtesyType, setSelectedCourtesyType] = useState<CourtesyType | null>(null);
 
-  const isSubscriber = !!appointment.client.subscriptionId;
+  const serviceIsIncludedInSubscription = !!appointment.client.subscription?.includedServices.some(s => s.serviceName === appointment.service);
 
   const handleStatusChange = async (newStatus: AppointmentStatus, paymentMethod?: string) => {
     if (!user || newStatus === currentStatus) return;
@@ -105,7 +105,7 @@ export function AppointmentStatusUpdater({ appointment, appointmentId, currentSt
                       <Label htmlFor={`payment-${method}-${appointmentId}`} className="font-normal">{method}</Label>
                     </div>
                   ))}
-                  {isSubscriber && (
+                  {serviceIsIncludedInSubscription && (
                     <div key="Assinante" className="flex items-center space-x-2">
                         <RadioGroupItem value="Assinante" id={`payment-Assinante-${appointmentId}`} />
                         <Label htmlFor={`payment-Assinante-${appointmentId}`} className="font-normal">Assinante</Label>
