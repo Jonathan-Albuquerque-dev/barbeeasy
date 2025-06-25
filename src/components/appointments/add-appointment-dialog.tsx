@@ -51,7 +51,7 @@ type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 
 type Client = { id: string; name: string };
 type Staff = { id: string; name: string };
-type Service = { id: string; name: string };
+type Service = { id: string; name: string; duration: number; }; 
 type BarbershopSettings = { operatingHours: DayHours; appointmentInterval: 30 | 60 };
 
 interface AddAppointmentDialogProps {
@@ -90,6 +90,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
 
   const selectedDate = form.watch('date');
   const selectedBarberId = form.watch('barberId');
+  const selectedService = form.watch('service');
   const clientType = form.watch('clientType');
 
   useEffect(() => {
@@ -104,7 +105,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
         ]);
         setClients(fetchedClients.map(c => ({ id: c.id, name: c.name })));
         setStaff(fetchedStaff.map(s => ({ id: s.id, name: s.name })));
-        setServices(fetchedServices.map(s => ({ id: s.id, name: s.name })));
+        setServices(fetchedServices);
         if (fetchedSettings) {
             setSettings({
                 operatingHours: fetchedSettings.operatingHours,
@@ -151,7 +152,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
             currentTime.setMinutes(currentTime.getMinutes() + interval);
         }
 
-        if (!selectedBarberId) {
+        if (!selectedBarberId || !selectedService) {
             setTimeSlots([]);
             form.resetField('time', { defaultValue: '' });
             return;
@@ -160,9 +161,46 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
         setSlotsLoading(true);
         try {
             const bookedAppointments = await getBarberAppointmentsForDate(user.uid, selectedBarberId, selectedDate);
-            const bookedTimes = new Set(bookedAppointments.map(app => app.time));
-            const availableSlots = allSlots.filter(slot => !bookedTimes.has(slot));
+            const serviceDurationMap = new Map(services.map(s => [s.name, s.duration]));
+            
+            const blockedSlots = new Set<string>();
+            bookedAppointments.forEach(app => {
+                const duration = serviceDurationMap.get(app.service) || interval;
+                const slotsToBlock = Math.ceil(duration / interval);
+                
+                const dateParts = app.date.split('-').map(Number);
+                const timeParts = app.time.split(':').map(Number);
+                const startTime = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1]);
+                
+                for (let i = 0; i < slotsToBlock; i++) {
+                    const slotTime = new Date(startTime.getTime() + i * interval * 60000);
+                    blockedSlots.add(slotTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+                }
+            });
+
+            const newServiceDuration = serviceDurationMap.get(selectedService) || interval;
+            const slotsRequired = Math.ceil(newServiceDuration / interval);
+
+            const availableSlots = allSlots.filter((slot, index) => {
+                if (blockedSlots.has(slot)) {
+                    return false;
+                }
+
+                if (index + slotsRequired > allSlots.length) {
+                    return false;
+                }
+
+                for (let i = 0; i < slotsRequired; i++) {
+                    if (blockedSlots.has(allSlots[index + i])) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+            
             setTimeSlots(availableSlots);
+
         } catch (error) {
             console.error("Failed to fetch barber's schedule", error);
             toast({ variant: 'destructive', title: 'Erro', description: "Não foi possível carregar os horários do barbeiro." });
@@ -175,7 +213,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
     };
 
     generateAndFilterTimeSlots();
-  }, [settings, selectedDate, selectedBarberId, user, form, toast]);
+  }, [settings, selectedDate, selectedBarberId, selectedService, user, form, toast, services]);
 
 
   const onSubmit = async (data: AppointmentFormValues) => {
@@ -415,13 +453,14 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
                         <Select 
                             onValueChange={field.onChange} 
                             value={field.value} 
-                            disabled={slotsLoading || !selectedBarberId || timeSlots.length === 0}
+                            disabled={slotsLoading || !selectedBarberId || !selectedService || timeSlots.length === 0}
                         >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder={
                                 slotsLoading ? "Carregando..." : 
                                 !selectedBarberId ? "Selecione um barbeiro" : 
+                                !selectedService ? "Selecione um serviço" :
                                 timeSlots.length === 0 ? "Nenhum horário vago" : 
                                 "Selecione um horário"
                             } />
