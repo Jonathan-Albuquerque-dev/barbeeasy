@@ -9,7 +9,6 @@ import { Separator } from '@/components/ui/separator';
 import { Mail, Phone, MapPin, Award, Loader2, Gift } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import ClientRecommendations from '@/components/clients/client-recommendations';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
@@ -45,8 +44,6 @@ export default function ClientDetailPage() {
       </div>
     );
   }
-
-  const serviceHistorySummary = client.serviceHistory.map(h => `${h.service} em ${h.date}`).join('; ');
 
   return (
     <div className="space-y-8">
@@ -106,10 +103,9 @@ export default function ClientDetailPage() {
         {/* Right column: Tabs */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="history" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="history">Histórico de Serviços</TabsTrigger>
               <TabsTrigger value="preferences">Preferências</TabsTrigger>
-              <TabsTrigger value="recommendations">Sugestões da IA</TabsTrigger>
             </TabsList>
             <TabsContent value="history" className="mt-4">
               <Card>
@@ -162,9 +158,6 @@ export default function ClientDetailPage() {
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-            <TabsContent value="recommendations" className="mt-4">
-              <ClientRecommendations clientId={client.id} serviceHistory={serviceHistorySummary} />
             </TabsContent>
           </Tabs>
         </div>
