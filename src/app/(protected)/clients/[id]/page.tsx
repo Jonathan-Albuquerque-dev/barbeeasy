@@ -1,21 +1,48 @@
+'use client';
+
 import { getClientById } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Phone, MapPin, Award } from 'lucide-react';
+import { Mail, Phone, MapPin, Award, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import ClientRecommendations from '@/components/clients/client-recommendations';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/auth-context';
+import { useEffect, useState } from 'react';
 
-export default async function ClientDetailPage({ params }: { params: { id: string } }) {
-  const client = await getClientById(params.id);
+type Client = Awaited<ReturnType<typeof getClientById>>;
 
-  if (!client) {
-    notFound();
+export default function ClientDetailPage({ params }: { params: { id: string } }) {
+  const { user } = useAuth();
+  const [client, setClient] = useState<Client>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchClient() {
+      if (user?.uid) {
+        setLoading(true);
+        const fetchedClient = await getClientById(user.uid, params.id);
+        if (!fetchedClient) {
+          notFound();
+        }
+        setClient(fetchedClient);
+        setLoading(false);
+      }
+    }
+    fetchClient();
+  }, [user, params.id]);
+
+  if (loading || !client) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
   }
 
   const serviceHistorySummary = client.serviceHistory.map(h => `${h.service} em ${h.date}`).join('; ');

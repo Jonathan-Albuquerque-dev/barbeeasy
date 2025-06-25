@@ -1,13 +1,41 @@
+'use client';
+
 import { getStaff } from "@/lib/data";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { PlusCircle, Star } from "lucide-react";
+import { PlusCircle, Star, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { useEffect, useState } from "react";
 
-export default async function StaffPage() {
-  const staff = await getStaff();
+type StaffMember = Awaited<ReturnType<typeof getStaff>>[0];
+
+export default function StaffPage() {
+  const { user } = useAuth();
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStaff() {
+      if (user?.uid) {
+        setLoading(true);
+        const fetchedStaff = await getStaff(user.uid);
+        setStaff(fetchedStaff);
+        setLoading(false);
+      }
+    }
+    fetchStaff();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

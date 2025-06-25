@@ -1,13 +1,48 @@
+'use client';
+
 import { getClients } from "@/lib/data";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { PlusCircle, Award } from "lucide-react";
+import { PlusCircle, Award, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { useEffect, useState } from "react";
 
-export default async function ClientsPage() {
-  const clients = await getClients();
+type ClientListItem = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  loyaltyStatus: 'Ouro' | 'Prata' | 'Bronze';
+  avatarUrl: string;
+};
+
+export default function ClientsPage() {
+  const { user } = useAuth();
+  const [clients, setClients] = useState<ClientListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchClients() {
+      if (user?.uid) {
+        setLoading(true);
+        const fetchedClients = await getClients(user.uid);
+        setClients(fetchedClients);
+        setLoading(false);
+      }
+    }
+    fetchClients();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

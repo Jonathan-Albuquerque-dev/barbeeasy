@@ -8,25 +8,28 @@ import { PlusCircle } from 'lucide-react';
 import { getAppointmentsForDate, getTodaysAppointments } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '../ui/badge';
+import { useAuth } from '@/contexts/auth-context';
 
 type Appointment = Awaited<ReturnType<typeof getTodaysAppointments>>[0];
 
 export function AppointmentCalendar() {
+  const { user } = useAuth();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAppointments = async () => {
+      if (!user?.uid || !date) return;
+      
       setLoading(true);
-      const fetchedAppointments = date ? await getAppointmentsForDate(date) : [];
-      // This is a type assertion to match the expected structure
-      setAppointments(fetchedAppointments as unknown as Appointment[]);
+      const fetchedAppointments = await getAppointmentsForDate(user.uid, date);
+      setAppointments(fetchedAppointments as Appointment[]);
       setLoading(false);
     };
 
     fetchAppointments();
-  }, [date]);
+  }, [date, user]);
 
   return (
     <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">

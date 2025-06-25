@@ -1,10 +1,38 @@
+'use client';
+
 import { getServices } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, DollarSign, Tag } from "lucide-react";
+import { Clock, DollarSign, Tag, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { useEffect, useState } from "react";
 
-export default async function ServicesPage() {
-  const services = await getServices();
+type Service = Awaited<ReturnType<typeof getServices>>[0];
+
+export default function ServicesPage() {
+  const { user } = useAuth();
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchServices() {
+      if (user?.uid) {
+        setLoading(true);
+        const fetchedServices = await getServices(user.uid);
+        setServices(fetchedServices);
+        setLoading(false);
+      }
+    }
+    fetchServices();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

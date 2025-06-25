@@ -2,6 +2,11 @@
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from './firebase';
 
+// Helper para construir o caminho da coleção para um usuário específico
+const getCollectionPath = (userId: string, collectionName: string) => {
+    return `barbershops/${userId}/${collectionName}`;
+};
+
 // Helper para extrair dados e ID de um snapshot
 const getData = <T>(snapshot: any): T | undefined => {
   if (!snapshot.exists()) {
@@ -70,9 +75,9 @@ type Subscription = {
 
 // --- Funções da API usando o Firestore ---
 
-export async function getClients() {
+export async function getClients(userId: string) {
   try {
-    const clientsCol = collection(db, 'clients');
+    const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
     const clientSnapshot = await getDocs(clientsCol);
     // Retorna um subconjunto de campos para a lista
     return clientSnapshot.docs.map(doc => {
@@ -92,9 +97,9 @@ export async function getClients() {
   }
 }
 
-export async function getClientById(id: string): Promise<Client | undefined> {
+export async function getClientById(userId: string, id: string): Promise<Client | undefined> {
   try {
-    const clientDocRef = doc(db, 'clients', id);
+    const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), id);
     const clientSnap = await getDoc(clientDocRef);
     return getData<Client>(clientSnap);
   } catch (error) {
@@ -103,9 +108,9 @@ export async function getClientById(id: string): Promise<Client | undefined> {
   }
 }
 
-export async function getStaff(): Promise<Staff[]> {
+export async function getStaff(userId: string): Promise<Staff[]> {
   try {
-    const staffCol = collection(db, 'staff');
+    const staffCol = collection(db, getCollectionPath(userId, 'staff'));
     const staffSnapshot = await getDocs(staffCol);
     return getDatas<Staff>(staffSnapshot);
   } catch (error) {
@@ -114,9 +119,9 @@ export async function getStaff(): Promise<Staff[]> {
   }
 }
 
-export async function getStaffById(id: string): Promise<Staff | undefined> {
+export async function getStaffById(userId: string, id: string): Promise<Staff | undefined> {
   try {
-    const staffDocRef = doc(db, 'staff', id);
+    const staffDocRef = doc(db, getCollectionPath(userId, 'staff'), id);
     const staffSnap = await getDoc(staffDocRef);
     return getData<Staff>(staffSnap);
   } catch (error) {
@@ -125,9 +130,9 @@ export async function getStaffById(id: string): Promise<Staff | undefined> {
   }
 }
 
-export async function getServices(): Promise<Service[]> {
+export async function getServices(userId: string): Promise<Service[]> {
   try {
-    const servicesCol = collection(db, 'services');
+    const servicesCol = collection(db, getCollectionPath(userId, 'services'));
     const servicesSnapshot = await getDocs(servicesCol);
     return getDatas<Service>(servicesSnapshot);
   } catch (error) {
@@ -136,6 +141,7 @@ export async function getServices(): Promise<Service[]> {
   }
 }
 
+// Assinaturas são globais para o aplicativo, não por barbearia.
 export async function getSubscriptions(): Promise<Subscription[]> {
     try {
         const subsCol = collection(db, 'subscriptions');
@@ -147,12 +153,12 @@ export async function getSubscriptions(): Promise<Subscription[]> {
     }
 }
 
-async function populateAppointments(appointments: AppointmentDocument[]) {
+async function populateAppointments(userId: string, appointments: AppointmentDocument[]) {
     return Promise.all(
         appointments.map(async (app) => {
             try {
-                const clientSnap = await getDoc(doc(db, 'clients', app.clientId));
-                const barberSnap = await getDoc(doc(db, 'staff', app.barberId));
+                const clientSnap = await getDoc(doc(db, getCollectionPath(userId, 'clients'), app.clientId));
+                const barberSnap = await getDoc(doc(db, getCollectionPath(userId, 'staff'), app.barberId));
 
                 return {
                     ...app,
@@ -172,24 +178,24 @@ async function populateAppointments(appointments: AppointmentDocument[]) {
     );
 }
 
-export async function getTodaysAppointments() {
+export async function getTodaysAppointments(userId: string) {
   try {
-    const appointmentsCol = collection(db, 'appointments');
+    const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
     // Em um app real, você filtraria pela data de hoje usando um Timestamp.
     const appointmentSnapshot = await getDocs(appointmentsCol);
     const appointments = getDatas<AppointmentDocument>(appointmentSnapshot);
-    return await populateAppointments(appointments);
+    return await populateAppointments(userId, appointments);
   } catch (error) {
       console.error("Erro ao buscar agendamentos de hoje:", error);
       return [];
   }
 }
 
-export async function getAppointmentsForDate(date: Date) {
+export async function getAppointmentsForDate(userId: string, date: Date) {
     // Consulta simplificada com strings. Use Timestamps para apps robustos.
     const dateString = date.toISOString().split('T')[0];
   try {
-    const appointmentsCol = collection(db, 'appointments');
+    const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
     const q = query(appointmentsCol, where("date", "==", dateString));
     const appointmentSnapshot = await getDocs(q);
     const appointments = getDatas<AppointmentDocument>(appointmentSnapshot);
@@ -202,7 +208,7 @@ export async function getAppointmentsForDate(date: Date) {
       ];
     }
 
-    return await populateAppointments(appointments);
+    return await populateAppointments(userId, appointments);
   } catch (error) {
       console.error(`Erro ao buscar agendamentos para ${dateString}:`, error);
       return [

@@ -1,13 +1,46 @@
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { getTodaysAppointments, getDashboardStats } from "@/lib/data";
-import { Users, Calendar, DollarSign, Clock } from "lucide-react";
+import { Users, Calendar, DollarSign, Clock, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/auth-context";
+import { useEffect, useState } from "react";
 
-export default async function DashboardPage() {
-  const stats = await getDashboardStats();
-  const appointments = await getTodaysAppointments();
+type Appointment = Awaited<ReturnType<typeof getTodaysAppointments>>[0];
+type Stats = Awaited<ReturnType<typeof getDashboardStats>>;
+
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      if (user?.uid) {
+        setLoading(true);
+        const [fetchedStats, fetchedAppointments] = await Promise.all([
+          getDashboardStats(), // Note: This is still mocked
+          getTodaysAppointments(user.uid)
+        ]);
+        setStats(fetchedStats);
+        setAppointments(fetchedAppointments);
+        setLoading(false);
+      }
+    }
+    fetchDashboardData();
+  }, [user]);
+
+  if (loading || !stats) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
