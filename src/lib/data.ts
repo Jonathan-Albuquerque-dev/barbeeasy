@@ -38,6 +38,8 @@ type Client = {
     notes: string;
   };
   createdAt?: any; // Firestore Timestamp
+  subscriptionId?: string;
+  subscriptionName?: string;
 };
 
 export type Staff = {
@@ -144,6 +146,12 @@ export type FinancialOverview = {
     value: number;
     paymentMethod?: string;
   }[];
+};
+
+export type SubscriptionStats = {
+    totalSubscribers: number;
+    monthlyAppointments: number;
+    monthlyRevenue: number;
 };
 
 
@@ -828,5 +836,51 @@ export async function deleteAppointment(userId: string, appointmentId: string) {
     } catch (error) {
         console.error(`Erro ao excluir agendamento ${appointmentId}:`, error);
         throw new Error("Não foi possível excluir o agendamento.");
+    }
+}
+
+export async function getSubscriptionStats(userId: string): Promise<SubscriptionStats> {
+    try {
+        const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
+        const subscriptionsCol = collection(db, getCollectionPath(userId, 'subscriptions'));
+        
+        // This query will only find clients that actually have the subscriptionId field.
+        const [clientsSnap, subscriptionsSnap] = await Promise.all([
+            getDocs(query(clientsCol, where('subscriptionId', '!=', null))),
+            getDocs(subscriptionsCol),
+        ]);
+
+        const subscribedClients = getDatas<Client>(clientsSnap);
+        const subscriptions = getDatas<Subscription>(subscriptionsSnap);
+        const subscriptionMap = new Map(subscriptions.map(s => [s.id, s.price]));
+
+        const totalSubscribers = subscribedClients.length;
+
+        const monthlyRevenue = subscribedClients.reduce((total, client) => {
+            if (client.subscriptionId) {
+                const price = subscriptionMap.get(client.subscriptionId) || 0;
+                return total + price;
+            }
+            return total;
+        }, 0);
+
+        // This is a placeholder. A real implementation would need to:
+        // 1. Get the list of subscribed client IDs.
+        // 2. Query appointments for this month where the clientId is in the list of subscribers.
+        const monthlyAppointments = 0; 
+
+        return {
+            totalSubscribers,
+            monthlyAppointments,
+            monthlyRevenue,
+        };
+
+    } catch (error) {
+        console.error("Erro ao buscar estatísticas de assinaturas:", error);
+        return {
+            totalSubscribers: 0,
+            monthlyAppointments: 0,
+            monthlyRevenue: 0,
+        };
     }
 }
