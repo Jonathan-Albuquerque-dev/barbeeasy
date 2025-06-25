@@ -7,18 +7,22 @@ import { Users, Calendar, DollarSign, Clock, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState } from "react";
-import type { AppointmentStatus } from "@/lib/data";
+import type { AppointmentStatus, AppointmentDocument } from "@/lib/data";
 import { AppointmentStatusUpdater } from "@/components/appointments/appointment-status-updater";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { AppointmentDetailsDialog } from "@/components/appointments/appointment-details-dialog";
 
-type Appointment = Awaited<ReturnType<typeof getTodaysAppointments>>[0];
+type PopulatedAppointment = AppointmentDocument & {
+  client: { id: string; name: string; avatarUrl: string; };
+  barber: { id: string; name: string; };
+};
 type Stats = Awaited<ReturnType<typeof getDashboardStats>>;
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState<PopulatedAppointment[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = async () => {
@@ -33,7 +37,7 @@ export default function DashboardPage() {
         fetchedAppointments.sort((a, b) => a.time.localeCompare(b.time));
 
         setStats(fetchedStats);
-        setAppointments(fetchedAppointments);
+        setAppointments(fetchedAppointments as PopulatedAppointment[]);
         setLoading(false);
       }
     }
@@ -130,7 +134,7 @@ export default function DashboardPage() {
                 <TableHead>Barbeiro</TableHead>
                 <TableHead>Hora</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead><span className="sr-only">Ações</span></TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -156,9 +160,14 @@ export default function DashboardPage() {
                     />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button asChild variant="ghost" size="sm">
-                        <Link href={`/clients/${appointment.client.id}`}>Ver Perfil</Link>
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                        <Button asChild variant="ghost" size="sm">
+                            <Link href={`/clients/${appointment.client.id}`}>Ver Perfil</Link>
+                        </Button>
+                        <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchDashboardData}>
+                            <Button variant="outline" size="sm">Detalhes</Button>
+                        </AppointmentDetailsDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

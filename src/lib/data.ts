@@ -56,7 +56,7 @@ type Service = {
   description: string;
 };
 
-type Product = {
+export type Product = {
   id: string;
   name: string;
   description: string;
@@ -75,6 +75,12 @@ export type AppointmentDocument = {
   time: string;
   status: 'Concluído' | 'Confirmado' | 'Pendente';
   paymentMethod?: string;
+  soldProducts?: {
+    productId: string;
+    name: string;
+    quantity: number;
+    price: number;
+  }[];
 };
 
 export type AppointmentStatus = 'Concluído' | 'Confirmado' | 'Pendente';
@@ -340,15 +346,29 @@ export async function getBarberAppointmentsForDate(userId: string, barberId: str
   }
 }
 
-export async function addAppointment(userId: string, appointmentData: Omit<AppointmentDocument, 'id'>) {
+export async function addAppointment(userId: string, appointmentData: Omit<AppointmentDocument, 'id' | 'soldProducts'>) {
     try {
         const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
-        await addDoc(appointmentsCol, appointmentData);
+        await addDoc(appointmentsCol, {
+          ...appointmentData,
+          soldProducts: [],
+        });
     } catch (error) {
         console.error("Erro ao adicionar agendamento:", error);
         throw new Error("Não foi possível adicionar o agendamento.");
     }
 }
+
+export async function updateAppointmentProducts(userId: string, appointmentId: string, soldProducts: any[]) {
+    const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
+    try {
+        await updateDoc(appointmentDocRef, { soldProducts });
+    } catch (error) {
+        console.error(`Erro ao atualizar produtos do agendamento ${appointmentId}:`, error);
+        throw new Error("Não foi possível atualizar os produtos do agendamento.");
+    }
+}
+
 
 export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus, paymentMethod?: string) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);

@@ -5,20 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
-import { getAppointmentsForDate, AppointmentStatus } from '@/lib/data';
+import { getAppointmentsForDate, AppointmentStatus, AppointmentDocument } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { AddAppointmentDialog } from './add-appointment-dialog';
 import { AppointmentStatusUpdater } from './appointment-status-updater';
+import { AppointmentDetailsDialog } from './appointment-details-dialog';
 
-type Appointment = {
-  id: string;
-  clientId: string;
-  barberId: string;
-  service: string;
-  date: string;
-  time: string;
-  status: AppointmentStatus;
+type Appointment = AppointmentDocument & {
   client: {
     id: string;
     name: string;
@@ -41,6 +35,7 @@ export function AppointmentCalendar() {
     
     setLoading(true);
     const fetchedAppointments = await getAppointmentsForDate(user.uid, date);
+    fetchedAppointments.sort((a, b) => a.time.localeCompare(b.time));
     setAppointments(fetchedAppointments as Appointment[]);
     setLoading(false);
   }, [date, user]);
@@ -125,13 +120,18 @@ export function AppointmentCalendar() {
                         {app.client.name} com {app.barber.name}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold">{app.time}</p>
-                      <AppointmentStatusUpdater
-                        appointmentId={app.id}
-                        currentStatus={app.status}
-                        onStatusChange={(newStatus) => handleStatusChange(app.id, newStatus)}
-                      />
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+                        <p className="font-semibold">{app.time}</p>
+                        <AppointmentStatusUpdater
+                            appointmentId={app.id}
+                            currentStatus={app.status}
+                            onStatusChange={(newStatus) => handleStatusChange(app.id, newStatus)}
+                        />
+                        </div>
+                        <AppointmentDetailsDialog appointment={app} onAppointmentUpdate={fetchAppointments}>
+                            <Button variant="outline" size="sm">Detalhes</Button>
+                        </AppointmentDetailsDialog>
                     </div>
                   </li>
                 ))}
