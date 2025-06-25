@@ -13,7 +13,8 @@ import { useEffect, useState } from 'react';
 
 type StaffMember = Awaited<ReturnType<typeof getStaffById>>;
 
-export default function StaffDetailPage({ params }: { params: { id: string } }) {
+export default function StaffDetailPage() {
+  const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const [member, setMember] = useState<StaffMember>(null);
   const [loading, setLoading] = useState(true);
