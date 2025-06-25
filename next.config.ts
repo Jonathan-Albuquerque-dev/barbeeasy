@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    serverComponentsExternalPackages: ['@opentelemetry/api', '@opentelemetry/core'],
+  },
 };
 
 export default nextConfig;
