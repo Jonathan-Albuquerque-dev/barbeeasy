@@ -1,4 +1,4 @@
-// src/lib/data.ts
+{// src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -199,21 +199,12 @@ export async function getAppointmentsForDate(userId: string, date: Date) {
     const q = query(appointmentsCol, where("date", "==", dateString));
     const appointmentSnapshot = await getDocs(q);
     const appointments = getDatas<AppointmentDocument>(appointmentSnapshot);
-    
-    // Se não houver dados no DB, retorna dados de exemplo para fins de demonstração em desenvolvimento.
-    if (appointments.length === 0 && process.env.NODE_ENV === 'development') {
-      return [
-        { id: 'mock-1', client: {id: '1', name: 'João da Silva (Exemplo)', avatarUrl: 'https://placehold.co/100x100.png' }, barber: { id: '1', name: 'Sam Smith' }, service: 'Corte Clássico', date: date.toDateString(), time: '09:00', status: 'Confirmado' },
-        { id: 'mock-2', client: {id: '2', name: 'Miguel Johnson (Exemplo)', avatarUrl: 'https://placehold.co/100x100.png' }, barber: { id: '3', name: 'Alex Chen' }, service: 'Corte Degradê Moderno', date: date.toDateString(), time: '09:30', status: 'Confirmado' },
-      ];
-    }
 
     return await populateAppointments(userId, appointments);
   } catch (error) {
       console.error(`Erro ao buscar agendamentos para ${dateString}:`, error);
-      return [
-        { id: 'err-1', client: {id: '1', name: 'Erro ao Carregar', avatarUrl: '' }, barber: { id: '1', name: 'Tente Novamente' }, service: 'Erro', date: date.toDateString(), time: 'Error', status: 'Pendente' },
-      ];
+      // Retorna array vazio em caso de erro para não quebrar a UI
+      return [];
   }
 }
 

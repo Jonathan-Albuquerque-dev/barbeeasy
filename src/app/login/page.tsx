@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -125,38 +126,44 @@ export default function LoginPage() {
               {loading ? <Loader2 className="animate-spin" /> : 'Entrar'}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="link" className="p-0 h-auto">
-                    Esqueceu sua senha?
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Redefinir Senha</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Digite seu email abaixo. Enviaremos um link para você redefinir sua senha.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="py-4">
-                     <Label htmlFor="reset-email" className="sr-only">Email</Label>
-                     <Input
-                        id="reset-email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
-                    />
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handlePasswordReset} disabled={resetLoading}>
-                    {resetLoading ? <Loader2 className="animate-spin" /> : 'Enviar Link'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+          <div className="mt-6 text-center text-sm space-y-4">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="link" className="p-0 h-auto font-medium text-primary">
+                      Esqueceu sua senha?
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Redefinir Senha</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Digite seu email abaixo. Enviaremos um link para você redefinir sua senha.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="py-4">
+                      <Label htmlFor="reset-email" className="sr-only">Email</Label>
+                      <Input
+                          id="reset-email"
+                          type="email"
+                          placeholder="seu@email.com"
+                          value={resetEmail}
+                          onChange={(e) => setResetEmail(e.target.value)}
+                      />
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handlePasswordReset} disabled={resetLoading}>
+                      {resetLoading ? <Loader2 className="animate-spin" /> : 'Enviar Link'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <p>
+                Não tem uma conta?{' '}
+                <Link href="/signup" className="font-medium text-primary hover:underline">
+                  Cadastre-se
+                </Link>
+              </p>
           </div>
         </CardContent>
       </Card>
