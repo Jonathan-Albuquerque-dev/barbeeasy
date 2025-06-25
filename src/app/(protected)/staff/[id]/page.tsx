@@ -21,9 +21,10 @@ export default function StaffDetailPage() {
 
   useEffect(() => {
     async function fetchStaffMember() {
-      if (user?.uid) {
+      if (user?.uid && params?.id) {
         setLoading(true);
-        const fetchedMember = await getStaffById(user.uid, params.id);
+        const staffId = Array.isArray(params.id) ? params.id[0] : params.id;
+        const fetchedMember = await getStaffById(user.uid, staffId);
         if (!fetchedMember) {
           notFound();
         }
@@ -32,7 +33,7 @@ export default function StaffDetailPage() {
       }
     }
     fetchStaffMember();
-  }, [user, params.id]);
+  }, [user, params]);
 
   if (loading || !member) {
     return (

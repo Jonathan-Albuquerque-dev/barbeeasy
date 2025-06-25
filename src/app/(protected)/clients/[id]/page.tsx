@@ -24,9 +24,10 @@ export default function ClientDetailPage() {
 
   useEffect(() => {
     async function fetchClient() {
-      if (user?.uid) {
+      if (user?.uid && params?.id) {
         setLoading(true);
-        const fetchedClient = await getClientById(user.uid, params.id);
+        const clientId = Array.isArray(params.id) ? params.id[0] : params.id;
+        const fetchedClient = await getClientById(user.uid, clientId);
         if (!fetchedClient) {
           notFound();
         }
@@ -35,7 +36,7 @@ export default function ClientDetailPage() {
       }
     }
     fetchClient();
-  }, [user, params.id]);
+  }, [user, params]);
 
   if (loading || !client) {
     return (
