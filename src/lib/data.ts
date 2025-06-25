@@ -87,13 +87,17 @@ export type AppointmentDocument = {
 
 export type AppointmentStatus = 'Concluído' | 'Confirmado' | 'Pendente' | 'Em atendimento';
 
-type Subscription = {
+export type SubscriptionService = {
+  serviceId: string;
+  serviceName: string;
+  discount: number;
+};
+
+export type Subscription = {
   id: string;
   name: string;
   price: number;
-  frequency: string;
-  features: string[];
-  popular: boolean;
+  includedServices: SubscriptionService[];
 };
 
 export type DayHours = {
@@ -323,16 +327,25 @@ export async function addProduct(userId: string, productData: Omit<Product, 'id'
     }
 }
 
-
-// Assinaturas são globais para o aplicativo, não por barbearia.
-export async function getSubscriptions(): Promise<Subscription[]> {
+// --- Funções de Assinatura ---
+export async function getSubscriptions(userId: string): Promise<Subscription[]> {
     try {
-        const subsCol = collection(db, 'subscriptions');
+        const subsCol = collection(db, getCollectionPath(userId, 'subscriptions'));
         const subsSnapshot = await getDocs(subsCol);
         return getDatas<Subscription>(subsSnapshot);
     } catch (error) {
         console.error("Erro ao buscar assinaturas:", error);
         return [];
+    }
+}
+
+export async function addSubscription(userId: string, subscriptionData: Omit<Subscription, 'id'>) {
+    try {
+        const subsCol = collection(db, getCollectionPath(userId, 'subscriptions'));
+        await addDoc(subsCol, subscriptionData);
+    } catch (error) {
+        console.error("Erro ao adicionar assinatura:", error);
+        throw new Error("Não foi possível adicionar a assinatura.");
     }
 }
 
@@ -436,74 +449,76 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
 
     if (status !== 'Concluído') {
-        // Se o status não for 'Concluído', apenas atualize. O erro será propagado para o chamador.
         await updateDoc(appointmentDocRef, { status: status });
         return;
     }
 
-    // A lógica para 'Concluído' é mais complexa e precisa ser atômica.
-    // Qualquer erro aqui será propagado para a função de chamada (na UI).
-    await runTransaction(db, async (transaction) => {
-        const appointmentSnap = await transaction.get(appointmentDocRef);
+    try {
+        await runTransaction(db, async (transaction) => {
+            const appointmentSnap = await transaction.get(appointmentDocRef);
 
-        if (!appointmentSnap.exists() || appointmentSnap.data().status === 'Concluído') {
-            if (appointmentSnap.data()?.status === 'Concluído') {
-                console.log("Agendamento já está concluído. Nenhuma ação tomada.");
+            if (!appointmentSnap.exists() || appointmentSnap.data().status === 'Concluído') {
+                if (appointmentSnap.data()?.status === 'Concluído') {
+                    console.log("Agendamento já está concluído. Nenhuma ação tomada.");
+                }
+                return;
             }
-            return;
-        }
 
-        const appointmentData = appointmentSnap.data() as AppointmentDocument;
-        const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
-        const clientSnap = await transaction.get(clientDocRef);
-        
-        if (!clientSnap.exists()) {
-            throw new Error("Cliente não encontrado na transação.");
-        }
-        
-        const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
-        const barbershopSettingsSnap = await transaction.get(barbershopSettingsDocRef);
+            const appointmentData = appointmentSnap.data() as AppointmentDocument;
+            const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
+            const clientSnap = await transaction.get(clientDocRef);
+            
+            if (!clientSnap.exists()) {
+                throw new Error("Cliente não encontrado na transação.");
+            }
+            
+            const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
+            const barbershopSettingsSnap = await transaction.get(barbershopSettingsDocRef);
 
-        if (!barbershopSettingsSnap.exists()) {
-            throw new Error("Configurações da barbearia não encontradas.");
-        }
-        const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
-        
-        const loyaltySettings = barbershopSettings?.loyaltyProgram;
-        const loyaltyEnabled = loyaltySettings?.enabled || false;
-        const isCourtesy = paymentMethod?.startsWith('Cortesia');
+            if (!barbershopSettingsSnap.exists()) {
+                throw new Error("Configurações da barbearia não encontradas.");
+            }
+            const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
+            
+            const loyaltySettings = barbershopSettings?.loyaltyProgram;
+            const loyaltyEnabled = loyaltySettings?.enabled || false;
 
-        if (loyaltyEnabled) {
-            if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
-                const rewardInfo = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
-                const pointsCost = Number(rewardInfo?.pointsCost || 0);
+            if (loyaltyEnabled) {
+                if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
+                    const rewardInfo = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
+                    const pointsCost = Number(rewardInfo?.pointsCost || 0);
 
-                if (pointsCost === 0) {
-                    throw new Error(`Este serviço não está configurado para resgate com pontos.`);
-                }
-                
-                const currentPoints = Number(clientSnap.data()?.loyaltyPoints || 0);
-                if (currentPoints < pointsCost) {
-                    throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${currentPoints}`);
-                }
-                
-                transaction.update(clientDocRef, { loyaltyPoints: increment(-pointsCost) });
+                    if (pointsCost === 0) {
+                        throw new Error(`Este serviço não está configurado para resgate com pontos.`);
+                    }
+                    
+                    const currentPoints = Number(clientSnap.data()?.loyaltyPoints || 0);
+                    if (currentPoints < pointsCost) {
+                        throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${currentPoints}`);
+                    }
+                    
+                    transaction.update(clientDocRef, { loyaltyPoints: increment(-pointsCost) });
 
-            } else if (!isCourtesy) {
-                const serviceRule = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
-                const pointsToAdd = Number(serviceRule?.pointsGenerated ?? loyaltySettings?.pointsPerService ?? 1);
+                } else if (!paymentMethod?.startsWith('Cortesia')) {
+                    const serviceRule = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
+                    const pointsToAdd = Number(serviceRule?.pointsGenerated ?? loyaltySettings?.pointsPerService ?? 1);
 
-                if (pointsToAdd > 0) {
-                    transaction.update(clientDocRef, { loyaltyPoints: increment(pointsToAdd) });
+                    if (pointsToAdd > 0) {
+                        transaction.update(clientDocRef, { loyaltyPoints: increment(pointsToAdd) });
+                    }
                 }
             }
-        }
-        
-        transaction.update(appointmentDocRef, {
-            status: 'Concluído',
-            paymentMethod: paymentMethod || 'Não especificado',
+            
+            transaction.update(appointmentDocRef, {
+                status: 'Concluído',
+                paymentMethod: paymentMethod || 'Não especificado',
+            });
         });
-    });
+    } catch(error) {
+        console.error("Erro na transação de conclusão do agendamento:", error);
+        // Propaga o erro para a UI poder exibi-lo.
+        throw error;
+    }
 }
 
 
