@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { PlusCircle, Award, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { AddClientDialog } from "@/components/clients/add-client-dialog";
 
 type ClientListItem = {
   id: string;
@@ -24,17 +25,20 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchClients() {
-      if (user?.uid) {
-        setLoading(true);
-        const fetchedClients = await getClients(user.uid);
-        setClients(fetchedClients);
-        setLoading(false);
-      }
+  const fetchClients = useCallback(async () => {
+    if (user?.uid) {
+      const fetchedClients = await getClients(user.uid);
+      setClients(fetchedClients);
+      setLoading(false);
     }
-    fetchClients();
   }, [user]);
+
+  useEffect(() => {
+    if (user?.uid) {
+        setLoading(true);
+        fetchClients();
+    }
+  }, [user, fetchClients]);
 
   if (loading) {
     return (
@@ -51,10 +55,12 @@ export default function ClientsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Cadastro de Clientes</h1>
           <p className="text-muted-foreground">Veja e gerencie todos os seus clientes.</p>
         </div>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Adicionar Cliente
-        </Button>
+        <AddClientDialog onClientAdded={fetchClients}>
+            <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar Cliente
+            </Button>
+        </AddClientDialog>
       </div>
 
       <div className="border rounded-lg">

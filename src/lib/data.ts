@@ -97,6 +97,16 @@ export async function getClients(userId: string) {
   }
 }
 
+export async function addClient(userId: string, clientData: Omit<Client, 'id'>) {
+    try {
+        const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
+        await addDoc(clientsCol, clientData);
+    } catch (error) {
+        console.error("Erro ao adicionar cliente:", error);
+        throw new Error("Não foi possível adicionar o cliente.");
+    }
+}
+
 export async function getClientById(userId: string, id: string): Promise<Client | undefined> {
   try {
     const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), id);
