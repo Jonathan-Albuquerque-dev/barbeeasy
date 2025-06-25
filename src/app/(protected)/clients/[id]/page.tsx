@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 type Client = Awaited<ReturnType<typeof getClientById>>;
 type ServiceHistoryItem = { date: string; service: string; barber: string; cost: number };
@@ -45,6 +45,46 @@ export default function ClientDetailPage() {
     }
     fetchClientData();
   }, [user, params]);
+
+  const dynamicPreferences = useMemo(() => {
+    if (!serviceHistory || serviceHistory.length === 0) {
+      return {
+        preferredServices: ['Nenhum serviço registrado'],
+        preferredBarber: 'Nenhum',
+      };
+    }
+
+    const serviceCounts = serviceHistory.reduce((acc, item) => {
+      acc[item.service] = (acc[item.service] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const maxServiceCount = Math.max(...Object.values(serviceCounts), 0);
+    const preferredServices = maxServiceCount > 0 
+      ? Object.entries(serviceCounts)
+          .filter(([, count]) => count === maxServiceCount)
+          .map(([service]) => service)
+      : ['Nenhum serviço preferido'];
+
+    const barberCounts = serviceHistory.reduce((acc, item) => {
+      if (item.barber && item.barber !== 'N/A') {
+        acc[item.barber] = (acc[item.barber] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const maxBarberCount = Math.max(...Object.values(barberCounts), 0);
+    const preferredBarber = maxBarberCount > 0
+      ? Object.entries(barberCounts)
+          .find(([, count]) => count === maxBarberCount)
+          ?.[0] || 'Nenhum'
+      : 'Nenhum';
+    
+    return {
+      preferredServices,
+      preferredBarber,
+    };
+  }, [serviceHistory]);
 
   if (loading || !client) {
     return (
@@ -161,12 +201,12 @@ export default function ClientDetailPage() {
                 <CardContent className="space-y-4">
                   <div>
                     <h3 className="font-semibold text-base">Serviços Preferidos</h3>
-                    <p className="text-muted-foreground">{client.preferences.preferredServices.join(', ')}</p>
+                    <p className="text-muted-foreground">{dynamicPreferences.preferredServices.join(', ')}</p>
                   </div>
                   <Separator />
                   <div>
                     <h3 className="font-semibold text-base">Barbeiro Preferido</h3>
-                    <p className="text-muted-foreground">{client.preferences.preferredBarber}</p>
+                    <p className="text-muted-foreground">{dynamicPreferences.preferredBarber}</p>
                   </div>
                   <Separator />
                   <div>
