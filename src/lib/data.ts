@@ -1,3 +1,4 @@
+
 // src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction } from 'firebase/firestore';
 import { db } from './firebase';
@@ -386,7 +387,6 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
     // Para o status 'Concluído', a lógica é mais complexa e precisa ser atômica.
     try {
         // 1. Obter todos os dados de LEITURA necessários ANTES da transação.
-        // Isso melhora o desempenho e a clareza da transação.
         const appointmentSnap = await getDoc(appointmentDocRef);
         if (!appointmentSnap.exists()) {
             throw new Error("Agendamento não encontrado.");
@@ -405,26 +405,24 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
         const barberData = getData<Staff>(barberSnap);
 
         // 2. Executar a transação para todas as ESCRITAS.
-        // A transação garante que todas as atualizações aconteçam ou nenhuma delas.
         await runTransaction(db, async (transaction) => {
             const clientSnap = await transaction.get(clientDocRef);
             if (!clientSnap.exists()) {
-                // Lançar um erro dentro da transação a cancela.
                 throw new Error(`Cliente com ID ${appointmentData.clientId} não encontrado.`);
             }
 
             // Preparar a nova entrada do histórico de serviço
             const newHistoryEntry = {
-                date: new Date(`${appointmentData.date}T00:00:00`).toLocaleDateString('pt-BR', { timeZone: 'UTC' }),
+                date: format(new Date(`${appointmentData.date}T12:00:00Z`), 'dd/MM/yyyy'),
                 service: appointmentData.service,
                 barber: barberData?.name || 'N/A',
                 cost: serviceData?.price || 0,
             };
-            const currentHistory = clientSnap.data().serviceHistory || [];
+            const currentHistory = clientSnap.data()?.serviceHistory || [];
 
             // Preparar a nova pontuação de fidelidade
             const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
-            const currentPoints = clientSnap.data().loyaltyPoints || 0;
+            const currentPoints = clientSnap.data()?.loyaltyPoints || 0;
             const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
             const newPoints = loyaltyEnabled ? currentPoints + pointsToAdd : currentPoints;
 
@@ -442,7 +440,6 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
 
     } catch (error) {
         console.error(`Erro na transação de conclusão do agendamento ${appointmentId}:`, error);
-        // O erro será propagado para o componente que chamou, que exibirá um toast.
         throw new Error("Falha ao concluir o agendamento. A operação foi totalmente revertida para garantir a consistência dos dados.");
     }
 }
@@ -720,3 +717,5 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
         throw error;
     }
 }
+
+    
