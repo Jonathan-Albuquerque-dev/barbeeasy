@@ -29,7 +29,7 @@ const appointmentSchema = z.object({
   service: z.string().min(1, { message: 'Selecione um serviço.' }),
   date: z.date({ required_error: 'A data é obrigatória.' }),
   time: z.string().min(1, { message: 'A hora é obrigatória.' }),
-  status: z.enum(['Confirmado', 'Pendente', 'Concluído'], { required_error: 'O status é obrigatório.' }),
+  status: z.enum(['Confirmado', 'Pendente', 'Concluído', 'Em atendimento'], { required_error: 'O status é obrigatório.' }),
 }).superRefine((data, ctx) => {
     if (data.clientType === 'existing' && !data.clientId) {
         ctx.addIssue({
@@ -236,7 +236,6 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
           loyaltyStatus: 'Bronze',
           loyaltyPoints: 0,
           avatarUrl: `https://placehold.co/400x400.png`,
-          serviceHistory: [],
           preferences: {
               preferredServices: [],
               preferredBarber: 'Nenhum',
@@ -490,6 +489,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
                     <SelectContent>
                       <SelectItem value="Confirmado">Confirmado</SelectItem>
                       <SelectItem value="Pendente">Pendente</SelectItem>
+                      <SelectItem value="Em atendimento">Em atendimento</SelectItem>
                       <SelectItem value="Concluído">Concluído</SelectItem>
                     </SelectContent>
                   </Select>

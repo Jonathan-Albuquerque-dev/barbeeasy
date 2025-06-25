@@ -73,7 +73,7 @@ export type AppointmentDocument = {
   service: string;
   date: string; // Em um app real, use Timestamps do Firestore
   time: string;
-  status: 'Concluído' | 'Confirmado' | 'Pendente';
+  status: 'Concluído' | 'Confirmado' | 'Pendente' | 'Em atendimento';
   paymentMethod?: string;
   soldProducts?: {
     productId: string;
@@ -83,7 +83,7 @@ export type AppointmentDocument = {
   }[];
 };
 
-export type AppointmentStatus = 'Concluído' | 'Confirmado' | 'Pendente';
+export type AppointmentStatus = 'Concluído' | 'Confirmado' | 'Pendente' | 'Em atendimento';
 
 type Subscription = {
   id: string;
@@ -415,12 +415,13 @@ export async function updateAppointmentProducts(userId: string, appointmentId: s
     }
 }
 
-export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus, paymentMethod?: string) {
+export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus, paymentMethod?: PaymentMethod) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
 
+    // Se o novo status não for 'Concluído', a atualização é simples.
     if (status !== 'Concluído') {
         try {
-            await updateDoc(appointmentDocRef, { status: status, paymentMethod: '' });
+            await updateDoc(appointmentDocRef, { status: status });
         } catch (error) {
             console.error(`Erro ao atualizar status do agendamento ${appointmentId}:`, error);
             throw new Error("Não foi possível atualizar o status do agendamento.");
@@ -428,39 +429,43 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
         return;
     }
 
-    // Para o status 'Concluído', a lógica é mais complexa e precisa ser atômica.
+    // A lógica para 'Concluído' é mais complexa e precisa ser atômica.
     try {
-        const appointmentSnap = await getDoc(appointmentDocRef);
-        if (!appointmentSnap.exists()) {
-            throw new Error("Agendamento não encontrado para concluir.");
-        }
-        const appointmentData = appointmentSnap.data() as AppointmentDocument;
-
-        const barbershopSettings = await getBarbershopSettings(userId);
-        
-        const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
-        
         await runTransaction(db, async (transaction) => {
+            const appointmentSnap = await transaction.get(appointmentDocRef);
+            if (!appointmentSnap.exists()) {
+                throw new Error("Agendamento não encontrado para concluir.");
+            }
+            // Não fazer nada se o agendamento já foi concluído antes
+            if (appointmentSnap.data().status === 'Concluído') {
+                console.log("Agendamento já está concluído. Nenhuma ação tomada.");
+                return;
+            }
+
+            const appointmentData = appointmentSnap.data() as AppointmentDocument;
+            const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
             const clientSnap = await transaction.get(clientDocRef);
+            
             if (!clientSnap.exists()) {
                 throw new Error("Cliente não encontrado na transação.");
             }
 
-            const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
-            let newPoints = clientSnap.data().loyaltyPoints || 0;
-            if (loyaltyEnabled) {
-                const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
-                newPoints += pointsToAdd;
-            }
-
-            // Atualiza os pontos de fidelidade do cliente e o status do agendamento.
-            transaction.update(clientDocRef, {
-                loyaltyPoints: newPoints,
-            });
+            // Atualiza status e forma de pagamento
             transaction.update(appointmentDocRef, {
                 status: 'Concluído',
-                paymentMethod: paymentMethod,
+                paymentMethod: paymentMethod || 'Não especificado',
             });
+            
+            // Lógica de pontos de fidelidade
+            const barbershopSettings = await getBarbershopSettings(userId);
+            const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
+            if (loyaltyEnabled) {
+                const currentPoints = clientSnap.data().loyaltyPoints || 0;
+                const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
+                transaction.update(clientDocRef, {
+                    loyaltyPoints: currentPoints + pointsToAdd,
+                });
+            }
         });
 
     } catch (error: any) {
@@ -468,6 +473,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
         throw new Error(`Falha ao concluir agendamento: ${error.message}`);
     }
 }
+
 
 export async function getDashboardStats(userId: string) {
     try {

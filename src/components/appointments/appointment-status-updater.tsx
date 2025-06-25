@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
-const statuses: AppointmentStatus[] = ['Confirmado', 'Concluído', 'Pendente'];
+const statuses: AppointmentStatus[] = ['Em atendimento', 'Confirmado', 'Concluído', 'Pendente'];
 const paymentMethods = ['Dinheiro', 'Cartão', 'Pix', 'Cortesia'] as const;
 type PaymentMethod = typeof paymentMethods[number];
 
@@ -66,6 +66,8 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
     switch (status) {
       case 'Concluído':
         return 'success';
+      case 'Em atendimento':
+        return 'default';
       case 'Confirmado':
         return 'secondary';
       case 'Pendente':
@@ -101,20 +103,17 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {statuses.filter(s => s !== currentStatus).map((status) => {
-            if (status === 'Concluído') {
-              return (
-                <DropdownMenuItem key={status} onSelect={() => setDialogOpen(true)}>
-                  <span>Mudar para {status}</span>
-                </DropdownMenuItem>
-              );
-            }
-            return (
+          {statuses.filter(s => s !== currentStatus && s !== 'Concluído').map((status) => (
               <DropdownMenuItem key={status} onSelect={() => handleStatusChange(status)}>
                 <span>Mudar para {status}</span>
               </DropdownMenuItem>
-            );
-          })}
+          ))}
+           {/* Botão para "Concluído" é tratado separadamente para abrir o diálogo */}
+          {currentStatus !== 'Concluído' && (
+             <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
+                <span>Mudar para Concluído</span>
+             </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
