@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState } from "react";
 import type { AppointmentStatus } from "@/lib/data";
 import { AppointmentStatusUpdater } from "@/components/appointments/appointment-status-updater";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 type Appointment = Awaited<ReturnType<typeof getTodaysAppointments>>[0];
 type Stats = Awaited<ReturnType<typeof getDashboardStats>>;
@@ -124,6 +126,7 @@ export default function DashboardPage() {
                 <TableHead>Barbeiro</TableHead>
                 <TableHead>Hora</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead><span className="sr-only">Ações</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -147,6 +150,11 @@ export default function DashboardPage() {
                         currentStatus={appointment.status} 
                         onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
                     />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild variant="ghost" size="sm">
+                        <Link href={`/clients/${appointment.client.id}`}>Ver Perfil</Link>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
