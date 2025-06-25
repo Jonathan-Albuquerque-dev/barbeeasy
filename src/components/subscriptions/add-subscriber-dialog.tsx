@@ -17,6 +17,7 @@ import { Loader2 } from 'lucide-react';
 const subscriberSchema = z.object({
   clientId: z.string().min(1, 'Selecione um cliente.'),
   subscriptionId: z.string().min(1, 'Selecione um plano de assinatura.'),
+  paymentMethod: z.string().min(1, 'Selecione uma forma de pagamento.'),
 });
 
 type SubscriberFormValues = z.infer<typeof subscriberSchema>;
@@ -44,6 +45,7 @@ export function AddSubscriberDialog({ onSubscriberAdded, children }: AddSubscrib
     defaultValues: {
       clientId: '',
       subscriptionId: '',
+      paymentMethod: '',
     },
   });
 
@@ -83,7 +85,7 @@ export function AddSubscriberDialog({ onSubscriberAdded, children }: AddSubscrib
             throw new Error("Assinatura selecionada não encontrada.");
         }
         
-        await assignSubscriptionToClient(user.uid, data.clientId, data.subscriptionId, selectedSubscription.name);
+        await assignSubscriptionToClient(user.uid, data.clientId, data.subscriptionId, selectedSubscription.name, data.paymentMethod);
       
         toast({
             title: 'Sucesso!',
@@ -152,6 +154,28 @@ export function AddSubscriberDialog({ onSubscriberAdded, children }: AddSubscrib
                     </FormControl>
                     <SelectContent>
                       {subscriptions.map(s => <SelectItem key={s.id} value={s.id}>{s.name} - R${s.price.toFixed(2)}/mês</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="paymentMethod"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Forma de Pagamento</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={loading}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a forma de pagamento" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="Cartão de Crédito/Débito">Cartão de Crédito/Débito</SelectItem>
+                        <SelectItem value="Pix">Pix</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

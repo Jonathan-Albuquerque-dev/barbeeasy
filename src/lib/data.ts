@@ -40,6 +40,8 @@ export type Client = {
   createdAt?: any; // Firestore Timestamp
   subscriptionId?: string;
   subscriptionName?: string;
+  subscriptionPaymentMethod?: string;
+  subscriptionStartDate?: any;
 };
 
 export type Staff = {
@@ -839,12 +841,14 @@ export async function deleteAppointment(userId: string, appointmentId: string) {
     }
 }
 
-export async function assignSubscriptionToClient(userId: string, clientId: string, subscriptionId: string, subscriptionName: string) {
+export async function assignSubscriptionToClient(userId: string, clientId: string, subscriptionId: string, subscriptionName: string, paymentMethod: string) {
     try {
         const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), clientId);
         await updateDoc(clientDocRef, {
             subscriptionId,
             subscriptionName,
+            subscriptionPaymentMethod: paymentMethod,
+            subscriptionStartDate: new Date(),
         });
     } catch (error) {
         console.error(`Erro ao vincular assinatura ao cliente ${clientId}:`, error);
