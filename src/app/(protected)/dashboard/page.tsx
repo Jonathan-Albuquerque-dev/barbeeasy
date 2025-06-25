@@ -28,6 +28,10 @@ export default function DashboardPage() {
           getDashboardStats(user.uid),
           getTodaysAppointments(user.uid)
         ]);
+        
+        // Sort appointments by time before setting the state
+        fetchedAppointments.sort((a, b) => a.time.localeCompare(b.time));
+
         setStats(fetchedStats);
         setAppointments(fetchedAppointments);
         setLoading(false);

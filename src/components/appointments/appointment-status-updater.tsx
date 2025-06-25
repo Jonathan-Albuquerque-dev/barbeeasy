@@ -52,7 +52,7 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
   const getBadgeVariant = (status: AppointmentStatus) => {
     switch (status) {
       case 'Concluído':
-        return 'default';
+        return 'success';
       case 'Confirmado':
         return 'secondary';
       case 'Pendente':
@@ -69,7 +69,7 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
            {loading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 
             <Badge 
               variant={getBadgeVariant(currentStatus)} 
-              className={cn("cursor-pointer", currentStatus === "Concluído" && "bg-primary/80")}
+              className="cursor-pointer"
             >
               {currentStatus}
             </Badge>
