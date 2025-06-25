@@ -1,6 +1,6 @@
 
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, FieldValue } from 'firebase/firestore';
 import { db } from './firebase';
 import { format } from 'date-fns';
 
@@ -433,11 +433,11 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
     try {
         await runTransaction(db, async (transaction) => {
             const appointmentSnap = await transaction.get(appointmentDocRef);
-            if (!appointmentSnap.exists()) {
-                throw new Error("Agendamento não encontrado para concluir.");
-            }
-            if (appointmentSnap.data().status === 'Concluído') {
-                console.log("Agendamento já está concluído. Nenhuma ação tomada.");
+
+            if (!appointmentSnap.exists() || appointmentSnap.data().status === 'Concluído') {
+                if (appointmentSnap.data()?.status === 'Concluído') {
+                    console.log("Agendamento já está concluído. Nenhuma ação tomada.");
+                }
                 return;
             }
 
@@ -449,7 +449,6 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                 throw new Error("Cliente não encontrado na transação.");
             }
             
-            const clientData = clientSnap.data() as Client;
             const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
             const barbershopSettingsSnap = await transaction.get(barbershopSettingsDocRef);
 
@@ -458,8 +457,6 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             }
             const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
             
-            // Garantir que os pontos sejam sempre tratados como NÚMEROS
-            let newPoints = Number(clientData.loyaltyPoints || 0);
             const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
             const isCourtesy = paymentMethod?.startsWith('Cortesia');
 
@@ -467,24 +464,25 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                 if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
                     const rewards = barbershopSettings?.loyaltyProgram?.rewards || [];
                     const rewardInfo = rewards.find(r => r.serviceName === appointmentData.service);
-                    // Garantir que o custo dos pontos seja sempre tratado como NÚMERO
                     const pointsCost = Number(rewardInfo?.pointsCost || 0);
 
                     if (pointsCost === 0) {
                         throw new Error(`Este serviço não está configurado para resgate com pontos.`);
                     }
-                    if (newPoints < pointsCost) {
-                        throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${newPoints}`);
+                    
+                    const currentPoints = Number(clientSnap.data()?.loyaltyPoints || 0);
+                    if (currentPoints < pointsCost) {
+                        throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${currentPoints}`);
                     }
-                    newPoints -= pointsCost;
+                    
+                    transaction.update(clientDocRef, { loyaltyPoints: FieldValue.increment(-pointsCost) });
+
                 } else if (!isCourtesy) {
                     const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
-                    newPoints += pointsToAdd;
+                    transaction.update(clientDocRef, { loyaltyPoints: FieldValue.increment(pointsToAdd) });
                 }
             }
             
-            transaction.update(clientDocRef, { loyaltyPoints: newPoints });
-
             transaction.update(appointmentDocRef, {
                 status: 'Concluído',
                 paymentMethod: paymentMethod || 'Não especificado',
