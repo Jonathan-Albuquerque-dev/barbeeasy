@@ -238,6 +238,7 @@ export default function FinancialPage() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Serviço</TableHead>
                 <TableHead>Barbeiro</TableHead>
+                <TableHead>Forma de Pagto.</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
               </TableRow>
             </TableHeader>
@@ -248,6 +249,7 @@ export default function FinancialPage() {
                   <TableCell className="font-medium">{tx.clientName}</TableCell>
                   <TableCell>{tx.service}</TableCell>
                   <TableCell>{tx.barberName}</TableCell>
+                  <TableCell>{tx.paymentMethod || 'N/A'}</TableCell>
                   <TableCell className="text-right">R${tx.value.toFixed(2)}</TableCell>
                 </TableRow>
               ))}

@@ -65,6 +65,7 @@ export type AppointmentDocument = {
   date: string; // Em um app real, use Timestamps do Firestore
   time: string;
   status: 'Concluído' | 'Confirmado' | 'Pendente';
+  paymentMethod?: string;
 };
 
 export type AppointmentStatus = 'Concluído' | 'Confirmado' | 'Pendente';
@@ -118,6 +119,7 @@ export type FinancialOverview = {
     service: string;
     barberName: string;
     value: number;
+    paymentMethod?: string;
   }[];
 };
 
@@ -316,10 +318,19 @@ export async function addAppointment(userId: string, appointmentData: Omit<Appoi
     }
 }
 
-export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus) {
+export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus, paymentMethod?: string) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
     try {
-        await updateDoc(appointmentDocRef, { status });
+        const updateData: { status: AppointmentStatus; paymentMethod?: string } = { status };
+
+        if (status === 'Concluído' && paymentMethod) {
+            updateData.paymentMethod = paymentMethod;
+        } else if (status !== 'Concluído') {
+            // Se o status for revertido de 'Concluído', removemos o método de pagamento
+            updateData.paymentMethod = '';
+        }
+
+        await updateDoc(appointmentDocRef, updateData as any);
 
         if (status === 'Concluído') {
             const barbershopSettings = await getBarbershopSettings(userId);
@@ -533,6 +544,7 @@ export async function getFinancialOverview(
           service: app.service,
           barberName: staffInfo?.name || 'N/A',
           value: value,
+          paymentMethod: app.paymentMethod,
         };
       });
       
