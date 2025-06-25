@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Gem, Loader2 } from 'lucide-react';
+import { Scissors, Loader2 } from 'lucide-react';
 import { app } from '@/lib/firebase';
 import Link from 'next/link';
 
@@ -100,7 +100,7 @@ export default function SignupPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center items-center gap-3 mb-4">
             <div className="p-2 bg-primary/20 rounded-lg">
-              <Gem className="size-8 text-primary" />
+              <Scissors className="size-8 text-primary" />
             </div>
             <h1 className="text-3xl font-bold text-primary">BarberEasy</h1>
           </div>

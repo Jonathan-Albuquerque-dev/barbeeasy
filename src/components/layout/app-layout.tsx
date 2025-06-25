@@ -19,7 +19,6 @@ import {
   Scissors,
   User,
   LayoutDashboard,
-  Gem,
   LogOut,
   Repeat,
   Settings,
@@ -64,7 +63,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarHeader className="p-4">
           <div className="flex items-center gap-3">
              <div className="p-1.5 bg-primary/20 rounded-lg">
-                <Gem className="size-7 text-primary" />
+                <Scissors className="size-7 text-primary" />
             </div>
             <div className="group-data-[collapsible=icon]:hidden">
               <h1 className="text-2xl font-bold text-primary">
