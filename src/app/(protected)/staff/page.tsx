@@ -63,7 +63,6 @@ export default function StaffPage() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Especializações</TableHead>
-              <TableHead>Comissão (Serviço/Produto)</TableHead>
               <TableHead><span className="sr-only">Ações</span></TableHead>
             </TableRow>
           </TableHeader>
@@ -88,9 +87,6 @@ export default function StaffPage() {
                       </Badge>
                     ))}
                   </div>
-                </TableCell>
-                <TableCell>
-                  {(member.serviceCommissionRate * 100).toFixed(0)}% / {(member.productCommissionRate * 100).toFixed(0)}%
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
