@@ -17,8 +17,8 @@ import { Loader2 } from 'lucide-react';
 
 const clientSchema = z.object({
   name: z.string().min(2, { message: 'O nome do cliente é obrigatório.' }),
-  email: z.string().email({ message: 'Por favor, insira um email válido.' }),
-  phone: z.string().min(8, { message: 'O telefone é obrigatório.' }),
+  email: z.string().email({ message: 'Por favor, insira um email válido.' }).or(z.literal('')).optional(),
+  phone: z.string().optional(),
   address: z.string().optional(),
   loyaltyStatus: z.enum(['Bronze', 'Prata', 'Ouro'], { required_error: 'O status de fidelidade é obrigatório.' }),
   avatarUrl: z.string().url({ message: 'Por favor, insira uma URL de imagem válida.' }).or(z.literal('')).optional(),
@@ -59,6 +59,8 @@ export function AddClientDialog({ onClientAdded, children }: AddClientDialogProp
     try {
       const clientData = {
         ...data,
+        email: data.email || '',
+        phone: data.phone || '',
         address: data.address || '',
         avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
         serviceHistory: [],
@@ -124,7 +126,7 @@ export function AddClientDialog({ onClientAdded, children }: AddClientDialogProp
                     name="email"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email (Opcional)</FormLabel>
                         <FormControl>
                             <Input type="email" placeholder="joao.silva@email.com" {...field} />
                         </FormControl>
@@ -137,7 +139,7 @@ export function AddClientDialog({ onClientAdded, children }: AddClientDialogProp
                     name="phone"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Telefone</FormLabel>
+                        <FormLabel>Telefone (Opcional)</FormLabel>
                         <FormControl>
                             <Input placeholder="(11) 99999-8888" {...field} />
                         </FormControl>
