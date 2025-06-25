@@ -36,7 +36,6 @@ import { useAuth } from '@/contexts/auth-context';
 
 const menuItems = [
   { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
-  { href: '/financial', label: 'Financeiro', icon: DollarSign },
   { href: '/appointments', label: 'Agendamentos', icon: Calendar },
   { href: '/clients', label: 'Clientes', icon: Users },
   { href: '/services', label: 'Serviços', icon: Scissors },
@@ -44,6 +43,7 @@ const menuItems = [
   { href: '/staff', label: 'Equipe', icon: User },
   { href: '/subscriptions', label: 'Assinaturas', icon: Repeat },
   { href: '/loyalty', label: 'Fidelidade', icon: Gift },
+  { href: '/financial', label: 'Financeiro', icon: DollarSign },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 
