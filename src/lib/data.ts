@@ -425,85 +425,74 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
 
     if (status !== 'Concluído') {
-        // If status is not 'Concluído', just update it.
-        try {
-            await updateDoc(appointmentDocRef, { status: status });
-        } catch (error) {
-            console.error(`Erro ao atualizar status do agendamento ${appointmentId}:`, error);
-            throw new Error("Não foi possível atualizar o status do agendamento.");
-        }
+        // Se o status não for 'Concluído', apenas atualize. O erro será propagado para o chamador.
+        await updateDoc(appointmentDocRef, { status: status });
         return;
     }
 
     // A lógica para 'Concluído' é mais complexa e precisa ser atômica.
-    try {
-        await runTransaction(db, async (transaction) => {
-            const appointmentSnap = await transaction.get(appointmentDocRef);
+    // Qualquer erro aqui será propagado para a função de chamada (na UI).
+    await runTransaction(db, async (transaction) => {
+        const appointmentSnap = await transaction.get(appointmentDocRef);
 
-            if (!appointmentSnap.exists() || appointmentSnap.data().status === 'Concluído') {
-                if (appointmentSnap.data()?.status === 'Concluído') {
-                    console.log("Agendamento já está concluído. Nenhuma ação tomada.");
+        if (!appointmentSnap.exists() || appointmentSnap.data().status === 'Concluído') {
+            if (appointmentSnap.data()?.status === 'Concluído') {
+                console.log("Agendamento já está concluído. Nenhuma ação tomada.");
+            }
+            return;
+        }
+
+        const appointmentData = appointmentSnap.data() as AppointmentDocument;
+        const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
+        const clientSnap = await transaction.get(clientDocRef);
+        
+        if (!clientSnap.exists()) {
+            throw new Error("Cliente não encontrado na transação.");
+        }
+        
+        const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
+        const barbershopSettingsSnap = await transaction.get(barbershopSettingsDocRef);
+
+        if (!barbershopSettingsSnap.exists()) {
+            throw new Error("Configurações da barbearia não encontradas.");
+        }
+        const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
+        
+        const loyaltySettings = barbershopSettings?.loyaltyProgram;
+        const loyaltyEnabled = loyaltySettings?.enabled || false;
+        const isCourtesy = paymentMethod?.startsWith('Cortesia');
+
+        if (loyaltyEnabled) {
+            if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
+                const rewardInfo = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
+                const pointsCost = Number(rewardInfo?.pointsCost || 0);
+
+                if (pointsCost === 0) {
+                    throw new Error(`Este serviço não está configurado para resgate com pontos.`);
                 }
-                return;
-            }
+                
+                const currentPoints = Number(clientSnap.data()?.loyaltyPoints || 0);
+                if (currentPoints < pointsCost) {
+                    throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${currentPoints}`);
+                }
+                
+                transaction.update(clientDocRef, { loyaltyPoints: increment(-pointsCost) });
 
-            const appointmentData = appointmentSnap.data() as AppointmentDocument;
-            const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
-            const clientSnap = await transaction.get(clientDocRef);
-            
-            if (!clientSnap.exists()) {
-                throw new Error("Cliente não encontrado na transação.");
-            }
-            
-            const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
-            const barbershopSettingsSnap = await transaction.get(barbershopSettingsDocRef);
+            } else if (!isCourtesy) {
+                const serviceRule = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
+                const pointsToAdd = Number(serviceRule?.pointsGenerated ?? loyaltySettings?.pointsPerService ?? 1);
 
-            if (!barbershopSettingsSnap.exists()) {
-                throw new Error("Configurações da barbearia não encontradas.");
-            }
-            const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
-            
-            const loyaltySettings = barbershopSettings?.loyaltyProgram;
-            const loyaltyEnabled = loyaltySettings?.enabled || false;
-            const isCourtesy = paymentMethod?.startsWith('Cortesia');
-
-            if (loyaltyEnabled) {
-                if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
-                    const rewardInfo = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
-                    const pointsCost = Number(rewardInfo?.pointsCost || 0);
-
-                    if (pointsCost === 0) {
-                        throw new Error(`Este serviço não está configurado para resgate com pontos.`);
-                    }
-                    
-                    const currentPoints = Number(clientSnap.data()?.loyaltyPoints || 0);
-                    if (currentPoints < pointsCost) {
-                        throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${currentPoints}`);
-                    }
-                    
-                    transaction.update(clientDocRef, { loyaltyPoints: increment(-pointsCost) });
-
-                } else if (!isCourtesy) {
-                    const serviceRule = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
-                    // Use pointsGenerated if available, fallback to old pointsPerService, then to 1.
-                    const pointsToAdd = Number(serviceRule?.pointsGenerated ?? loyaltySettings?.pointsPerService ?? 1);
-
-                    if (pointsToAdd > 0) {
-                        transaction.update(clientDocRef, { loyaltyPoints: increment(pointsToAdd) });
-                    }
+                if (pointsToAdd > 0) {
+                    transaction.update(clientDocRef, { loyaltyPoints: increment(pointsToAdd) });
                 }
             }
-            
-            transaction.update(appointmentDocRef, {
-                status: 'Concluído',
-                paymentMethod: paymentMethod || 'Não especificado',
-            });
+        }
+        
+        transaction.update(appointmentDocRef, {
+            status: 'Concluído',
+            paymentMethod: paymentMethod || 'Não especificado',
         });
-
-    } catch (error: any) {
-        console.error(`Erro na transação de conclusão do agendamento ${appointmentId}:`, error);
-        throw error;
-    }
+    });
 }
 
 
