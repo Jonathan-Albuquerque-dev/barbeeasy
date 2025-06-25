@@ -44,7 +44,8 @@ export type Staff = {
   id: string;
   name: string;
   specializations: string[];
-  commissionRate: number;
+  serviceCommissionRate: number;
+  productCommissionRate: number;
   avatarUrl: string;
   bio: string;
 };
@@ -267,6 +268,16 @@ export async function addStaff(userId: string, staffData: Omit<Staff, 'id'>) {
     } catch (error) {
         console.error("Erro ao adicionar funcionário:", error);
         throw new Error("Não foi possível adicionar o funcionário.");
+    }
+}
+
+export async function updateStaff(userId: string, staffId: string, staffData: Partial<Omit<Staff, 'id'>>) {
+    try {
+        const staffDocRef = doc(db, getCollectionPath(userId, 'staff'), staffId);
+        await updateDoc(staffDocRef, staffData);
+    } catch (error) {
+        console.error("Erro ao atualizar funcionário:", error);
+        throw new Error("Não foi possível atualizar os dados do funcionário.");
     }
 }
 
@@ -650,7 +661,7 @@ export async function getFinancialOverview(
     const clients = getDatas<Client>(clientsSnap);
 
     const serviceMap = new Map(services.map(s => [s.name, { price: s.price, id: s.id }]));
-    const staffMap = new Map(staff.map(s => [s.id, { name: s.name, commissionRate: s.commissionRate }]));
+    const staffMap = new Map(staff.map(s => [s.id, { name: s.name, serviceCommissionRate: s.serviceCommissionRate, productCommissionRate: s.productCommissionRate }]));
     const clientMap = new Map(clients.map(c => [c.id, { name: c.name }]));
 
     let totalRevenue = 0;
@@ -683,9 +694,10 @@ export async function getFinancialOverview(
             if (!revenueByBarber[staffInfo.name]) {
                 revenueByBarber[staffInfo.name] = { revenue: 0, commission: 0 };
             }
-            const commissionableValue = serviceValue; // Assume comissão apenas sobre serviços
+            const serviceCommission = serviceValue * (staffInfo.serviceCommissionRate || 0);
+            const productCommission = productsValue * (staffInfo.productCommissionRate || 0);
             revenueByBarber[staffInfo.name].revenue += value;
-            revenueByBarber[staffInfo.name].commission += commissionableValue * (staffInfo.commissionRate || 0);
+            revenueByBarber[staffInfo.name].commission += serviceCommission + productCommission;
         }
 
         // Revenue by Payment Method
@@ -750,7 +762,8 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
         }
 
         const servicePriceMap = new Map(services.map(s => [s.name, s.price]));
-        const commissionRate = staffMember.commissionRate;
+        const serviceCommissionRate = staffMember.serviceCommissionRate;
+        const productCommissionRate = staffMember.productCommissionRate || 0;
         const startDateString = format(startDate, 'yyyy-MM-dd');
         const endDateString = format(endDate, 'yyyy-MM-dd');
 
@@ -769,13 +782,21 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
             !app.paymentMethod?.startsWith('Cortesia')
         );
 
-        const totalCommission = appointmentsInPeriod.reduce((total, app) => {
-            const price = servicePriceMap.get(app.service) || 0;
-            return total + (price * commissionRate);
-        }, 0);
+        let totalServiceCommission = 0;
+        let totalProductCommission = 0;
+
+        appointmentsInPeriod.forEach((app) => {
+            const servicePrice = servicePriceMap.get(app.service) || 0;
+            totalServiceCommission += (servicePrice * serviceCommissionRate);
+
+            const productsValue = (app.soldProducts || []).reduce((sum, p) => sum + (p.price * p.quantity), 0);
+            totalProductCommission += (productsValue * productCommissionRate);
+        });
 
         return {
-            totalCommission,
+            totalServiceCommission,
+            totalProductCommission,
+            totalCommission: totalServiceCommission + totalProductCommission,
             appointmentCount: appointmentsInPeriod.length,
         };
 

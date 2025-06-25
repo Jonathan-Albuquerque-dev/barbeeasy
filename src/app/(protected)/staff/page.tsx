@@ -1,21 +1,21 @@
+
 'use client';
 
-import { getStaff } from "@/lib/data";
+import { getStaff, Staff } from "@/lib/data";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { PlusCircle, Star, Loader2 } from "lucide-react";
+import { PlusCircle, Star, Loader2, Edit } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState, useCallback } from "react";
 import { AddStaffDialog } from "@/components/staff/add-staff-dialog";
-
-type StaffMember = Awaited<ReturnType<typeof getStaff>>[0];
+import { EditStaffDialog } from "@/components/staff/edit-staff-dialog";
 
 export default function StaffPage() {
   const { user } = useAuth();
-  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchStaff = useCallback(async () => {
@@ -63,7 +63,7 @@ export default function StaffPage() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Especializações</TableHead>
-              <TableHead>Comissão</TableHead>
+              <TableHead>Comissão (Serviço/Produto)</TableHead>
               <TableHead><span className="sr-only">Ações</span></TableHead>
             </TableRow>
           </TableHeader>
@@ -89,11 +89,21 @@ export default function StaffPage() {
                     ))}
                   </div>
                 </TableCell>
-                <TableCell>{(member.commissionRate * 100).toFixed(0)}%</TableCell>
+                <TableCell>
+                  {(member.serviceCommissionRate * 100).toFixed(0)}% / {(member.productCommissionRate * 100).toFixed(0)}%
+                </TableCell>
                 <TableCell className="text-right">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link href={`/staff/${member.id}`}>Ver Perfil</Link>
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button asChild variant="ghost" size="sm">
+                      <Link href={`/staff/${member.id}`}>Ver Perfil</Link>
+                    </Button>
+                    <EditStaffDialog staffMember={member} onStaffUpdated={fetchStaff}>
+                       <Button variant="ghost" size="icon">
+                         <Edit className="h-4 w-4" />
+                         <span className="sr-only">Editar {member.name}</span>
+                       </Button>
+                    </EditStaffDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

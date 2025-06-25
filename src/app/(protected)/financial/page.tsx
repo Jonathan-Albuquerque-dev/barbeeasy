@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -24,7 +25,12 @@ export default function FinancialPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [selectedBarberId, setSelectedBarberId] = useState<string>('');
   const [commissionDateRange, setCommissionDateRange] = useState<DateRange | undefined>();
-  const [commissionResult, setCommissionResult] = useState<{ amount: number; barberName: string } | null>(null);
+  const [commissionResult, setCommissionResult] = useState<{
+    totalCommission: number;
+    totalServiceCommission: number;
+    totalProductCommission: number;
+    barberName: string;
+  } | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
 
   // State for page-wide financial filter
@@ -70,7 +76,9 @@ export default function FinancialPage() {
       const result = await getCommissionsForPeriod(user.uid, selectedBarberId, commissionDateRange.from, commissionDateRange.to);
       const selectedBarber = staff.find(s => s.id === selectedBarberId);
       setCommissionResult({
-          amount: result.totalCommission,
+          totalCommission: result.totalCommission,
+          totalServiceCommission: result.totalServiceCommission,
+          totalProductCommission: result.totalProductCommission,
           barberName: selectedBarber?.name || 'Barbeiro'
       });
     } catch (error) {
@@ -171,10 +179,13 @@ export default function FinancialPage() {
             </Button>
           </div>
           {commissionResult && (
-            <div className="mt-6 p-4 bg-accent/50 rounded-lg">
+            <div className="mt-6 p-4 bg-accent/50 rounded-lg space-y-2">
               <p className="text-lg font-semibold">
                 Comissão a pagar para {commissionResult.barberName}: 
-                <span className="text-primary ml-2">R${commissionResult.amount.toFixed(2)}</span>
+                <span className="text-primary ml-2">R${commissionResult.totalCommission.toFixed(2)}</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Serviços: R${commissionResult.totalServiceCommission.toFixed(2)} | Produtos: R${commissionResult.totalProductCommission.toFixed(2)}
               </p>
             </div>
           )}

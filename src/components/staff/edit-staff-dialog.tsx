@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/auth-context';
-import { addStaff } from '@/lib/data';
+import { updateStaff, Staff } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
@@ -27,12 +27,13 @@ const staffSchema = z.object({
 
 type StaffFormValues = z.infer<typeof staffSchema>;
 
-interface AddStaffDialogProps {
-  onStaffAdded: () => void;
+interface EditStaffDialogProps {
+  staffMember: Staff;
+  onStaffUpdated: () => void;
   children: React.ReactNode;
 }
 
-export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) {
+export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditStaffDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -41,18 +42,31 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffSchema),
     defaultValues: {
-      name: '',
-      specializations: '',
-      serviceCommissionRate: undefined,
-      productCommissionRate: undefined,
-      bio: '',
-      avatarUrl: '',
+      name: staffMember.name,
+      specializations: staffMember.specializations.join(', '),
+      serviceCommissionRate: staffMember.serviceCommissionRate * 100,
+      productCommissionRate: staffMember.productCommissionRate * 100,
+      bio: staffMember.bio,
+      avatarUrl: staffMember.avatarUrl,
     },
   });
 
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: staffMember.name,
+        specializations: staffMember.specializations.join(', '),
+        serviceCommissionRate: staffMember.serviceCommissionRate * 100,
+        productCommissionRate: staffMember.productCommissionRate * 100,
+        bio: staffMember.bio,
+        avatarUrl: staffMember.avatarUrl,
+      });
+    }
+  }, [open, staffMember, form]);
+
   const onSubmit = async (data: StaffFormValues) => {
     if (!user) {
-      toast({ variant: 'destructive', title: 'Erro', description: 'Você precisa estar logado para adicionar um funcionário.' });
+      toast({ variant: 'destructive', title: 'Erro', description: 'Você precisa estar logado para editar um funcionário.' });
       return;
     }
 
@@ -60,31 +74,27 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
     try {
       const transformedData = {
         name: data.name,
-        // Split comma-separated string into an array of strings, trimming whitespace
         specializations: data.specializations.split(',').map(s => s.trim()).filter(s => s),
-        // Convert percentage to a decimal (e.g., 25 -> 0.25)
         serviceCommissionRate: data.serviceCommissionRate / 100,
         productCommissionRate: data.productCommissionRate / 100,
         bio: data.bio,
-        // Use placeholder if avatarUrl is empty
         avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
       };
 
-      await addStaff(user.uid, transformedData);
+      await updateStaff(user.uid, staffMember.id, transformedData);
       
       toast({
         title: 'Sucesso!',
-        description: `${data.name} foi adicionado à equipe.`,
+        description: `O perfil de ${data.name} foi atualizado.`,
       });
-      onStaffAdded();
+      onStaffUpdated();
       setOpen(false);
-      form.reset();
     } catch (error) {
       console.error(error);
       toast({
         variant: 'destructive',
-        title: 'Erro ao adicionar funcionário',
-        description: 'Não foi possível salvar os dados. Tente novamente.',
+        title: 'Erro ao editar funcionário',
+        description: 'Não foi possível salvar as alterações. Tente novamente.',
       });
     } finally {
       setLoading(false);
@@ -98,9 +108,9 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adicionar Novo Funcionário</DialogTitle>
+          <DialogTitle>Editar Funcionário</DialogTitle>
           <DialogDescription>
-            Preencha os detalhes do novo membro da equipe.
+            Atualize os detalhes do membro da equipe.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -152,7 +162,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
                     <FormItem>
                     <FormLabel>Comissão Serviço (%)</FormLabel>
                     <FormControl>
-                        <Input type="number" min="0" max="100" placeholder="Ex: 25" {...field} />
+                        <Input type="number" min="0" max="100" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -165,7 +175,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
                     <FormItem>
                     <FormLabel>Comissão Produto (%)</FormLabel>
                     <FormControl>
-                        <Input type="number" min="0" max="100" placeholder="Ex: 10" {...field} />
+                        <Input type="number" min="0" max="100" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -190,7 +200,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
                 <Button type="button" variant="outline">Cancelar</Button>
               </DialogClose>
               <Button type="submit" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Funcionário'}
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Alterações'}
               </Button>
             </DialogFooter>
           </form>

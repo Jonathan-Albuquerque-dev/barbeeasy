@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getStaffById } from '@/lib/data';
@@ -10,13 +11,13 @@ import Link from 'next/link';
 import { Star, Scissors, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState } from 'react';
-
-type StaffMember = Awaited<ReturnType<typeof getStaffById>>;
+import type { Staff } from '@/lib/data';
+import { Separator } from '@/components/ui/separator';
 
 export default function StaffDetailPage() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
-  const [member, setMember] = useState<StaffMember>(null);
+  const [member, setMember] = useState<Staff | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,21 +69,32 @@ export default function StaffDetailPage() {
           </CardDescription>
 
           <div className="w-full max-w-md mx-auto">
-            <Card className="bg-background/80">
+             <Card className="bg-background/80">
                 <CardHeader>
                     <CardTitle className="flex items-center justify-center gap-2">
                         <Scissors className="h-5 w-5" />
-                        Especializações
+                        Detalhes Profissionais
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <div className="flex flex-wrap justify-center gap-2">
-                        {member.specializations.map(spec => (
-                        <Badge key={spec} variant="secondary" className="text-sm py-1 px-3">
-                            <Star className="mr-2 h-4 w-4 text-accent"/>
-                            {spec}
-                        </Badge>
-                        ))}
+                <CardContent className="space-y-4">
+                    <div>
+                        <h3 className="text-center font-semibold text-base mb-2">Especializações</h3>
+                        <div className="flex flex-wrap justify-center gap-2">
+                            {member.specializations.map(spec => (
+                            <Badge key={spec} variant="secondary" className="text-sm py-1 px-3">
+                                <Star className="mr-2 h-4 w-4 text-accent"/>
+                                {spec}
+                            </Badge>
+                            ))}
+                        </div>
+                    </div>
+                    <Separator />
+                    <div>
+                        <h3 className="text-center font-semibold text-base">Comissões</h3>
+                        <div className="text-center text-muted-foreground">
+                            <p>Serviços: {(member.serviceCommissionRate * 100).toFixed(0)}%</p>
+                            <p>Produtos: {(member.productCommissionRate * 100).toFixed(0)}%</p>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
