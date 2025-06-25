@@ -1,7 +1,6 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTodaysAppointments, getDashboardStats, getServices } from "@/lib/data";
 import { Users, Calendar, DollarSign, Clock, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -130,54 +129,56 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle>Reservas de Hoje</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Serviço</TableHead>
-                <TableHead>Barbeiro</TableHead>
-                <TableHead>Hora</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <CardContent className="p-0">
+          {appointments.length > 0 ? (
+            <div className="divide-y divide-border">
               {appointments.map((appointment) => {
                 const servicePrice = servicePriceMap.get(appointment.service) || 0;
                 const productsTotal = (appointment.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
                 const totalValue = servicePrice + productsTotal;
 
                 return (
-                <TableRow key={appointment.id}>
-                  <TableCell>
-                    <div className="font-medium">{appointment.client.name}</div>
-                  </TableCell>
-                  <TableCell>{appointment.service}</TableCell>
-                  <TableCell>{appointment.barber.name}</TableCell>
-                  <TableCell>{appointment.time}</TableCell>
-                  <TableCell>
-                     <AppointmentStatusUpdater 
-                        appointmentId={appointment.id} 
-                        currentStatus={appointment.status} 
+                  <div key={appointment.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors">
+                    <div className="text-center w-20 shrink-0">
+                      <p className="font-bold text-lg">{appointment.time}</p>
+                      <AppointmentStatusUpdater
+                        appointmentId={appointment.id}
+                        currentStatus={appointment.status}
                         onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
                         totalValue={totalValue}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                        <Button asChild variant="ghost" size="sm">
-                            <Link href={`/clients/${appointment.client.id}`}>Ver Perfil</Link>
-                        </Button>
-                        <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchDashboardData}>
-                            <Button variant="outline" size="sm">Detalhes</Button>
-                        </AppointmentDetailsDialog>
+                      />
                     </div>
-                  </TableCell>
-                </TableRow>
-              )})}
-            </TableBody>
-          </Table>
+                    <div className="flex-grow flex items-center gap-4">
+                      <Avatar className="h-12 w-12 border">
+                        <AvatarImage src={appointment.client.avatarUrl} data-ai-hint="person face" />
+                        <AvatarFallback>{appointment.client.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-semibold text-base">{appointment.service}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {appointment.client.name} com {appointment.barber.name}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href={`/clients/${appointment.client.id}`}>Ver Perfil</Link>
+                      </Button>
+                      <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchDashboardData}>
+                        <Button variant="outline" size="sm">Detalhes</Button>
+                      </AppointmentDetailsDialog>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="h-64 flex flex-col items-center justify-center text-center p-6">
+              <Calendar className="h-16 w-16 text-muted-foreground/50" />
+              <h3 className="mt-6 text-xl font-semibold">Nenhuma reserva para hoje</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Aproveite o dia tranquilo ou adicione um novo agendamento.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
