@@ -51,6 +51,7 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
         title: 'Sucesso!',
         description: 'Status do agendamento atualizado.',
       });
+      setDialogOpen(false); // Close dialog only on success
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -59,15 +60,14 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
       });
     } finally {
       setLoading(false);
-      setDialogOpen(false);
     }
   };
 
-  const handleConfirmCompletion = () => {
+  const handleConfirmCompletion = async () => {
     const finalPaymentMethod = selectedPaymentMethod === 'Cortesia'
       ? `Cortesia (${selectedCourtesyType})`
       : selectedPaymentMethod;
-    handleStatusChange('Concluído', finalPaymentMethod);
+    await handleStatusChange('Concluído', finalPaymentMethod);
   }
 
   const getBadgeVariant = (status: AppointmentStatus) => {
