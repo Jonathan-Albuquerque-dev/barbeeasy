@@ -90,7 +90,7 @@ export function AppointmentCalendar() {
 
   const AppointmentSkeleton = () => (
     <div className="flex items-center gap-4 px-6 py-4">
-      <div className="text-center w-20 shrink-0 space-y-2">
+      <div className="text-center w-24 shrink-0 space-y-2">
         <Skeleton className="h-7 w-12 mx-auto" />
         <Skeleton className="h-5 w-16 mx-auto" />
       </div>
@@ -157,7 +157,7 @@ export function AppointmentCalendar() {
                 
                 return (
                   <div key={app.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors">
-                    <div className="text-center w-20 shrink-0">
+                    <div className="text-center w-24 shrink-0">
                       <p className="font-bold text-lg">{app.time}</p>
                       <Badge variant={getBadgeVariant(app.status)} className="mt-1">
                         {app.status}

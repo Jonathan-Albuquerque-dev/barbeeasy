@@ -153,7 +153,7 @@ export default function DashboardPage() {
 
                 return (
                   <div key={appointment.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors">
-                    <div className="text-center w-20 shrink-0">
+                    <div className="text-center w-24 shrink-0">
                       <p className="font-bold text-lg">{appointment.time}</p>
                        <Badge variant={getBadgeVariant(appointment.status)} className="mt-1">
                         {appointment.status}
