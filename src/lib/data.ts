@@ -103,6 +103,23 @@ type BarbershopSettings = {
     loyaltyProgram: LoyaltyProgramSettings;
 }
 
+export type FinancialOverview = {
+  totalRevenue: number;
+  totalAppointments: number;
+  averageTicket: number;
+  revenueByService: { service: string; revenue: number }[];
+  revenueByBarber: { barberName: string; revenue: number; commission: number }[];
+  recentTransactions: {
+    id: string;
+    date: string;
+    clientName: string;
+    service: string;
+    barberName: string;
+    value: number;
+  }[];
+};
+
+
 // --- Funções da API usando o Firestore ---
 
 export async function getClients(userId: string) {
@@ -444,4 +461,88 @@ export async function updateLoyaltySettings(userId: string, data: LoyaltyProgram
         console.error("Erro ao atualizar configurações de fidelidade:", error);
         throw new Error("Não foi possível salvar as configurações de fidelidade.");
     }
+}
+
+export async function getFinancialOverview(userId: string): Promise<FinancialOverview> {
+  try {
+    const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
+    const q = query(appointmentsCol, where('status', '==', 'Concluído'));
+    
+    const [appointmentsSnap, servicesSnap, staffSnap, clientsSnap] = await Promise.all([
+      getDocs(q),
+      getDocs(collection(db, getCollectionPath(userId, 'services'))),
+      getDocs(collection(db, getCollectionPath(userId, 'staff'))),
+      getDocs(collection(db, getCollectionPath(userId, 'clients'))),
+    ]);
+
+    const completedAppointments = getDatas<AppointmentDocument>(appointmentsSnap);
+    const services = getDatas<Service>(servicesSnap);
+    const staff = getDatas<Staff>(staffSnap);
+    const clients = getDatas<Client>(clientsSnap);
+
+    const serviceMap = new Map(services.map(s => [s.name, { price: s.price, id: s.id }]));
+    const staffMap = new Map(staff.map(s => [s.id, { name: s.name, commissionRate: s.commissionRate }]));
+    const clientMap = new Map(clients.map(c => [c.id, { name: c.name }]));
+
+    let totalRevenue = 0;
+    const revenueByService: { [key: string]: number } = {};
+    const revenueByBarber: { [key: string]: { revenue: number; commission: number } } = {};
+
+    const recentTransactions = completedAppointments
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .map(app => {
+        const serviceInfo = serviceMap.get(app.service);
+        const staffInfo = staffMap.get(app.barberId);
+        const clientInfo = clientMap.get(app.clientId);
+
+        const value = serviceInfo?.price || 0;
+        totalRevenue += value;
+
+        // Revenue by Service
+        if (app.service) {
+            revenueByService[app.service] = (revenueByService[app.service] || 0) + value;
+        }
+
+        // Revenue by Barber
+        if (staffInfo) {
+            if (!revenueByBarber[staffInfo.name]) {
+                revenueByBarber[staffInfo.name] = { revenue: 0, commission: 0 };
+            }
+            revenueByBarber[staffInfo.name].revenue += value;
+            revenueByBarber[staffInfo.name].commission += value * (staffInfo.commissionRate || 0);
+        }
+
+        return {
+          id: app.id,
+          date: app.date,
+          clientName: clientInfo?.name || 'Cliente de Balcão',
+          service: app.service,
+          barberName: staffInfo?.name || 'N/A',
+          value: value,
+        };
+      });
+      
+    const totalAppointments = completedAppointments.length;
+    const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
+
+    return {
+      totalRevenue,
+      totalAppointments,
+      averageTicket,
+      revenueByService: Object.entries(revenueByService).map(([service, revenue]) => ({ service, revenue })),
+      revenueByBarber: Object.entries(revenueByBarber).map(([barberName, data]) => ({ barberName, ...data })),
+      recentTransactions: recentTransactions.slice(0, 10), // Limit to 10 recent
+    };
+
+  } catch (error) {
+    console.error("Erro ao buscar dados financeiros:", error);
+    return {
+      totalRevenue: 0,
+      totalAppointments: 0,
+      averageTicket: 0,
+      revenueByService: [],
+      revenueByBarber: [],
+      recentTransactions: [],
+    };
+  }
 }

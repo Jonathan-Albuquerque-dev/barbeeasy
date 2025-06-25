@@ -23,6 +23,7 @@ import {
   Repeat,
   Settings,
   Gift,
+  DollarSign,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -34,6 +35,7 @@ import { useAuth } from '@/contexts/auth-context';
 
 const menuItems = [
   { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
+  { href: '/financial', label: 'Financeiro', icon: DollarSign },
   { href: '/appointments', label: 'Agendamentos', icon: Calendar },
   { href: '/clients', label: 'Clientes', icon: Users },
   { href: '/services', label: 'Serviços', icon: Scissors },
