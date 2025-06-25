@@ -51,14 +51,14 @@ export function AppointmentCalendar() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>{date ? date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Select a date'}</CardTitle>
+                <CardTitle>{date ? date.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Selecione uma data'}</CardTitle>
                 <CardDescription>
-                  {loading ? 'Loading appointments...' : `${appointments.length} appointments scheduled.`}
+                  {loading ? 'Carregando agendamentos...' : `${appointments.length} agendamentos marcados.`}
                 </CardDescription>
               </div>
               <Button>
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Schedule
+                Agendar
               </Button>
             </div>
           </CardHeader>
@@ -91,7 +91,7 @@ export function AppointmentCalendar() {
                     <div className="flex-grow">
                       <p className="font-semibold">{app.service}</p>
                       <p className="text-sm text-muted-foreground">
-                        {app.client.name} with {app.barber.name}
+                        {app.client.name} com {app.barber.name}
                       </p>
                     </div>
                     <div className="text-right">
@@ -102,7 +102,7 @@ export function AppointmentCalendar() {
                 ))}
               </ul>
             ) : (
-              <p className="text-center text-muted-foreground pt-8">No appointments for this day.</p>
+              <p className="text-center text-muted-foreground pt-8">Nenhum agendamento para este dia.</p>
             )}
           </CardContent>
         </Card>

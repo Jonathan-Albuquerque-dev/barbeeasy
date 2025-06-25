@@ -18,17 +18,17 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     notFound();
   }
 
-  const serviceHistorySummary = client.serviceHistory.map(h => `${h.service} on ${h.date}`).join('; ');
+  const serviceHistorySummary = client.serviceHistory.map(h => `${h.service} em ${h.date}`).join('; ');
 
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{client.name}</h1>
-          <p className="text-muted-foreground">Client Profile & History</p>
+          <p className="text-muted-foreground">Perfil e Histórico do Cliente</p>
         </div>
         <Button asChild variant="outline">
-          <Link href="/clients">Back to All Clients</Link>
+          <Link href="/clients">Voltar para Todos os Clientes</Link>
         </Button>
       </div>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -43,16 +43,16 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               <h2 className="text-2xl font-semibold">{client.name}</h2>
               <p className="text-muted-foreground">{client.email}</p>
               <div className="mt-4">
-                <Badge variant={client.loyaltyStatus === 'Gold' ? 'default' : 'secondary'} className={client.loyaltyStatus === 'Gold' ? 'bg-accent text-accent-foreground' : ''}>
+                <Badge variant={client.loyaltyStatus === 'Ouro' ? 'default' : 'secondary'} className={client.loyaltyStatus === 'Ouro' ? 'bg-accent text-accent-foreground' : ''}>
                   <Award className="mr-2 h-4 w-4" />
-                  {client.loyaltyStatus} Member
+                  Membro {client.loyaltyStatus}
                 </Badge>
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
+              <CardTitle>Informações de Contato</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div className="flex items-center gap-3">
@@ -75,23 +75,23 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         <div className="lg:col-span-2">
           <Tabs defaultValue="history" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="history">Service History</TabsTrigger>
-              <TabsTrigger value="preferences">Preferences</TabsTrigger>
-              <TabsTrigger value="recommendations">AI Suggestions</TabsTrigger>
+              <TabsTrigger value="history">Histórico de Serviços</TabsTrigger>
+              <TabsTrigger value="preferences">Preferências</TabsTrigger>
+              <TabsTrigger value="recommendations">Sugestões da IA</TabsTrigger>
             </TabsList>
             <TabsContent value="history" className="mt-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Past Services</CardTitle>
+                  <CardTitle>Serviços Anteriores</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Service</TableHead>
-                        <TableHead>Barber</TableHead>
-                        <TableHead className="text-right">Cost</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Serviço</TableHead>
+                        <TableHead>Barbeiro</TableHead>
+                        <TableHead className="text-right">Custo</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -100,7 +100,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
                           <TableCell>{item.date}</TableCell>
                           <TableCell className="font-medium">{item.service}</TableCell>
                           <TableCell>{item.barber}</TableCell>
-                          <TableCell className="text-right">${item.cost.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">R${item.cost.toFixed(2)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -111,21 +111,21 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             <TabsContent value="preferences" className="mt-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Client Preferences</CardTitle>
+                  <CardTitle>Preferências do Cliente</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <h3 className="font-semibold text-base">Preferred Services</h3>
+                    <h3 className="font-semibold text-base">Serviços Preferidos</h3>
                     <p className="text-muted-foreground">{client.preferences.preferredServices.join(', ')}</p>
                   </div>
                   <Separator />
                   <div>
-                    <h3 className="font-semibold text-base">Preferred Barber</h3>
+                    <h3 className="font-semibold text-base">Barbeiro Preferido</h3>
                     <p className="text-muted-foreground">{client.preferences.preferredBarber}</p>
                   </div>
                   <Separator />
                   <div>
-                    <h3 className="font-semibold text-base">Notes</h3>
+                    <h3 className="font-semibold text-base">Observações</h3>
                     <p className="text-muted-foreground">{client.preferences.notes}</p>
                   </div>
                 </CardContent>

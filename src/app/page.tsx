@@ -12,60 +12,60 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back, here's a look at your day.</p>
+        <h1 className="text-3xl font-bold tracking-tight">Painel do Administrador</h1>
+        <p className="text-muted-foreground">Bem-vindo(a) de volta, aqui está um resumo do seu dia.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Today's Revenue
+              Receita de Hoje
             </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.todaysRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">R${stats.todaysRevenue.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              +20.1% from last month
+              +20.1% em relação ao mês passado
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Today's Appointments
+              Agendamentos de Hoje
             </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">+{stats.todaysAppointments}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.pendingAppointments} pending
+              {stats.pendingAppointments} pendente(s)
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Clients</CardTitle>
+            <CardTitle className="text-sm font-medium">Novos Clientes</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">+{stats.newClients}</div>
             <p className="text-xs text-muted-foreground">
-              +180.1% from last month
+              +180.1% em relação ao mês passado
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Duration</CardTitle>
+            <CardTitle className="text-sm font-medium">Duração Média</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.averageDuration} min</div>
             <p className="text-xs text-muted-foreground">
-              -5% from yesterday
+              -5% em relação a ontem
             </p>
           </CardContent>
         </Card>
@@ -73,16 +73,16 @@ export default async function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Today's Bookings</CardTitle>
+          <CardTitle>Reservas de Hoje</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Client</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Barber</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Serviço</TableHead>
+                <TableHead>Barbeiro</TableHead>
+                <TableHead>Hora</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -102,8 +102,8 @@ export default async function DashboardPage() {
                   <TableCell>{appointment.barber.name}</TableCell>
                   <TableCell>{appointment.time}</TableCell>
                   <TableCell>
-                    <Badge variant={appointment.status === "Completed" ? "default" : appointment.status === "Confirmed" ? "secondary" : "outline"}
-                      className={appointment.status === "Completed" ? "bg-primary/80" : ""}
+                    <Badge variant={appointment.status === "Concluído" ? "default" : appointment.status === "Confirmado" ? "secondary" : "outline"}
+                      className={appointment.status === "Concluído" ? "bg-primary/80" : ""}
                     >
                       {appointment.status}
                     </Badge>

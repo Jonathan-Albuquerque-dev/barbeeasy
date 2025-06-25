@@ -29,12 +29,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 
 const menuItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/appointments', label: 'Appointments', icon: Calendar },
-  { href: '/clients', label: 'Clients', icon: Users },
-  { href: '/services', label: 'Services', icon: Scissors },
-  { href: '/staff', label: 'Staff', icon: User },
-  { href: '/subscriptions', label: 'Subscriptions', icon: Repeat },
+  { href: '/', label: 'Painel', icon: LayoutDashboard },
+  { href: '/appointments', label: 'Agendamentos', icon: Calendar },
+  { href: '/clients', label: 'Clientes', icon: Users },
+  { href: '/services', label: 'Serviços', icon: Scissors },
+  { href: '/staff', label: 'Equipe', icon: User },
+  { href: '/subscriptions', label: 'Assinaturas', icon: Repeat },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -80,7 +80,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <AvatarFallback>AD</AvatarFallback>
             </Avatar>
             <div className="group-data-[collapsible=icon]:hidden flex flex-col">
-              <span className="text-sm font-semibold">Admin User</span>
+              <span className="text-sm font-semibold">Usuário Admin</span>
               <span className="text-xs text-muted-foreground">admin@barbereasy.com</span>
             </div>
             <Button variant="ghost" size="icon" className="ml-auto group-data-[collapsible=icon]:hidden">

@@ -13,11 +13,11 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SuggestServiceCombinationsInputSchema = z.object({
-  clientId: z.string().describe('The ID of the client.'),
+  clientId: z.string().describe('O ID do cliente.'),
   serviceHistory: z
     .string()
     .describe(
-      'A summary of the client service history, including past services and preferences.'
+      'Um resumo do histórico de serviços do cliente, incluindo serviços anteriores e preferências.'
     ),
 });
 export type SuggestServiceCombinationsInput = z.infer<
@@ -27,8 +27,8 @@ export type SuggestServiceCombinationsInput = z.infer<
 const SuggestServiceCombinationsOutputSchema = z.object({
   suggestedCombinations: z
     .array(z.string())
-    .describe('An array of suggested service combinations.'),
-  reasoning: z.string().describe('The reasoning behind the suggestions.'),
+    .describe('Um array de combinações de serviços sugeridas.'),
+  reasoning: z.string().describe('O raciocínio por trás das sugestões.'),
 });
 
 export type SuggestServiceCombinationsOutput = z.infer<
@@ -45,16 +45,16 @@ const prompt = ai.definePrompt({
   name: 'suggestServiceCombinationsPrompt',
   input: {schema: SuggestServiceCombinationsInputSchema},
   output: {schema: SuggestServiceCombinationsOutputSchema},
-  prompt: `You are a service recommendation expert for barber shops.
+  prompt: `Você é um especialista em recomendação de serviços para barbearias.
 
-  Based on the client's service history and preferences, suggest service
-  combinations that they might like. Provide the reasoning behind each suggestion.
+  Com base no histórico de serviços e preferências do cliente, sugira
+  combinações de serviços que ele possa gostar. Forneça o raciocínio por trás de cada sugestão.
 
-  Client ID: {{{clientId}}}
-  Service History: {{{serviceHistory}}}
+  ID do Cliente: {{{clientId}}}
+  Histórico de Serviços: {{{serviceHistory}}}
 
-  Format your response as a list of suggested combinations and a
-  reasoning section.
+  Formate sua resposta como uma lista de combinações sugeridas e uma
+  seção de raciocínio.
   `,
 });
 

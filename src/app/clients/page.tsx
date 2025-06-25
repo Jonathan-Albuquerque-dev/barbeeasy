@@ -13,12 +13,12 @@ export default async function ClientsPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Client Registry</h1>
-          <p className="text-muted-foreground">View and manage all your clients.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Cadastro de Clientes</h1>
+          <p className="text-muted-foreground">Veja e gerencie todos os seus clientes.</p>
         </div>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Client
+          Adicionar Cliente
         </Button>
       </div>
 
@@ -26,11 +26,11 @@ export default async function ClientsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Loyalty Status</TableHead>
-              <TableHead><span className="sr-only">Actions</span></TableHead>
+              <TableHead>Nome</TableHead>
+              <TableHead>E-mail</TableHead>
+              <TableHead>Telefone</TableHead>
+              <TableHead>Status de Fidelidade</TableHead>
+              <TableHead><span className="sr-only">Ações</span></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -48,14 +48,14 @@ export default async function ClientsPage() {
                 <TableCell>{client.email}</TableCell>
                 <TableCell>{client.phone}</TableCell>
                 <TableCell>
-                   <Badge variant={client.loyaltyStatus === 'Gold' ? 'default' : 'secondary'} className={client.loyaltyStatus === 'Gold' ? 'bg-accent text-accent-foreground' : ''}>
+                   <Badge variant={client.loyaltyStatus === 'Ouro' ? 'default' : 'secondary'} className={client.loyaltyStatus === 'Ouro' ? 'bg-accent text-accent-foreground' : ''}>
                     <Award className="mr-2 h-4 w-4" />
                     {client.loyaltyStatus}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="ghost" size="sm">
-                    <Link href={`/clients/${client.id}`}>View Profile</Link>
+                    <Link href={`/clients/${client.id}`}>Ver Perfil</Link>
                   </Button>
                 </TableCell>
               </TableRow>

@@ -25,7 +25,7 @@ export default function ClientRecommendations({ clientId, serviceHistory }: Clie
       const suggestions = await suggestServiceCombinations({ clientId, serviceHistory });
       setResult(suggestions);
     } catch (e) {
-      setError('Failed to get suggestions. Please try again.');
+      setError('Falha ao obter sugestões. Por favor, tente novamente.');
       console.error(e);
     } finally {
       setLoading(false);
@@ -35,9 +35,9 @@ export default function ClientRecommendations({ clientId, serviceHistory }: Clie
   return (
     <Card className="bg-background">
       <CardHeader>
-        <CardTitle>Personalized Recommendations</CardTitle>
+        <CardTitle>Recomendações Personalizadas</CardTitle>
         <CardDescription>
-          Use AI to suggest service combinations based on the client's history and preferences.
+          Use IA para sugerir combinações de serviços com base no histórico e nas preferências do cliente.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -47,14 +47,14 @@ export default function ClientRecommendations({ clientId, serviceHistory }: Clie
           ) : (
             <Wand2 className="mr-2 h-4 w-4" />
           )}
-          {loading ? 'Analyzing...' : 'Get Suggestions'}
+          {loading ? 'Analisando...' : 'Obter Sugestões'}
         </Button>
 
         {error && <p className="text-destructive">{error}</p>}
 
         {result && (
           <div className="space-y-4 animate-in fade-in-50">
-            <h3 className="text-lg font-semibold">Suggested Combinations</h3>
+            <h3 className="text-lg font-semibold">Combinações Sugeridas</h3>
             <ul className="list-disc space-y-2 pl-5">
               {result.suggestedCombinations.map((combo, index) => (
                 <li key={index} className="font-medium">{combo}</li>
@@ -63,7 +63,7 @@ export default function ClientRecommendations({ clientId, serviceHistory }: Clie
 
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="item-1">
-                <AccordionTrigger className="font-semibold">Why these suggestions?</AccordionTrigger>
+                <AccordionTrigger className="font-semibold">Por que essas sugestões?</AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
                   {result.reasoning}
                 </AccordionContent>

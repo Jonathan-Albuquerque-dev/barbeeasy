@@ -19,10 +19,10 @@ export default async function StaffDetailPage({ params }: { params: { id: string
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{member.name}</h1>
-          <p className="text-muted-foreground">Staff Member Profile</p>
+          <p className="text-muted-foreground">Perfil do Funcionário</p>
         </div>
         <Button asChild variant="outline">
-          <Link href="/staff">Back to All Staff</Link>
+          <Link href="/staff">Voltar para Todos os Funcionários</Link>
         </Button>
       </div>
       
@@ -43,7 +43,7 @@ export default async function StaffDetailPage({ params }: { params: { id: string
                 <CardHeader>
                     <CardTitle className="flex items-center justify-center gap-2">
                         <Scissors className="h-5 w-5" />
-                        Specializations
+                        Especializações
                     </CardTitle>
                 </CardHeader>
                 <CardContent>

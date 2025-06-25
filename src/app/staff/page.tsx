@@ -13,12 +13,12 @@ export default async function StaffPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Staff Profiles</h1>
-          <p className="text-muted-foreground">Manage your talented team of barbers.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Perfis da Equipe</h1>
+          <p className="text-muted-foreground">Gerencie sua talentosa equipe de barbeiros.</p>
         </div>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Staff
+          Adicionar Funcionário
         </Button>
       </div>
 
@@ -26,10 +26,10 @@ export default async function StaffPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Specializations</TableHead>
-              <TableHead>Commission</TableHead>
-              <TableHead><span className="sr-only">Actions</span></TableHead>
+              <TableHead>Nome</TableHead>
+              <TableHead>Especializações</TableHead>
+              <TableHead>Comissão</TableHead>
+              <TableHead><span className="sr-only">Ações</span></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -57,7 +57,7 @@ export default async function StaffPage() {
                 <TableCell>{(member.commissionRate * 100).toFixed(0)}%</TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="ghost" size="sm">
-                    <Link href={`/staff/${member.id}`}>View Profile</Link>
+                    <Link href={`/staff/${member.id}`}>Ver Perfil</Link>
                   </Button>
                 </TableCell>
               </TableRow>

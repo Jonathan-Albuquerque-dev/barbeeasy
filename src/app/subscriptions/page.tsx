@@ -10,8 +10,8 @@ export default async function SubscriptionsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Subscription Plans</h1>
-        <p className="text-muted-foreground">Join the club and enjoy exclusive perks and savings.</p>
+        <h1 className="text-3xl font-bold tracking-tight">Planos de Assinatura</h1>
+        <p className="text-muted-foreground">Junte-se ao clube e desfrute de vantagens e descontos exclusivos.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -23,14 +23,14 @@ export default async function SubscriptionsPage() {
             {plan.popular && (
               <div className="bg-accent text-accent-foreground py-1.5 px-4 text-sm font-semibold text-center rounded-t-lg flex items-center justify-center gap-2">
                 <Star className="h-4 w-4" />
-                Most Popular
+                Mais Popular
               </div>
             )}
             <CardHeader className="text-center">
               <CardTitle className="text-3xl">{plan.name}</CardTitle>
               <div className="flex items-baseline justify-center gap-1">
-                <span className="text-4xl font-bold">${plan.price}</span>
-                <span className="text-muted-foreground">/month</span>
+                <span className="text-4xl font-bold">R${plan.price}</span>
+                <span className="text-muted-foreground">/mês</span>
               </div>
             </CardHeader>
             <CardContent className="flex-grow">
@@ -51,7 +51,7 @@ export default async function SubscriptionsPage() {
               variant={plan.popular ? 'default' : 'secondary'}
               style={plan.popular ? { backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))'} : {}}
               >
-                Subscribe Now
+                Assine Agora
               </Button>
             </CardFooter>
           </Card>
