@@ -24,12 +24,15 @@ import {
   Repeat,
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
+import { getAuth, signOut } from 'firebase/auth';
+import { app } from '@/lib/firebase';
+import { useAuth } from '@/contexts/auth-context';
 
 const menuItems = [
-  { href: '/', label: 'Painel', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
   { href: '/appointments', label: 'Agendamentos', icon: Calendar },
   { href: '/clients', label: 'Clientes', icon: Users },
   { href: '/services', label: 'Serviços', icon: Scissors },
@@ -39,6 +42,19 @@ const menuItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user } = useAuth();
+  const auth = getAuth(app);
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
+  
+  const getInitials = (email: string | null | undefined) => {
+    if (!email) return 'AD';
+    return email.substring(0, 2).toUpperCase();
+  }
 
   return (
     <SidebarProvider>
@@ -76,14 +92,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarFooter className="p-4">
             <div className="flex items-center gap-3">
              <Avatar className="size-9">
-              <AvatarImage src="https://placehold.co/40x40.png" alt="Admin" data-ai-hint="person face" />
-              <AvatarFallback>AD</AvatarFallback>
+              <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'Admin'} data-ai-hint="person face" />
+              <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
             </Avatar>
-            <div className="group-data-[collapsible=icon]:hidden flex flex-col">
-              <span className="text-sm font-semibold">Usuário Admin</span>
-              <span className="text-xs text-muted-foreground">admin@barbereasy.com</span>
+            <div className="group-data-[collapsible=icon]:hidden flex flex-col overflow-hidden">
+              <span className="text-sm font-semibold truncate">{user?.displayName || 'Usuário'}</span>
+              <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
             </div>
-            <Button variant="ghost" size="icon" className="ml-auto group-data-[collapsible=icon]:hidden">
+            <Button variant="ghost" size="icon" className="ml-auto group-data-[collapsible=icon]:hidden" onClick={handleSignOut} aria-label="Sair">
                 <LogOut className="size-5" />
             </Button>
           </div>
