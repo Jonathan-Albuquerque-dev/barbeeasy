@@ -15,6 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format, addDays, subDays, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 
 type Appointment = AppointmentDocument & {
   client: {
@@ -71,6 +72,21 @@ export function AppointmentCalendar() {
       setPopoverOpen(false); // Close popover on date selection
     }
   }
+
+  const getBadgeVariant = (status: AppointmentStatus) => {
+    switch (status) {
+      case 'Concluído':
+        return 'success';
+      case 'Em atendimento':
+        return 'default';
+      case 'Confirmado':
+        return 'secondary';
+      case 'Pendente':
+        return 'outline';
+      default:
+        return 'secondary';
+    }
+  };
 
   const AppointmentSkeleton = () => (
     <div className="flex items-center gap-4 px-6 py-4">
@@ -143,12 +159,9 @@ export function AppointmentCalendar() {
                   <div key={app.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors">
                     <div className="text-center w-20 shrink-0">
                       <p className="font-bold text-lg">{app.time}</p>
-                      <AppointmentStatusUpdater
-                        appointmentId={app.id}
-                        currentStatus={app.status}
-                        onStatusChange={(newStatus) => handleStatusChange(app.id, newStatus)}
-                        totalValue={totalValue}
-                      />
+                      <Badge variant={getBadgeVariant(app.status)} className="mt-1">
+                        {app.status}
+                      </Badge>
                     </div>
                     <div className="flex-grow flex items-center gap-4">
                       <Avatar className="h-12 w-12 border">
@@ -163,6 +176,12 @@ export function AppointmentCalendar() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <AppointmentStatusUpdater
+                        appointmentId={app.id}
+                        currentStatus={app.status}
+                        onStatusChange={(newStatus) => handleStatusChange(app.id, newStatus)}
+                        totalValue={totalValue}
+                      />
                       <AppointmentDetailsDialog appointment={app} onAppointmentUpdate={fetchAppointments}>
                         <Button variant="outline" size="sm">Detalhes</Button>
                       </AppointmentDetailsDialog>

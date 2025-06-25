@@ -9,8 +9,8 @@ import { useEffect, useState, useMemo } from "react";
 import type { AppointmentStatus, AppointmentDocument, Service } from "@/lib/data";
 import { AppointmentStatusUpdater } from "@/components/appointments/appointment-status-updater";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { AppointmentDetailsDialog } from "@/components/appointments/appointment-details-dialog";
+import { Badge } from "@/components/ui/badge";
 
 type PopulatedAppointment = AppointmentDocument & {
   client: { id: string; name: string; avatarUrl: string; };
@@ -63,6 +63,20 @@ export default function DashboardPage() {
     }
   };
 
+  const getBadgeVariant = (status: AppointmentStatus) => {
+    switch (status) {
+      case 'Concluído':
+        return 'success';
+      case 'Em atendimento':
+        return 'default';
+      case 'Confirmado':
+        return 'secondary';
+      case 'Pendente':
+        return 'outline';
+      default:
+        return 'secondary';
+    }
+  };
 
   if (loading || !stats) {
     return (
@@ -141,12 +155,9 @@ export default function DashboardPage() {
                   <div key={appointment.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors">
                     <div className="text-center w-20 shrink-0">
                       <p className="font-bold text-lg">{appointment.time}</p>
-                      <AppointmentStatusUpdater
-                        appointmentId={appointment.id}
-                        currentStatus={appointment.status}
-                        onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
-                        totalValue={totalValue}
-                      />
+                       <Badge variant={getBadgeVariant(appointment.status)} className="mt-1">
+                        {appointment.status}
+                      </Badge>
                     </div>
                     <div className="flex-grow flex items-center gap-4">
                       <Avatar className="h-12 w-12 border">
@@ -161,9 +172,12 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="flex items-center justify-end gap-2">
-                      <Button asChild variant="ghost" size="sm">
-                        <Link href={`/clients/${appointment.client.id}`}>Ver Perfil</Link>
-                      </Button>
+                      <AppointmentStatusUpdater
+                        appointmentId={appointment.id}
+                        currentStatus={appointment.status}
+                        onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
+                        totalValue={totalValue}
+                      />
                       <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchDashboardData}>
                         <Button variant="outline" size="sm">Detalhes</Button>
                       </AppointmentDetailsDialog>
