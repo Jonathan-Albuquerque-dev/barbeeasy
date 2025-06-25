@@ -81,6 +81,19 @@ export function AppointmentDetailsDialog({ appointment, onAppointmentUpdate, chi
     const productToAdd = availableProducts.find(p => p.id === selectedProductId);
     if (!productToAdd) return;
     
+    // Check stock before adding
+    const existingCartItem = cart.find(item => item.productId === selectedProductId);
+    const quantityInCart = existingCartItem ? existingCartItem.quantity : 0;
+    
+    if (productToAdd.stock < quantityInCart + quantity) {
+        toast({ 
+            variant: 'destructive', 
+            title: 'Estoque Insuficiente', 
+            description: `Apenas ${productToAdd.stock} unidades de "${productToAdd.name}" disponíveis.` 
+        });
+        return;
+    }
+
     // Check if product is already in cart
     const existingCartItemIndex = cart.findIndex(item => item.productId === selectedProductId);
 
@@ -205,7 +218,7 @@ export function AppointmentDetailsDialog({ appointment, onAppointmentUpdate, chi
                                 <SelectValue placeholder="Selecione um produto" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                {availableProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.name} (R${p.price.toFixed(2)})</SelectItem>)}
+                                {availableProducts.map(p => <SelectItem key={p.id} value={p.id} disabled={p.stock === 0}>{p.name} (R${p.price.toFixed(2)}) - {p.stock} em estoque</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>

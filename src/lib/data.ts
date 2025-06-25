@@ -520,6 +520,29 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                     throw new Error(`O serviço "${appointmentData.service}" não está incluso na assinatura deste cliente.`);
                 }
             }
+
+            // --- Product Stock Logic ---
+            const soldProducts = appointmentData.soldProducts || [];
+            if (soldProducts.length > 0) {
+                for (const soldProduct of soldProducts) {
+                    const productDocRef = doc(db, getCollectionPath(userId, 'products'), soldProduct.productId);
+                    const productSnap = await transaction.get(productDocRef);
+
+                    if (!productSnap.exists()) {
+                        throw new Error(`Produto "${soldProduct.name}" não foi encontrado no estoque.`);
+                    }
+
+                    const currentStock = productSnap.data().stock;
+                    if (currentStock < soldProduct.quantity) {
+                        throw new Error(`Estoque insuficiente para "${soldProduct.name}". Disponível: ${currentStock}, Pedido: ${soldProduct.quantity}.`);
+                    }
+
+                    // Decrement stock
+                    transaction.update(productDocRef, {
+                        stock: increment(-soldProduct.quantity)
+                    });
+                }
+            }
             
             // --- Loyalty Points Logic ---
             const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
