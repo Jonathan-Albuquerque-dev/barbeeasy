@@ -75,6 +75,16 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
     }
   };
 
+  // Se o status for 'Concluído', ele se torna um estado final e não pode ser alterado.
+  if (currentStatus === 'Concluído') {
+    return (
+      <Badge variant={getBadgeVariant(currentStatus)}>
+        {currentStatus}
+      </Badge>
+    );
+  }
+
+
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DropdownMenu>

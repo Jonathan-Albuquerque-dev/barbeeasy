@@ -83,7 +83,7 @@ export default function ClientDetailPage() {
                 </Badge>
                  <Badge variant="outline">
                   <Gift className="mr-2 h-4 w-4" />
-                  {client.loyaltyPoints || 0} Pontos
+                  {serviceHistory.length || 0} Pontos
                 </Badge>
               </div>
             </CardContent>
