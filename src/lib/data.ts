@@ -55,7 +55,7 @@ type Service = {
 };
 
 // Versão do Appointment no Firestore armazena referências
-type AppointmentDocument = {
+export type AppointmentDocument = {
   id: string;
   clientId: string;
   barberId: string;
@@ -252,6 +252,23 @@ export async function getAppointmentsForDate(userId: string, date: Date) {
     return await populateAppointments(userId, appointments);
   } catch (error) {
       console.error(`Erro ao buscar agendamentos para ${dateString}:`, error);
+      // Retorna array vazio em caso de erro para não quebrar a UI
+      return [];
+  }
+}
+
+export async function getBarberAppointmentsForDate(userId: string, barberId: string, date: Date) {
+  const dateString = date.toISOString().split('T')[0];
+  try {
+    const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
+    const q = query(appointmentsCol, 
+      where("date", "==", dateString), 
+      where("barberId", "==", barberId)
+    );
+    const appointmentSnapshot = await getDocs(q);
+    return getDatas<AppointmentDocument>(appointmentSnapshot);
+  } catch (error) {
+      console.error(`Erro ao buscar agendamentos para o barbeiro ${barberId} em ${dateString}:`, error);
       // Retorna array vazio em caso de erro para não quebrar a UI
       return [];
   }

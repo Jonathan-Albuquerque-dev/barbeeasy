@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/auth-context';
-import { addAppointment, getClients, getStaff, getServices, getBarbershopSettings, DayHours } from '@/lib/data';
+import { addAppointment, getClients, getStaff, getServices, getBarbershopSettings, DayHours, getBarberAppointmentsForDate } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -46,6 +46,8 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+
 
   const [clients, setClients] = useState<Client[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -66,6 +68,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
   });
 
   const selectedDate = form.watch('date');
+  const selectedBarberId = form.watch('barberId');
 
   useEffect(() => {
     if (open && user?.uid) {
@@ -99,39 +102,59 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
   }, [initialDate, form]);
   
   useEffect(() => {
-    if (!settings || !selectedDate) {
-        setTimeSlots([]);
-        return;
-    }
+    const generateAndFilterTimeSlots = async () => {
+        if (!settings || !selectedDate || !user?.uid) {
+            setTimeSlots([]);
+            return;
+        }
 
-    const dayKeys: (keyof DayHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayOfWeek = selectedDate.getDay();
-    const dayKey = dayKeys[dayOfWeek];
-    const dayHours = settings.operatingHours[dayKey];
+        const dayKeys: (keyof DayHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayOfWeek = selectedDate.getDay();
+        const dayKey = dayKeys[dayOfWeek];
+        const dayHours = settings.operatingHours[dayKey];
 
-    if (!dayHours || !dayHours.open) {
-        setTimeSlots([]);
-        return;
-    }
+        if (!dayHours || !dayHours.open) {
+            setTimeSlots([]);
+            return;
+        }
 
-    const slots: string[] = [];
-    const interval = settings.appointmentInterval;
-    
-    // Set date part to avoid timezone issues, work with local time
-    const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), parseInt(dayHours.start.split(':')[0]), parseInt(dayHours.start.split(':')[1]));
-    const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), parseInt(dayHours.end.split(':')[0]), parseInt(dayHours.end.split(':')[1]));
+        const allSlots: string[] = [];
+        const interval = settings.appointmentInterval;
+        const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), parseInt(dayHours.start.split(':')[0]), parseInt(dayHours.start.split(':')[1]));
+        const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), parseInt(dayHours.end.split(':')[0]), parseInt(dayHours.end.split(':')[1]));
+        let currentTime = new Date(startDate);
 
-    let currentTime = startDate;
+        while(currentTime < endDate) {
+            allSlots.push(currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+            currentTime.setMinutes(currentTime.getMinutes() + interval);
+        }
 
-    while(currentTime < endDate) {
-        slots.push(currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
-        currentTime.setMinutes(currentTime.getMinutes() + interval);
-    }
-    
-    setTimeSlots(slots);
-    form.resetField('time', { defaultValue: '' });
+        if (!selectedBarberId) {
+            setTimeSlots([]);
+            form.resetField('time', { defaultValue: '' });
+            return;
+        }
 
-  }, [settings, selectedDate, form]);
+        setSlotsLoading(true);
+        try {
+            const bookedAppointments = await getBarberAppointmentsForDate(user.uid, selectedBarberId, selectedDate);
+            const bookedTimes = new Set(bookedAppointments.map(app => app.time));
+            const availableSlots = allSlots.filter(slot => !bookedTimes.has(slot));
+            setTimeSlots(availableSlots);
+        } catch (error) {
+            console.error("Failed to fetch barber's schedule", error);
+            toast({ variant: 'destructive', title: 'Erro', description: "Não foi possível carregar os horários do barbeiro." });
+            setTimeSlots([]);
+        } finally {
+            setSlotsLoading(false);
+        }
+
+        form.resetField('time', { defaultValue: '' });
+    };
+
+    generateAndFilterTimeSlots();
+  }, [settings, selectedDate, selectedBarberId, user, form, toast]);
+
 
   const onSubmit = async (data: AppointmentFormValues) => {
     if (!user) {
@@ -289,10 +312,19 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
                   render={({ field }) => (
                       <FormItem>
                       <FormLabel>Hora</FormLabel>
-                       <Select onValueChange={field.onChange} value={field.value} disabled={timeSlots.length === 0}>
+                        <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value} 
+                            disabled={slotsLoading || !selectedBarberId || timeSlots.length === 0}
+                        >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={timeSlots.length === 0 ? "Dia fechado" : "Selecione um horário"} />
+                            <SelectValue placeholder={
+                                slotsLoading ? "Carregando..." : 
+                                !selectedBarberId ? "Selecione um barbeiro" : 
+                                timeSlots.length === 0 ? "Nenhum horário vago" : 
+                                "Selecione um horário"
+                            } />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
