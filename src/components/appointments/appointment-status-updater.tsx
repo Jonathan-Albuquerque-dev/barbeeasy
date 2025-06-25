@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { updateAppointmentStatus, AppointmentStatus, AppointmentDocument, Subscription } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +34,21 @@ export function AppointmentStatusUpdater({ appointment, appointmentId, currentSt
   const [selectedCourtesyType, setSelectedCourtesyType] = useState<CourtesyType | null>(null);
 
   const serviceIsIncludedInSubscription = !!appointment.client.subscription?.includedServices.some(s => s.serviceName === appointment.service);
+
+  const productsTotal = useMemo(() => {
+    return (appointment.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
+  }, [appointment.soldProducts]);
+
+  const valueToPay = useMemo(() => {
+    if (selectedPaymentMethod === 'Assinante') {
+      return productsTotal;
+    }
+    if (selectedPaymentMethod === 'Cortesia') {
+      return 0;
+    }
+    return totalValue;
+  }, [selectedPaymentMethod, totalValue, productsTotal]);
+
 
   const handleStatusChange = async (newStatus: AppointmentStatus, paymentMethod?: string) => {
     if (!user || newStatus === currentStatus) return;
@@ -89,7 +104,7 @@ export function AppointmentStatusUpdater({ appointment, appointmentId, currentSt
           <div className="py-4 space-y-6">
               <div className="p-4 bg-muted/80 rounded-lg text-center">
                   <Label className="text-sm text-muted-foreground">Valor Total a Pagar</Label>
-                  <p className="text-3xl font-bold tracking-tight">R$ {(selectedPaymentMethod === 'Cortesia' || selectedPaymentMethod === 'Assinante' ? 0 : totalValue).toFixed(2)}</p>
+                  <p className="text-3xl font-bold tracking-tight">R$ {valueToPay.toFixed(2)}</p>
               </div>
               <div>
                 <Label className="font-semibold">Forma de Pagamento</Label>
