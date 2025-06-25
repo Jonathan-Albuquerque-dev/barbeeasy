@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { PlusCircle, Star, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { AddStaffDialog } from "@/components/staff/add-staff-dialog";
 
 type StaffMember = Awaited<ReturnType<typeof getStaff>>[0];
 
@@ -17,17 +18,21 @@ export default function StaffPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchStaff() {
-      if (user?.uid) {
-        setLoading(true);
-        const fetchedStaff = await getStaff(user.uid);
-        setStaff(fetchedStaff);
-        setLoading(false);
-      }
+  const fetchStaff = useCallback(async () => {
+    if (user?.uid) {
+      // Don't set loading to true here to avoid full-page loader on re-fetch
+      const fetchedStaff = await getStaff(user.uid);
+      setStaff(fetchedStaff);
+      setLoading(false);
     }
-    fetchStaff();
   }, [user]);
+
+  useEffect(() => {
+    if (user?.uid) {
+        setLoading(true);
+        fetchStaff();
+    }
+  }, [user, fetchStaff]);
 
   if (loading) {
     return (
@@ -44,10 +49,12 @@ export default function StaffPage() {
           <h1 className="text-3xl font-bold tracking-tight">Perfis da Equipe</h1>
           <p className="text-muted-foreground">Gerencie sua talentosa equipe de barbeiros.</p>
         </div>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Adicionar Funcionário
-        </Button>
+        <AddStaffDialog onStaffAdded={fetchStaff}>
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Adicionar Funcionário
+          </Button>
+        </AddStaffDialog>
       </div>
 
       <div className="border rounded-lg">

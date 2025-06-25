@@ -130,6 +130,16 @@ export async function getStaffById(userId: string, id: string): Promise<Staff | 
   }
 }
 
+export async function addStaff(userId: string, staffData: Omit<Staff, 'id'>) {
+    try {
+        const staffCol = collection(db, getCollectionPath(userId, 'staff'));
+        await addDoc(staffCol, staffData);
+    } catch (error) {
+        console.error("Erro ao adicionar funcionário:", error);
+        throw new Error("Não foi possível adicionar o funcionário.");
+    }
+}
+
 export async function getServices(userId: string): Promise<Service[]> {
   try {
     const servicesCol = collection(db, getCollectionPath(userId, 'services'));
