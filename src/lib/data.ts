@@ -373,7 +373,6 @@ export async function updateAppointmentProducts(userId: string, appointmentId: s
 export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus, paymentMethod?: string) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
 
-    // Se o status não for 'Concluído', fazemos uma atualização simples e saímos.
     if (status !== 'Concluído') {
         try {
             await updateDoc(appointmentDocRef, { status: status, paymentMethod: '' });
@@ -381,52 +380,52 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             console.error(`Erro ao atualizar status do agendamento ${appointmentId}:`, error);
             throw new Error("Não foi possível atualizar o status do agendamento.");
         }
-        return; // Termina a execução aqui para casos simples.
+        return;
     }
 
-    // Para o status 'Concluído', a lógica é mais complexa e precisa ser atômica.
     try {
-        // 1. Obter todos os dados de LEITURA necessários ANTES da transação.
+        // Passo 1: Obter todos os dados necessários de forma sequencial para garantir que tudo existe.
         const appointmentSnap = await getDoc(appointmentDocRef);
-        if (!appointmentSnap.exists()) {
-            throw new Error("Agendamento não encontrado.");
-        }
+        if (!appointmentSnap.exists()) throw new Error("Agendamento não encontrado.");
         const appointmentData = appointmentSnap.data() as AppointmentDocument;
 
-        const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
+        const serviceQuery = query(collection(db, getCollectionPath(userId, 'services')), where('name', '==', appointmentData.service));
+        const serviceSnap = await getDocs(serviceQuery);
+        if (serviceSnap.empty) throw new Error(`Serviço "${appointmentData.service}" não encontrado.`);
+        const serviceData = getData<Service>(serviceSnap.docs[0])!;
 
-        const [serviceSnap, barberSnap, barbershopSettings] = await Promise.all([
-            getDocs(query(collection(db, getCollectionPath(userId, 'services')), where('name', '==', appointmentData.service))),
-            getDoc(doc(db, getCollectionPath(userId, 'staff'), appointmentData.barberId)),
-            getBarbershopSettings(userId)
-        ]);
+        const barberDocRef = doc(db, getCollectionPath(userId, 'staff'), appointmentData.barberId);
+        const barberSnap = await getDoc(barberDocRef);
+        if (!barberSnap.exists()) throw new Error("Barbeiro não encontrado.");
+        const barberData = getData<Staff>(barberSnap)!;
+
+        const barbershopSettings = await getBarbershopSettings(userId);
         
-        const serviceData = !serviceSnap.empty ? getData<Service>(serviceSnap.docs[0]) : null;
-        const barberData = getData<Staff>(barberSnap);
-
-        // 2. Executar a transação para todas as ESCRITAS.
+        // Passo 2: Executar a transação para garantir a atomicidade das escritas.
+        const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
         await runTransaction(db, async (transaction) => {
             const clientSnap = await transaction.get(clientDocRef);
-            if (!clientSnap.exists()) {
-                throw new Error(`Cliente com ID ${appointmentData.clientId} não encontrado.`);
-            }
+            if (!clientSnap.exists()) throw new Error("Cliente não encontrado na transação.");
 
-            // Preparar a nova entrada do histórico de serviço
+            const clientData = clientSnap.data();
+            const currentHistory = clientData.serviceHistory || [];
+            const currentPoints = clientData.loyaltyPoints || 0;
+            
+            // Usando um método de parsing de data mais robusto para evitar problemas de fuso horário.
+            // new Date('YYYY/MM/DD') é interpretado como meia-noite no fuso horário local.
+            const dateObject = new Date(appointmentData.date.replace(/-/g, '/'));
+            
             const newHistoryEntry = {
-                date: format(new Date(`${appointmentData.date}T12:00:00Z`), 'dd/MM/yyyy'),
+                date: format(dateObject, 'dd/MM/yyyy'),
                 service: appointmentData.service,
-                barber: barberData?.name || 'N/A',
-                cost: serviceData?.price || 0,
+                barber: barberData.name,
+                cost: serviceData.price,
             };
-            const currentHistory = clientSnap.data()?.serviceHistory || [];
 
-            // Preparar a nova pontuação de fidelidade
             const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
-            const currentPoints = clientSnap.data()?.loyaltyPoints || 0;
             const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
             const newPoints = loyaltyEnabled ? currentPoints + pointsToAdd : currentPoints;
 
-            // Executar as atualizações na transação
             transaction.update(clientDocRef, {
                 serviceHistory: [...currentHistory, newHistoryEntry],
                 loyaltyPoints: newPoints,
@@ -438,9 +437,9 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             });
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error(`Erro na transação de conclusão do agendamento ${appointmentId}:`, error);
-        throw new Error("Falha ao concluir o agendamento. A operação foi totalmente revertida para garantir a consistência dos dados.");
+        throw new Error(`Falha ao concluir agendamento: ${error.message}`);
     }
 }
 
