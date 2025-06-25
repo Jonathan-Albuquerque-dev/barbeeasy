@@ -11,14 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-const paymentMethods = ['Dinheiro', 'Cartão', 'Pix', 'Cortesia'] as const;
+const paymentMethods = ['Dinheiro', 'Cartão de Crédito/Débito', 'Pix', 'Cortesia'] as const;
 const courtesyTypes = ['Pontos Fidelidade', 'Prêmio'] as const;
 
-type PaymentMethod = typeof paymentMethods[number];
+type PaymentMethod = (typeof paymentMethods)[number];
 type CourtesyType = typeof courtesyTypes[number];
 
 interface AppointmentStatusUpdaterProps {
-  appointment: AppointmentDocument & { client: { subscriptionId?: string, subscription?: Subscription } };
+  appointment: AppointmentDocument & { client: { subscriptionId?: string; subscription?: Subscription } };
   appointmentId: string;
   currentStatus: AppointmentStatus;
   onStatusChange: (newStatus: AppointmentStatus) => void;
@@ -63,7 +63,7 @@ export function AppointmentStatusUpdater({ appointment, appointmentId, currentSt
       ? `Cortesia (${selectedCourtesyType})`
       : selectedPaymentMethod;
     await handleStatusChange('Concluído', finalPaymentMethod);
-  }
+  };
 
   if (loading) {
     return <Button size="sm" variant="outline" disabled><Loader2 className="h-4 w-4 animate-spin" /></Button>;
@@ -94,15 +94,15 @@ export function AppointmentStatusUpdater({ appointment, appointmentId, currentSt
               <div>
                 <Label className="font-semibold">Forma de Pagamento</Label>
                 <RadioGroup value={selectedPaymentMethod} onValueChange={(value) => {
-                    setSelectedPaymentMethod(value as PaymentMethod);
+                    setSelectedPaymentMethod(value);
                     if (value !== 'Cortesia') {
                       setSelectedCourtesyType(null);
                     }
                 }} className="gap-4 mt-2">
                   {paymentMethods.map(method => (
                     <div key={method} className="flex items-center space-x-2">
-                      <RadioGroupItem value={method} id={`payment-${method}-${appointmentId}`} />
-                      <Label htmlFor={`payment-${method}-${appointmentId}`} className="font-normal">{method}</Label>
+                      <RadioGroupItem value={method} id={`payment-${method.replace(/[\s/]/g, '-')}-${appointmentId}`} />
+                      <Label htmlFor={`payment-${method.replace(/[\s/]/g, '-')}-${appointmentId}`} className="font-normal">{method}</Label>
                     </div>
                   ))}
                   {serviceIsIncludedInSubscription && (
