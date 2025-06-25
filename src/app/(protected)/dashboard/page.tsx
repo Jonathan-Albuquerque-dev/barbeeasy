@@ -11,6 +11,7 @@ import type { AppointmentStatus } from "@/lib/data";
 import { AppointmentStatusUpdater } from "@/components/appointments/appointment-status-updater";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { AIInsightsCard } from "@/components/dashboard/ai-insights-card";
 
 type Appointment = Awaited<ReturnType<typeof getTodaysAppointments>>[0];
 type Stats = Awaited<ReturnType<typeof getDashboardStats>>;
@@ -112,6 +113,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <AIInsightsCard />
 
       <Card>
         <CardHeader>
