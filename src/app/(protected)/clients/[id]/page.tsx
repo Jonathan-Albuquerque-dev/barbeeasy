@@ -123,7 +123,7 @@ export default function ClientDetailPage() {
                 </Badge>
                  <Badge variant="outline">
                   <Gift className="mr-2 h-4 w-4" />
-                  {serviceHistory.length || 0} Pontos
+                  {client.loyaltyPoints || 0} Pontos
                 </Badge>
               </div>
             </CardContent>
