@@ -263,7 +263,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="Confirmado">Confirmado</SelectItem>
-                      <SelectItem value="Pendente">Pendente</RequestBody>
+                      <SelectItem value="Pendente">Pendente</SelectItem>
                       <SelectItem value="Concluído">Concluído</SelectItem>
                     </SelectContent>
                   </Select>
