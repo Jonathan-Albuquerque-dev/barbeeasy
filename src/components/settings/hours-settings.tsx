@@ -10,11 +10,12 @@ import { getBarbershopSettings, updateOperatingHours, DayHours } from '@/lib/dat
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 const daySchema = z.object({
   open: z.boolean(),
@@ -23,7 +24,8 @@ const daySchema = z.object({
 });
 
 const operatingHoursSchema = z.object({
-  hours: z.array(daySchema)
+  hours: z.array(daySchema),
+  appointmentInterval: z.union([z.literal('30'), z.literal('60')]).transform(Number),
 });
 
 type OperatingHoursFormValues = z.infer<typeof operatingHoursSchema>;
@@ -39,7 +41,8 @@ export function HoursSettings() {
   const form = useForm<OperatingHoursFormValues>({
     resolver: zodResolver(operatingHoursSchema),
     defaultValues: {
-      hours: dayKeys.map(() => ({ open: false, start: '09:00', end: '18:00' }))
+      hours: dayKeys.map(() => ({ open: false, start: '09:00', end: '18:00' })),
+      appointmentInterval: 30,
     },
   });
 
@@ -55,7 +58,10 @@ export function HoursSettings() {
       getBarbershopSettings(user.uid).then(settings => {
         if (settings?.operatingHours) {
           const hoursArray = dayKeys.map(key => settings.operatingHours[key] || { open: false, start: '09:00', end: '18:00' });
-          reset({ hours: hoursArray });
+          reset({ 
+            hours: hoursArray,
+            appointmentInterval: settings.appointmentInterval || 30,
+          });
         }
       });
     }
@@ -70,7 +76,10 @@ export function HoursSettings() {
     }, {} as DayHours);
     
     try {
-      await updateOperatingHours(user.uid, hoursObject);
+      await updateOperatingHours(user.uid, { 
+        hours: hoursObject,
+        appointmentInterval: data.appointmentInterval,
+      });
       toast({
         title: 'Sucesso!',
         description: 'Seus horários de funcionamento foram atualizados.',
@@ -89,68 +98,108 @@ export function HoursSettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Horários de Funcionamento</CardTitle>
+        <CardTitle>Horários e Agendamentos</CardTitle>
         <CardDescription>
-          Defina os dias e horários em que sua barbearia está aberta para clientes.
+          Defina os horários de funcionamento e o intervalo entre os agendamentos.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6">
-            {fields.map((field, index) => (
-              <div key={field.id} className="space-y-4">
-                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border rounded-lg">
-                    <div className="w-full sm:w-1/3">
-                        <h3 className="font-semibold">{dayLabels[index]}</h3>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <FormField
-                        control={form.control}
-                        name={`hours.${index}.open`}
-                        render={({ field }) => (
-                            <FormItem className="flex items-center gap-2">
+          <CardContent className="space-y-8">
+            <div className="space-y-4 rounded-lg border p-4">
+                 <h3 className="font-semibold">Intervalo de Agendamento</h3>
+                 <p className="text-sm text-muted-foreground">
+                    Defina o intervalo de tempo entre os horários disponíveis para agendamento.
+                 </p>
+                <FormField
+                    control={form.control}
+                    name="appointmentInterval"
+                    render={({ field }) => (
+                        <FormItem className="space-y-3">
+                        <FormControl>
+                            <RadioGroup
+                            onValueChange={field.onChange}
+                            // The field value is a number, but RadioGroup expects a string
+                            value={String(field.value)}
+                            className="flex pt-2 gap-6"
+                            >
+                            <FormItem className="flex items-center space-x-2">
                                 <FormControl>
-                                    <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    />
+                                <RadioGroupItem value="30" id="r1" />
                                 </FormControl>
-                                <FormLabel className="!m-0">{field.value ? 'Aberto' : 'Fechado'}</FormLabel>
+                                <FormLabel htmlFor="r1" className="font-normal !mt-0">30 minutos</FormLabel>
                             </FormItem>
-                        )}
-                        />
+                            <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                <RadioGroupItem value="60" id="r2" />
+                                </FormControl>
+                                <FormLabel htmlFor="r2" className="font-normal !mt-0">1 hora</FormLabel>
+                            </FormItem>
+                            </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
+            
+            <div className='space-y-4'>
+                <h3 className="font-semibold">Horários de Funcionamento</h3>
+                {fields.map((field, index) => (
+                <div key={field.id} className="space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border rounded-lg">
+                        <div className="w-full sm:w-1/3">
+                            <h4 className="font-medium">{dayLabels[index]}</h4>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <FormField
+                            control={form.control}
+                            name={`hours.${index}.open`}
+                            render={({ field }) => (
+                                <FormItem className="flex items-center gap-2">
+                                    <FormControl>
+                                        <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    <FormLabel className="!m-0">{field.value ? 'Aberto' : 'Fechado'}</FormLabel>
+                                </FormItem>
+                            )}
+                            />
+                        </div>
+                        <div className="flex items-center gap-4 flex-grow">
+                            <FormField
+                            control={form.control}
+                            name={`hours.${index}.start`}
+                            render={({ field }) => (
+                                <FormItem className="flex-1">
+                                <FormLabel className="sr-only">Início</FormLabel>
+                                <FormControl>
+                                    <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
+                                </FormControl>
+                                </FormItem>
+                            )}
+                            />
+                            <span className={!form.watch(`hours.${index}.open`) ? 'text-muted-foreground/50' : ''}>até</span>
+                            <FormField
+                            control={form.control}
+                            name={`hours.${index}.end`}
+                            render={({ field }) => (
+                                <FormItem className="flex-1">
+                                <FormLabel className="sr-only">Fim</FormLabel>
+                                <FormControl>
+                                    <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
+                                </FormControl>
+                                </FormItem>
+                            )}
+                            />
+                        </div>
                     </div>
-                    <div className="flex items-center gap-4 flex-grow">
-                        <FormField
-                        control={form.control}
-                        name={`hours.${index}.start`}
-                        render={({ field }) => (
-                            <FormItem className="flex-1">
-                            <FormLabel className="sr-only">Início</FormLabel>
-                            <FormControl>
-                                <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
-                            </FormControl>
-                            </FormItem>
-                        )}
-                        />
-                        <span className={!form.watch(`hours.${index}.open`) ? 'text-muted-foreground/50' : ''}>até</span>
-                         <FormField
-                        control={form.control}
-                        name={`hours.${index}.end`}
-                        render={({ field }) => (
-                            <FormItem className="flex-1">
-                            <FormLabel className="sr-only">Fim</FormLabel>
-                            <FormControl>
-                                <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
-                            </FormControl>
-                            </FormItem>
-                        )}
-                        />
-                    </div>
-                 </div>
-                 {index < fields.length - 1 && <Separator className="sm:hidden" />}
-              </div>
-            ))}
+                    {index < fields.length - 1 && <Separator className="sm:hidden" />}
+                </div>
+                ))}
+            </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4">
             <Button type="submit" disabled={isSubmitting || !isDirty}>

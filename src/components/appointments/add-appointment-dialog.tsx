@@ -5,13 +5,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/auth-context';
-import { addAppointment, getClients, getStaff, getServices } from '@/lib/data';
+import { addAppointment, getClients, getStaff, getServices, getBarbershopSettings, DayHours } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,7 +24,7 @@ const appointmentSchema = z.object({
   barberId: z.string({ required_error: 'Selecione um barbeiro.' }),
   service: z.string().min(1, { message: 'Selecione um serviço.' }),
   date: z.date({ required_error: 'A data é obrigatória.' }),
-  time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Formato de hora inválido (HH:MM).' }),
+  time: z.string().min(1, { message: 'A hora é obrigatória.' }),
   status: z.enum(['Confirmado', 'Pendente', 'Concluído'], { required_error: 'O status é obrigatório.' }),
 });
 
@@ -34,6 +33,7 @@ type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 type Client = { id: string; name: string };
 type Staff = { id: string; name: string };
 type Service = { id: string; name: string };
+type BarbershopSettings = { operatingHours: DayHours; appointmentInterval: 30 | 60 };
 
 interface AddAppointmentDialogProps {
   onAppointmentAdded: () => void;
@@ -50,6 +50,8 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
   const [clients, setClients] = useState<Client[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [settings, setSettings] = useState<BarbershopSettings | null>(null);
+  const [timeSlots, setTimeSlots] = useState<string[]>([]);
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -58,22 +60,33 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
       barberId: '',
       service: '',
       date: initialDate || new Date(),
-      time: '09:00',
+      time: '',
       status: 'Confirmado',
     },
   });
 
+  const selectedDate = form.watch('date');
+
   useEffect(() => {
     if (open && user?.uid) {
+      setLoading(true);
       const fetchData = async () => {
-        const [fetchedClients, fetchedStaff, fetchedServices] = await Promise.all([
+        const [fetchedClients, fetchedStaff, fetchedServices, fetchedSettings] = await Promise.all([
           getClients(user.uid),
           getStaff(user.uid),
           getServices(user.uid),
+          getBarbershopSettings(user.uid),
         ]);
         setClients(fetchedClients.map(c => ({ id: c.id, name: c.name })));
         setStaff(fetchedStaff.map(s => ({ id: s.id, name: s.name })));
         setServices(fetchedServices.map(s => ({ id: s.id, name: s.name })));
+        if (fetchedSettings) {
+            setSettings({
+                operatingHours: fetchedSettings.operatingHours,
+                appointmentInterval: fetchedSettings.appointmentInterval,
+            });
+        }
+        setLoading(false);
       };
       fetchData();
     }
@@ -84,6 +97,41 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
       form.setValue('date', initialDate);
     }
   }, [initialDate, form]);
+  
+  useEffect(() => {
+    if (!settings || !selectedDate) {
+        setTimeSlots([]);
+        return;
+    }
+
+    const dayKeys: (keyof DayHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayOfWeek = selectedDate.getDay();
+    const dayKey = dayKeys[dayOfWeek];
+    const dayHours = settings.operatingHours[dayKey];
+
+    if (!dayHours || !dayHours.open) {
+        setTimeSlots([]);
+        return;
+    }
+
+    const slots: string[] = [];
+    const interval = settings.appointmentInterval;
+    
+    // Set date part to avoid timezone issues, work with local time
+    const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), parseInt(dayHours.start.split(':')[0]), parseInt(dayHours.start.split(':')[1]));
+    const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), parseInt(dayHours.end.split(':')[0]), parseInt(dayHours.end.split(':')[1]));
+
+    let currentTime = startDate;
+
+    while(currentTime < endDate) {
+        slots.push(currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+        currentTime.setMinutes(currentTime.getMinutes() + interval);
+    }
+    
+    setTimeSlots(slots);
+    form.resetField('time', { defaultValue: '' });
+
+  }, [settings, selectedDate, form]);
 
   const onSubmit = async (data: AppointmentFormValues) => {
     if (!user) {
@@ -241,9 +289,16 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
                   render={({ field }) => (
                       <FormItem>
                       <FormLabel>Hora</FormLabel>
-                      <FormControl>
-                          <Input type="time" {...field} />
-                      </FormControl>
+                       <Select onValueChange={field.onChange} value={field.value} disabled={timeSlots.length === 0}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={timeSlots.length === 0 ? "Dia fechado" : "Selecione um horário"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {timeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                       </FormItem>
                   )}

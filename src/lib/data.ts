@@ -88,6 +88,7 @@ type BarbershopSettings = {
     name: string;
     avatarUrl: string;
     operatingHours: DayHours;
+    appointmentInterval: 30 | 60;
 }
 
 // --- Funções da API usando o Firestore ---
@@ -366,10 +367,13 @@ export async function updateBarbershopProfile(userId: string, data: { name: stri
     }
 }
 
-export async function updateOperatingHours(userId: string, hours: DayHours) {
+export async function updateOperatingHours(userId: string, data: { hours: DayHours; appointmentInterval: number }) {
     try {
         const barbershopDocRef = doc(db, 'barbershops', userId);
-        await updateDoc(barbershopDocRef, { operatingHours: hours });
+        await updateDoc(barbershopDocRef, {
+             operatingHours: data.hours,
+             appointmentInterval: data.appointmentInterval,
+        });
     } catch (error) {
         console.error("Erro ao atualizar horários:", error);
         throw new Error("Não foi possível atualizar os horários.");

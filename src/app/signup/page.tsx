@@ -68,7 +68,8 @@ export default function SignupPage() {
             friday: { open: true, start: '09:00', end: '18:00' },
             saturday: { open: true, start: '09:00', end: '14:00' },
             sunday: { open: false, start: '09:00', end: '18:00' },
-        }
+        },
+        appointmentInterval: 30,
       });
 
       toast({
