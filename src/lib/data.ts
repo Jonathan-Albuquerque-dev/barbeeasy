@@ -31,7 +31,6 @@ type Client = {
   loyaltyStatus: 'Ouro' | 'Prata' | 'Bronze';
   loyaltyPoints: number;
   avatarUrl: string;
-  serviceHistory: { date: string; service: string; barber: string; cost: number }[];
   preferences: {
     preferredServices: string[];
     preferredBarber: string;
@@ -185,6 +184,52 @@ export async function getClientById(userId: string, id: string): Promise<Client 
     console.error(`Erro ao buscar cliente ${id}:`, error);
     return undefined;
   }
+}
+
+export async function getServiceHistoryForClient(userId: string, clientId: string) {
+    try {
+        const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
+        const q = query(appointmentsCol, 
+            where('clientId', '==', clientId), 
+            where('status', '==', 'Concluído')
+        );
+
+        const [appointmentsSnap, servicesSnap, staffSnap] = await Promise.all([
+            getDocs(q),
+            getDocs(collection(db, getCollectionPath(userId, 'services'))),
+            getDocs(collection(db, getCollectionPath(userId, 'staff'))),
+        ]);
+
+        const appointments = getDatas<AppointmentDocument>(appointmentsSnap);
+        const serviceMap = new Map(servicesSnap.docs.map(doc => {
+            const data = doc.data();
+            return [data.name, { price: data.price, id: doc.id }];
+        }));
+        const staffMap = new Map(staffSnap.docs.map(doc => [doc.id, doc.data() as Staff]));
+        
+        const history = appointments.map(app => {
+            const serviceInfo = serviceMap.get(app.service);
+            const barberInfo = staffMap.get(app.barberId);
+            const dateObject = new Date(app.date.replace(/-/g, '/'));
+            return {
+                date: format(dateObject, 'dd/MM/yyyy'),
+                service: app.service,
+                barber: barberInfo?.name || 'N/A',
+                cost: serviceInfo?.price || 0,
+            };
+        });
+        
+        history.sort((a, b) => {
+             const dateA = new Date(a.date.split('/').reverse().join('-'));
+             const dateB = new Date(b.date.split('/').reverse().join('-'));
+             return dateB.getTime() - dateA.getTime();
+        });
+
+        return history;
+    } catch (error) {
+        console.error("Erro ao buscar histórico de serviços do cliente:", error);
+        return [];
+    }
 }
 
 export async function getStaff(userId: string): Promise<Staff[]> {
@@ -383,54 +428,35 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
         return;
     }
 
+    // Para o status 'Concluído', a lógica é mais complexa e precisa ser atômica.
     try {
-        // Passo 1: Obter todos os dados necessários de forma sequencial para garantir que tudo existe.
         const appointmentSnap = await getDoc(appointmentDocRef);
-        if (!appointmentSnap.exists()) throw new Error("Agendamento não encontrado.");
+        if (!appointmentSnap.exists()) {
+            throw new Error("Agendamento não encontrado para concluir.");
+        }
         const appointmentData = appointmentSnap.data() as AppointmentDocument;
-
-        const serviceQuery = query(collection(db, getCollectionPath(userId, 'services')), where('name', '==', appointmentData.service));
-        const serviceSnap = await getDocs(serviceQuery);
-        if (serviceSnap.empty) throw new Error(`Serviço "${appointmentData.service}" não encontrado.`);
-        const serviceData = getData<Service>(serviceSnap.docs[0])!;
-
-        const barberDocRef = doc(db, getCollectionPath(userId, 'staff'), appointmentData.barberId);
-        const barberSnap = await getDoc(barberDocRef);
-        if (!barberSnap.exists()) throw new Error("Barbeiro não encontrado.");
-        const barberData = getData<Staff>(barberSnap)!;
 
         const barbershopSettings = await getBarbershopSettings(userId);
         
-        // Passo 2: Executar a transação para garantir a atomicidade das escritas.
         const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
+        
         await runTransaction(db, async (transaction) => {
             const clientSnap = await transaction.get(clientDocRef);
-            if (!clientSnap.exists()) throw new Error("Cliente não encontrado na transação.");
-
-            const clientData = clientSnap.data();
-            const currentHistory = clientData.serviceHistory || [];
-            const currentPoints = clientData.loyaltyPoints || 0;
-            
-            // Usando um método de parsing de data mais robusto para evitar problemas de fuso horário.
-            // new Date('YYYY/MM/DD') é interpretado como meia-noite no fuso horário local.
-            const dateObject = new Date(appointmentData.date.replace(/-/g, '/'));
-            
-            const newHistoryEntry = {
-                date: format(dateObject, 'dd/MM/yyyy'),
-                service: appointmentData.service,
-                barber: barberData.name,
-                cost: serviceData.price,
-            };
+            if (!clientSnap.exists()) {
+                throw new Error("Cliente não encontrado na transação.");
+            }
 
             const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
-            const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
-            const newPoints = loyaltyEnabled ? currentPoints + pointsToAdd : currentPoints;
+            let newPoints = clientSnap.data().loyaltyPoints || 0;
+            if (loyaltyEnabled) {
+                const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
+                newPoints += pointsToAdd;
+            }
 
+            // Atualiza os pontos de fidelidade do cliente e o status do agendamento.
             transaction.update(clientDocRef, {
-                serviceHistory: [...currentHistory, newHistoryEntry],
                 loyaltyPoints: newPoints,
             });
-
             transaction.update(appointmentDocRef, {
                 status: 'Concluído',
                 paymentMethod: paymentMethod,
@@ -716,5 +742,3 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
         throw error;
     }
 }
-
-    

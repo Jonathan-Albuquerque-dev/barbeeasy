@@ -1,6 +1,6 @@
 'use client';
 
-import { getClientById } from '@/lib/data';
+import { getClientById, getServiceHistoryForClient } from '@/lib/data';
 import { useParams, notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,27 +15,35 @@ import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState } from 'react';
 
 type Client = Awaited<ReturnType<typeof getClientById>>;
+type ServiceHistoryItem = { date: string; service: string; barber: string; cost: number };
 
 export default function ClientDetailPage() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const [client, setClient] = useState<Client>(null);
+  const [serviceHistory, setServiceHistory] = useState<ServiceHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchClient() {
+    async function fetchClientData() {
       if (user?.uid && params?.id) {
         setLoading(true);
         const clientId = Array.isArray(params.id) ? params.id[0] : params.id;
-        const fetchedClient = await getClientById(user.uid, clientId);
+        
+        const [fetchedClient, fetchedHistory] = await Promise.all([
+          getClientById(user.uid, clientId),
+          getServiceHistoryForClient(user.uid, clientId)
+        ]);
+
         if (!fetchedClient) {
           notFound();
         }
         setClient(fetchedClient);
+        setServiceHistory(fetchedHistory);
         setLoading(false);
       }
     }
-    fetchClient();
+    fetchClientData();
   }, [user, params]);
 
   if (loading || !client) {
@@ -124,8 +132,8 @@ export default function ClientDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {client.serviceHistory && client.serviceHistory.length > 0 ? (
-                        client.serviceHistory.map((item, index) => (
+                      {serviceHistory && serviceHistory.length > 0 ? (
+                        serviceHistory.map((item, index) => (
                           <TableRow key={index}>
                             <TableCell>{item.date}</TableCell>
                             <TableCell className="font-medium">{item.service}</TableCell>

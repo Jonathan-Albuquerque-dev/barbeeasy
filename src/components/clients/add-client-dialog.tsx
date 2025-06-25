@@ -63,7 +63,6 @@ export function AddClientDialog({ onClientAdded, children }: AddClientDialogProp
         phone: data.phone || '',
         address: data.address || '',
         avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
-        serviceHistory: [],
         preferences: {
             preferredServices: [],
             preferredBarber: 'Nenhum',
