@@ -18,7 +18,8 @@ import { Loader2 } from 'lucide-react';
 const productSchema = z.object({
   name: z.string().min(2, { message: 'O nome do produto é obrigatório.' }),
   description: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
-  price: z.coerce.number().positive({ message: 'O preço deve ser um número positivo.' }),
+  purchasePrice: z.coerce.number().positive({ message: 'O preço de compra deve ser um número positivo.' }),
+  price: z.coerce.number().positive({ message: 'O preço de venda deve ser um número positivo.' }),
   stock: z.coerce.number().int().min(0, { message: 'O estoque não pode ser negativo.' }),
   imageUrl: z.string().url({ message: 'URL da imagem inválida.' }).or(z.literal('')).optional(),
 });
@@ -41,6 +42,7 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
     defaultValues: {
       name: '',
       description: '',
+      purchasePrice: undefined,
       price: undefined,
       stock: undefined,
       imageUrl: '',
@@ -122,10 +124,23 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
              <div className="grid grid-cols-2 gap-4">
                 <FormField
                 control={form.control}
+                name="purchasePrice"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Preço de Compra (R$)</FormLabel>
+                    <FormControl>
+                        <Input type="number" step="0.01" placeholder="Ex: 25.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
                 name="price"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Preço (R$)</FormLabel>
+                    <FormLabel>Preço de Venda (R$)</FormLabel>
                     <FormControl>
                         <Input type="number" step="0.01" placeholder="Ex: 55.00" {...field} />
                     </FormControl>
@@ -133,7 +148,8 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
                     </FormItem>
                 )}
                 />
-                <FormField
+            </div>
+             <FormField
                 control={form.control}
                 name="stock"
                 render={({ field }) => (
@@ -145,8 +161,7 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
                     <FormMessage />
                     </FormItem>
                 )}
-                />
-            </div>
+            />
              <FormField
               control={form.control}
               name="imageUrl"
