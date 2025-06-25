@@ -56,6 +56,15 @@ type Service = {
   description: string;
 };
 
+type Product = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  imageUrl: string;
+};
+
 // Versão do Appointment no Firestore armazena referências
 export type AppointmentDocument = {
   id: string;
@@ -223,6 +232,28 @@ export async function addService(userId: string, serviceData: Omit<Service, 'id'
         throw new Error("Não foi possível adicionar o serviço.");
     }
 }
+
+export async function getProducts(userId: string): Promise<Product[]> {
+  try {
+    const productsCol = collection(db, getCollectionPath(userId, 'products'));
+    const productsSnapshot = await getDocs(productsCol);
+    return getDatas<Product>(productsSnapshot);
+  } catch (error) {
+    console.error("Erro ao buscar produtos:", error);
+    return [];
+  }
+}
+
+export async function addProduct(userId: string, productData: Omit<Product, 'id'>) {
+    try {
+        const productsCol = collection(db, getCollectionPath(userId, 'products'));
+        await addDoc(productsCol, productData);
+    } catch (error) {
+        console.error("Erro ao adicionar produto:", error);
+        throw new Error("Não foi possível adicionar o produto.");
+    }
+}
+
 
 // Assinaturas são globais para o aplicativo, não por barbearia.
 export async function getSubscriptions(): Promise<Subscription[]> {
