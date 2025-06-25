@@ -22,6 +22,7 @@ import {
   Gem,
   LogOut,
   Repeat,
+  Settings,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -38,6 +39,7 @@ const menuItems = [
   { href: '/services', label: 'Serviços', icon: Scissors },
   { href: '/staff', label: 'Equipe', icon: User },
   { href: '/subscriptions', label: 'Assinaturas', icon: Repeat },
+  { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -77,7 +79,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === item.href}
+                  isActive={pathname.startsWith(item.href)}
                   tooltip={item.label}
                 >
                   <Link href={item.href}>

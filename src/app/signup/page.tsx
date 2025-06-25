@@ -59,6 +59,16 @@ export default function SignupPage() {
         email: data.email,
         ownerId: user.uid,
         createdAt: new Date(),
+        avatarUrl: `https://placehold.co/400x400.png`,
+        operatingHours: {
+            monday: { open: true, start: '09:00', end: '18:00' },
+            tuesday: { open: true, start: '09:00', end: '18:00' },
+            wednesday: { open: true, start: '09:00', end: '18:00' },
+            thursday: { open: true, start: '09:00', end: '18:00' },
+            friday: { open: true, start: '09:00', end: '18:00' },
+            saturday: { open: true, start: '09:00', end: '14:00' },
+            sunday: { open: false, start: '09:00', end: '18:00' },
+        }
       });
 
       toast({

@@ -76,6 +76,20 @@ type Subscription = {
   popular: boolean;
 };
 
+export type DayHours = {
+    [key in 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday']: {
+        open: boolean;
+        start: string;
+        end: string;
+    };
+};
+
+type BarbershopSettings = {
+    name: string;
+    avatarUrl: string;
+    operatingHours: DayHours;
+}
+
 // --- Funções da API usando o Firestore ---
 
 export async function getClients(userId: string) {
@@ -325,5 +339,39 @@ export async function getDashboardStats(userId: string) {
             newClients: 0,
             averageDuration: 0,
         };
+    }
+}
+
+
+// --- Funções de Configurações ---
+
+export async function getBarbershopSettings(userId: string): Promise<BarbershopSettings | undefined> {
+    try {
+        const barbershopDocRef = doc(db, 'barbershops', userId);
+        const docSnap = await getDoc(barbershopDocRef);
+        return getData<BarbershopSettings>(docSnap);
+    } catch (error) {
+        console.error("Erro ao buscar configurações da barbearia:", error);
+        return undefined;
+    }
+}
+
+export async function updateBarbershopProfile(userId: string, data: { name: string; avatarUrl: string }) {
+    try {
+        const barbershopDocRef = doc(db, 'barbershops', userId);
+        await updateDoc(barbershopDocRef, data);
+    } catch (error) {
+        console.error("Erro ao atualizar perfil da barbearia:", error);
+        throw new Error("Não foi possível atualizar o perfil.");
+    }
+}
+
+export async function updateOperatingHours(userId: string, hours: DayHours) {
+    try {
+        const barbershopDocRef = doc(db, 'barbershops', userId);
+        await updateDoc(barbershopDocRef, { operatingHours: hours });
+    } catch (error) {
+        console.error("Erro ao atualizar horários:", error);
+        throw new Error("Não foi possível atualizar os horários.");
     }
 }
