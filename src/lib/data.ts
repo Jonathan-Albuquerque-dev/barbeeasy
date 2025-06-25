@@ -570,23 +570,26 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
 
         const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
         const q = query(appointmentsCol,
-            where('barberId', '==', barberId),
-            where('status', '==', 'Concluído'),
-            where('date', '>=', startDateString),
-            where('date', '<=', endDateString)
+            where('barberId', '==', barberId)
         );
 
         const querySnapshot = await getDocs(q);
-        const appointments = getDatas<AppointmentDocument>(querySnapshot);
+        const allAppointmentsForBarber = getDatas<AppointmentDocument>(querySnapshot);
 
-        const totalCommission = appointments.reduce((total, app) => {
+        const appointmentsInPeriod = allAppointmentsForBarber.filter(app => 
+            app.status === 'Concluído' &&
+            app.date >= startDateString &&
+            app.date <= endDateString
+        );
+
+        const totalCommission = appointmentsInPeriod.reduce((total, app) => {
             const price = servicePriceMap.get(app.service) || 0;
             return total + (price * commissionRate);
         }, 0);
 
         return {
             totalCommission,
-            appointmentCount: appointments.length,
+            appointmentCount: appointmentsInPeriod.length,
         };
 
     } catch (error) {
