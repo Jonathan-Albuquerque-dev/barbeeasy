@@ -124,14 +124,22 @@ export default function ClientDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {client.serviceHistory.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.date}</TableCell>
-                          <TableCell className="font-medium">{item.service}</TableCell>
-                          <TableCell>{item.barber}</TableCell>
-                          <TableCell className="text-right">R${item.cost.toFixed(2)}</TableCell>
+                      {client.serviceHistory && client.serviceHistory.length > 0 ? (
+                        client.serviceHistory.map((item, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{item.date}</TableCell>
+                            <TableCell className="font-medium">{item.service}</TableCell>
+                            <TableCell>{item.barber}</TableCell>
+                            <TableCell className="text-right">R${item.cost.toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            Nenhum serviço registrado no histórico.
+                          </TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>

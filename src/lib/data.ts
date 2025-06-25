@@ -410,8 +410,9 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                     }
 
                     // --- 1. Update Service History ---
+                    const serviceDate = new Date(`${appointmentData.date}T00:00:00`);
                     const newHistoryEntry = {
-                        date: format(new Date(`${appointmentData.date}T12:00:00`), 'dd/MM/yyyy'),
+                        date: serviceDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' }),
                         service: appointmentData.service,
                         barber: barberData?.name || 'N/A',
                         cost: serviceData?.price || 0
