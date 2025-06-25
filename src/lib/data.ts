@@ -211,11 +211,12 @@ export async function getServiceHistoryForClient(userId: string, clientId: strin
             const serviceInfo = serviceMap.get(app.service);
             const barberInfo = staffMap.get(app.barberId);
             const dateObject = new Date(app.date.replace(/-/g, '/'));
+            const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
             return {
                 date: format(dateObject, 'dd/MM/yyyy'),
                 service: app.service,
                 barber: barberInfo?.name || 'N/A',
-                cost: serviceInfo?.price || 0,
+                cost: isCourtesy ? 0 : (serviceInfo?.price || 0),
             };
         });
         
@@ -415,7 +416,7 @@ export async function updateAppointmentProducts(userId: string, appointmentId: s
     }
 }
 
-export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus, paymentMethod?: PaymentMethod) {
+export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus, paymentMethod?: string) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
 
     // Se o novo status não for 'Concluído', a atualização é simples.
@@ -431,12 +432,13 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
 
     // A lógica para 'Concluído' é mais complexa e precisa ser atômica.
     try {
+        const barbershopSettings = await getBarbershopSettings(userId);
+        
         await runTransaction(db, async (transaction) => {
             const appointmentSnap = await transaction.get(appointmentDocRef);
             if (!appointmentSnap.exists()) {
                 throw new Error("Agendamento não encontrado para concluir.");
             }
-            // Não fazer nada se o agendamento já foi concluído antes
             if (appointmentSnap.data().status === 'Concluído') {
                 console.log("Agendamento já está concluído. Nenhuma ação tomada.");
                 return;
@@ -449,23 +451,38 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             if (!clientSnap.exists()) {
                 throw new Error("Cliente não encontrado na transação.");
             }
+            
+            const clientData = clientSnap.data() as Client;
+            let newPoints = clientData.loyaltyPoints || 0;
+            const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
+            const isCourtesy = paymentMethod?.startsWith('Cortesia');
 
-            // Atualiza status e forma de pagamento
+            if (loyaltyEnabled) {
+                if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
+                    const rewards = barbershopSettings?.loyaltyProgram?.rewards || [];
+                    const rewardInfo = rewards.find(r => r.serviceName === appointmentData.service);
+                    const pointsCost = rewardInfo?.pointsCost || 0;
+
+                    if (pointsCost === 0) {
+                        throw new Error(`Este serviço não está configurado para resgate com pontos.`);
+                    }
+                    if (clientData.loyaltyPoints < pointsCost) {
+                        throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${clientData.loyaltyPoints}`);
+                    }
+                    newPoints -= pointsCost;
+                } else if (!isCourtesy) {
+                    // Ganha pontos apenas em serviços pagos
+                    const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
+                    newPoints += pointsToAdd;
+                }
+            }
+            
+            transaction.update(clientDocRef, { loyaltyPoints: newPoints });
+
             transaction.update(appointmentDocRef, {
                 status: 'Concluído',
                 paymentMethod: paymentMethod || 'Não especificado',
             });
-            
-            // Lógica de pontos de fidelidade
-            const barbershopSettings = await getBarbershopSettings(userId);
-            const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
-            if (loyaltyEnabled) {
-                const currentPoints = clientSnap.data().loyaltyPoints || 0;
-                const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
-                transaction.update(clientDocRef, {
-                    loyaltyPoints: currentPoints + pointsToAdd,
-                });
-            }
         });
 
     } catch (error: any) {
@@ -498,7 +515,7 @@ export async function getDashboardStats(userId: string) {
         const serviceDurationMap = new Map(services.map(s => [s.name, s.duration]));
         
         const todaysRevenue = todayAppointments
-            .filter(a => a.status === 'Concluído')
+            .filter(a => a.status === 'Concluído' && !a.paymentMethod?.startsWith('Cortesia'))
             .reduce((sum, app) => sum + (servicePriceMap.get(app.service) || 0), 0);
 
         const todaysAppointmentsCount = todayAppointments.length;
@@ -636,7 +653,8 @@ export async function getFinancialOverview(
         const staffInfo = staffMap.get(app.barberId);
         const clientInfo = clientMap.get(app.clientId);
 
-        const value = serviceInfo?.price || 0;
+        const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
+        const value = isCourtesy ? 0 : (serviceInfo?.price || 0);
         totalRevenue += value;
 
         // Revenue by Service

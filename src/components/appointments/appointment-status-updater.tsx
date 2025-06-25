@@ -19,7 +19,10 @@ import { Label } from '@/components/ui/label';
 
 const statuses: AppointmentStatus[] = ['Em atendimento', 'Confirmado', 'Concluído', 'Pendente'];
 const paymentMethods = ['Dinheiro', 'Cartão', 'Pix', 'Cortesia'] as const;
+const courtesyTypes = ['Pontos Fidelidade', 'Prêmio'] as const;
+
 type PaymentMethod = typeof paymentMethods[number];
+type CourtesyType = typeof courtesyTypes[number];
 
 interface AppointmentStatusUpdaterProps {
   appointmentId: string;
@@ -34,8 +37,10 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('Dinheiro');
+  const [selectedCourtesyType, setSelectedCourtesyType] = useState<CourtesyType | null>(null);
 
-  const handleStatusChange = async (newStatus: AppointmentStatus, paymentMethod?: PaymentMethod) => {
+
+  const handleStatusChange = async (newStatus: AppointmentStatus, paymentMethod?: string) => {
     if (!user || newStatus === currentStatus) return;
 
     setLoading(true);
@@ -46,11 +51,11 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
         title: 'Sucesso!',
         description: 'Status do agendamento atualizado.',
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Erro',
-        description: 'Não foi possível atualizar o status.',
+        description: error.message || 'Não foi possível atualizar o status.',
       });
     } finally {
       setLoading(false);
@@ -59,7 +64,10 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
   };
 
   const handleConfirmCompletion = () => {
-    handleStatusChange('Concluído', selectedPaymentMethod);
+    const finalPaymentMethod = selectedPaymentMethod === 'Cortesia'
+      ? `Cortesia (${selectedCourtesyType})`
+      : selectedPaymentMethod;
+    handleStatusChange('Concluído', finalPaymentMethod);
   }
 
   const getBadgeVariant = (status: AppointmentStatus) => {
@@ -127,11 +135,16 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
         <div className="py-4 space-y-6">
             <div className="p-4 bg-muted/80 rounded-lg text-center">
                 <Label className="text-sm text-muted-foreground">Valor Total a Pagar</Label>
-                <p className="text-3xl font-bold tracking-tight">R$ {totalValue.toFixed(2)}</p>
+                <p className="text-3xl font-bold tracking-tight">R$ {(selectedPaymentMethod === 'Cortesia' ? 0 : totalValue).toFixed(2)}</p>
             </div>
             <div>
               <Label className="font-semibold">Forma de Pagamento</Label>
-              <RadioGroup value={selectedPaymentMethod} onValueChange={(value) => setSelectedPaymentMethod(value as PaymentMethod)} className="gap-4 mt-2">
+              <RadioGroup value={selectedPaymentMethod} onValueChange={(value) => {
+                  setSelectedPaymentMethod(value as PaymentMethod);
+                   if (value !== 'Cortesia') {
+                    setSelectedCourtesyType(null);
+                  }
+              }} className="gap-4 mt-2">
                 {paymentMethods.map(method => (
                   <div key={method} className="flex items-center space-x-2">
                     <RadioGroupItem value={method} id={`payment-${method}-${appointmentId}`} />
@@ -139,13 +152,27 @@ export function AppointmentStatusUpdater({ appointmentId, currentStatus, onStatu
                   </div>
                 ))}
               </RadioGroup>
+
+              {selectedPaymentMethod === 'Cortesia' && (
+                <div className="pl-6 pt-4 border-l-2 ml-2 mt-2 space-y-4">
+                  <Label className="font-semibold">Tipo de Cortesia</Label>
+                   <RadioGroup value={selectedCourtesyType || ''} onValueChange={(value) => setSelectedCourtesyType(value as CourtesyType)} className="gap-4 mt-2">
+                    {courtesyTypes.map(type => (
+                      <div key={type} className="flex items-center space-x-2">
+                        <RadioGroupItem value={type} id={`courtesy-${type.replace(/\s+/g, '-')}-${appointmentId}`} />
+                        <Label htmlFor={`courtesy-${type.replace(/\s+/g, '-')}-${appointmentId}`} className="font-normal">{type}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+              )}
             </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline">Cancelar</Button>
           </DialogClose>
-          <Button onClick={handleConfirmCompletion} disabled={loading}>
+          <Button onClick={handleConfirmCompletion} disabled={loading || (selectedPaymentMethod === 'Cortesia' && !selectedCourtesyType)}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Confirmar Conclusão'}
           </Button>
         </DialogFooter>
