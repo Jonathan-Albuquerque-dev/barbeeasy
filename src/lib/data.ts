@@ -709,31 +709,41 @@ export async function getFinancialOverview(
         const clientInfo = clientMap.get(app.clientId);
 
         const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
+        const isSubscription = app.paymentMethod === 'Assinante';
+
         const serviceValue = serviceInfo?.price || 0;
         const productsValue = (app.soldProducts || []).reduce((sum, p) => sum + (p.price * p.quantity), 0);
-        const value = isCourtesy ? 0 : serviceValue + productsValue;
         
-        appointmentRevenue += value;
+        const transactionValue = isSubscription 
+            ? productsValue
+            : isCourtesy 
+                ? 0 
+                : serviceValue + productsValue;
 
-        if (app.service && !isCourtesy) {
-            revenueByService[app.service] = (revenueByService[app.service] || 0) + value;
-        }
+        if (!isCourtesy) {
+            appointmentRevenue += transactionValue;
 
-        if (staffInfo && !isCourtesy) {
-            if (!revenueByBarber[staffInfo.name]) {
-                revenueByBarber[staffInfo.name] = { revenue: 0, commission: 0 };
+            if (staffInfo) {
+                if (!revenueByBarber[staffInfo.name]) {
+                    revenueByBarber[staffInfo.name] = { revenue: 0, commission: 0 };
+                }
+                const serviceCommission = isSubscription ? 0 : serviceValue * (staffInfo.serviceCommissionRate || 0);
+                const productCommission = productsValue * (staffInfo.productCommissionRate || 0);
+                
+                revenueByBarber[staffInfo.name].revenue += transactionValue;
+                revenueByBarber[staffInfo.name].commission += serviceCommission + productCommission;
             }
-            const serviceCommission = serviceValue * (staffInfo.serviceCommissionRate || 0);
-            const productCommission = productsValue * (staffInfo.productCommissionRate || 0);
-            revenueByBarber[staffInfo.name].revenue += value;
-            revenueByBarber[staffInfo.name].commission += serviceCommission + productCommission;
+        }
+        
+        if (app.service && !isCourtesy && !isSubscription) {
+            revenueByService[app.service] = (revenueByService[app.service] || 0) + serviceValue;
         }
 
         const paymentMethod = app.paymentMethod || 'Não especificado';
         if (!revenueByPaymentMethod[paymentMethod]) {
             revenueByPaymentMethod[paymentMethod] = { revenue: 0, count: 0 };
         }
-        revenueByPaymentMethod[paymentMethod].revenue += value;
+        revenueByPaymentMethod[paymentMethod].revenue += transactionValue;
         revenueByPaymentMethod[paymentMethod].count += 1;
 
         recentTransactions.push({
@@ -742,7 +752,7 @@ export async function getFinancialOverview(
           clientName: clientInfo?.name || 'Cliente de Balcão',
           service: app.service,
           barberName: staffInfo?.name || 'N/A',
-          value: value,
+          value: transactionValue,
           paymentMethod: app.paymentMethod,
         });
     });
@@ -854,8 +864,11 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
         let totalProductCommission = 0;
 
         appointmentsInPeriod.forEach((app) => {
-            const servicePrice = servicePriceMap.get(app.service) || 0;
-            totalServiceCommission += (servicePrice * serviceCommissionRate);
+            const isSubscription = app.paymentMethod === 'Assinante';
+            if (!isSubscription) {
+                const servicePrice = servicePriceMap.get(app.service) || 0;
+                totalServiceCommission += (servicePrice * serviceCommissionRate);
+            }
 
             const productsValue = (app.soldProducts || []).reduce((sum, p) => sum + (p.price * p.quantity), 0);
             totalProductCommission += (productsValue * productCommissionRate);
@@ -911,7 +924,7 @@ export async function getSubscriptionStats(userId: string): Promise<Subscription
         ]);
 
         const subscribedClients = getDatas<Client>(clientsSnap);
-        const subscriptions = getDatas<Subscription>(subscriptionsSnap);
+        const subscriptions = getDatas<Subscription>(subsSnap);
         const subscriptionMap = new Map(subscriptions.map(s => [s.id, s.price]));
 
         const totalSubscribers = subscribedClients.length;
