@@ -107,6 +107,7 @@ export type FinancialOverview = {
   totalRevenue: number;
   totalAppointments: number;
   averageTicket: number;
+  totalCommissions: number;
   revenueByService: { service: string; revenue: number }[];
   revenueByBarber: { barberName: string; revenue: number; commission: number }[];
   recentTransactions: {
@@ -524,11 +525,13 @@ export async function getFinancialOverview(userId: string): Promise<FinancialOve
       
     const totalAppointments = completedAppointments.length;
     const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
+    const totalCommissions = Object.values(revenueByBarber).reduce((sum, barber) => sum + barber.commission, 0);
 
     return {
       totalRevenue,
       totalAppointments,
       averageTicket,
+      totalCommissions,
       revenueByService: Object.entries(revenueByService).map(([service, revenue]) => ({ service, revenue })),
       revenueByBarber: Object.entries(revenueByBarber).map(([barberName, data]) => ({ barberName, ...data })),
       recentTransactions: recentTransactions.slice(0, 10), // Limit to 10 recent
@@ -540,6 +543,7 @@ export async function getFinancialOverview(userId: string): Promise<FinancialOve
       totalRevenue: 0,
       totalAppointments: 0,
       averageTicket: 0,
+      totalCommissions: 0,
       revenueByService: [],
       revenueByBarber: [],
       recentTransactions: [],

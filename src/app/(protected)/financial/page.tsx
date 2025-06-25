@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { getFinancialOverview, FinancialOverview } from '@/lib/data';
-import { Loader2, DollarSign, Users } from 'lucide-react';
+import { Loader2, DollarSign, Users, HandCoins } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -59,6 +59,16 @@ export default function FinancialPage() {
           <CardContent>
             <div className="text-2xl font-bold">R${data.averageTicket.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">por serviço</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Comissões a Pagar</CardTitle>
+            <HandCoins className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">R${data.totalCommissions.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">total para a equipe</p>
           </CardContent>
         </Card>
       </div>
