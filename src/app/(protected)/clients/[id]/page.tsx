@@ -1,7 +1,7 @@
 'use client';
 
 import { getClientById } from '@/lib/data';
-import { notFound } from 'next/navigation';
+import { useParams, notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,8 @@ import { useEffect, useState } from 'react';
 
 type Client = Awaited<ReturnType<typeof getClientById>>;
 
-export default function ClientDetailPage({ params }: { params: { id: string } }) {
+export default function ClientDetailPage() {
+  const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const [client, setClient] = useState<Client>(null);
   const [loading, setLoading] = useState(true);

@@ -1,7 +1,7 @@
 'use client';
 
 import { getStaffById } from '@/lib/data';
-import { notFound } from 'next/navigation';
+import { useParams, notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
