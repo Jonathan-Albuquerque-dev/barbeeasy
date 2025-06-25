@@ -22,6 +22,7 @@ import {
   LogOut,
   Repeat,
   Settings,
+  Gift,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -38,6 +39,7 @@ const menuItems = [
   { href: '/services', label: 'Serviços', icon: Scissors },
   { href: '/staff', label: 'Equipe', icon: User },
   { href: '/subscriptions', label: 'Assinaturas', icon: Repeat },
+  { href: '/loyalty', label: 'Fidelidade', icon: Gift },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 

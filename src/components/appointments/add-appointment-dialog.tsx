@@ -196,6 +196,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
           phone: '',
           address: '',
           loyaltyStatus: 'Bronze',
+          loyaltyPoints: 0,
           avatarUrl: `https://placehold.co/400x400.png`,
           serviceHistory: [],
           preferences: {

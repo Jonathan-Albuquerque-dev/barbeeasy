@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Phone, MapPin, Award, Loader2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Award, Loader2, Gift } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import ClientRecommendations from '@/components/clients/client-recommendations';
@@ -69,10 +69,14 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
               </Avatar>
               <h2 className="text-2xl font-semibold">{client.name}</h2>
               <p className="text-muted-foreground">{client.email}</p>
-              <div className="mt-4">
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <Badge variant={client.loyaltyStatus === 'Ouro' ? 'default' : 'secondary'} className={client.loyaltyStatus === 'Ouro' ? 'bg-accent text-accent-foreground' : ''}>
                   <Award className="mr-2 h-4 w-4" />
                   Membro {client.loyaltyStatus}
+                </Badge>
+                 <Badge variant="outline">
+                  <Gift className="mr-2 h-4 w-4" />
+                  {client.loyaltyPoints || 0} Pontos
                 </Badge>
               </div>
             </CardContent>
@@ -84,15 +88,15 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
             <CardContent className="space-y-4 text-sm">
               <div className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{client.email}</span>
+                <span>{client.email || 'N/A'}</span>
               </div>
               <div className="flex items-center gap-3">
                 <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{client.phone}</span>
+                <span>{client.phone || 'N/A'}</span>
               </div>
               <div className="flex items-center gap-3">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{client.address}</span>
+                <span>{client.address || 'N/A'}</span>
               </div>
             </CardContent>
           </Card>

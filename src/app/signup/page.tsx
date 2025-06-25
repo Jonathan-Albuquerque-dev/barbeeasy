@@ -70,6 +70,11 @@ export default function SignupPage() {
             sunday: { open: false, start: '09:00', end: '18:00' },
         },
         appointmentInterval: 30,
+        loyaltyProgram: {
+          enabled: false,
+          pointsPerService: 1,
+          rewards: [],
+        },
       });
 
       toast({

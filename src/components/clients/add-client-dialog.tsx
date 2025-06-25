@@ -69,6 +69,7 @@ export function AddClientDialog({ onClientAdded, children }: AddClientDialogProp
             preferredBarber: 'Nenhum',
             notes: 'Nenhuma observação.'
         },
+        loyaltyPoints: 0,
         createdAt: new Date(),
       };
 

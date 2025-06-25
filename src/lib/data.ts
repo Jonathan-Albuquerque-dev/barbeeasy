@@ -1,5 +1,5 @@
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction } from 'firebase/firestore';
 import { db } from './firebase';
 
 // Helper para construir o caminho da coleção para um usuário específico
@@ -27,6 +27,7 @@ type Client = {
   phone: string;
   address: string;
   loyaltyStatus: 'Ouro' | 'Prata' | 'Bronze';
+  loyaltyPoints: number;
   avatarUrl: string;
   serviceHistory: { date: string; service: string; barber: string; cost: number }[];
   preferences: {
@@ -84,11 +85,22 @@ export type DayHours = {
     };
 };
 
+type LoyaltyProgramSettings = {
+  enabled: boolean;
+  pointsPerService: number;
+  rewards: {
+    serviceId: string;
+    serviceName: string;
+    pointsCost: number;
+  }[];
+}
+
 type BarbershopSettings = {
     name: string;
     avatarUrl: string;
     operatingHours: DayHours;
     appointmentInterval: 30 | 60;
+    loyaltyProgram: LoyaltyProgramSettings;
 }
 
 // --- Funções da API usando o Firestore ---
@@ -286,9 +298,33 @@ export async function addAppointment(userId: string, appointmentData: Omit<Appoi
 }
 
 export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus) {
+    const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
     try {
-        const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
         await updateDoc(appointmentDocRef, { status });
+
+        if (status === 'Concluído') {
+            const barbershopSettings = await getBarbershopSettings(userId);
+            if (barbershopSettings?.loyaltyProgram?.enabled) {
+                const appointmentSnap = await getDoc(appointmentDocRef);
+                const appointmentData = appointmentSnap.data() as AppointmentDocument;
+
+                if (appointmentData?.clientId) {
+                    const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
+                    
+                    await runTransaction(db, async (transaction) => {
+                        const clientDoc = await transaction.get(clientDocRef);
+                        if (!clientDoc.exists()) {
+                            console.error("Documento do cliente não encontrado para premiar com pontos.");
+                            return;
+                        }
+                        const currentPoints = clientDoc.data().loyaltyPoints || 0;
+                        const pointsToAdd = barbershopSettings.loyaltyProgram.pointsPerService || 1;
+                        const newPoints = currentPoints + pointsToAdd;
+                        transaction.update(clientDocRef, { loyaltyPoints: newPoints });
+                    });
+                }
+            }
+        }
     } catch (error) {
         console.error(`Erro ao atualizar status do agendamento ${appointmentId}:`, error);
         throw new Error("Não foi possível atualizar o status do agendamento.");
@@ -395,5 +431,17 @@ export async function updateOperatingHours(userId: string, data: { hours: DayHou
     } catch (error) {
         console.error("Erro ao atualizar horários:", error);
         throw new Error("Não foi possível atualizar os horários.");
+    }
+}
+
+export async function updateLoyaltySettings(userId: string, data: LoyaltyProgramSettings) {
+    try {
+        const barbershopDocRef = doc(db, 'barbershops', userId);
+        await updateDoc(barbershopDocRef, {
+             loyaltyProgram: data,
+        });
+    } catch (error) {
+        console.error("Erro ao atualizar configurações de fidelidade:", error);
+        throw new Error("Não foi possível salvar as configurações de fidelidade.");
     }
 }
