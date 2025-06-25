@@ -436,6 +436,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
                             date < new Date(new Date().setHours(0,0,0,0)) 
                           }
                           initialFocus
+                          locale={ptBR}
                         />
                       </PopoverContent>
                     </Popover>
