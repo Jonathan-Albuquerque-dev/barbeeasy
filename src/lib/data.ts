@@ -1,8 +1,9 @@
 
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, FieldValue } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, FieldValue, arrayUnion } from 'firebase/firestore';
 import { db } from './firebase';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // Helper para construir o caminho da coleção para um usuário específico
 const getCollectionPath = (userId: string, collectionName: string) => {
@@ -102,14 +103,15 @@ export type DayHours = {
     };
 };
 
-type LoyaltyProgramSettings = {
+export type LoyaltyProgramSettings = {
   enabled: boolean;
-  pointsPerService: number;
   rewards: {
     serviceId: string;
     serviceName: string;
     pointsCost: number;
+    pointsGenerated: number;
   }[];
+  pointsPerService?: number; // Keep for backward compatibility during migration
 }
 
 type BarbershopSettings = {
@@ -210,13 +212,16 @@ export async function getServiceHistoryForClient(userId: string, clientId: strin
         const history = appointments.map(app => {
             const serviceInfo = serviceMap.get(app.service);
             const barberInfo = staffMap.get(app.barberId);
-            const dateObject = new Date(app.date.replace(/-/g, '/'));
+            const dateObject = new Date(`${app.date}T12:00:00Z`); // Assume UTC to avoid timezone shifts
             const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
+            const productsTotal = (app.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
+            const totalValue = (serviceInfo?.price || 0) + productsTotal;
+            
             return {
                 date: format(dateObject, 'dd/MM/yyyy'),
                 service: app.service,
                 barber: barberInfo?.name || 'N/A',
-                cost: isCourtesy ? 0 : (serviceInfo?.price || 0),
+                cost: isCourtesy ? 0 : totalValue,
             };
         });
         
@@ -420,6 +425,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
 
     if (status !== 'Concluído') {
+        // If status is not 'Concluído', just update it.
         try {
             await updateDoc(appointmentDocRef, { status: status });
         } catch (error) {
@@ -457,13 +463,13 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             }
             const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
             
-            const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
+            const loyaltySettings = barbershopSettings?.loyaltyProgram;
+            const loyaltyEnabled = loyaltySettings?.enabled || false;
             const isCourtesy = paymentMethod?.startsWith('Cortesia');
 
             if (loyaltyEnabled) {
                 if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
-                    const rewards = barbershopSettings?.loyaltyProgram?.rewards || [];
-                    const rewardInfo = rewards.find(r => r.serviceName === appointmentData.service);
+                    const rewardInfo = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
                     const pointsCost = Number(rewardInfo?.pointsCost || 0);
 
                     if (pointsCost === 0) {
@@ -478,8 +484,13 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                     transaction.update(clientDocRef, { loyaltyPoints: FieldValue.increment(-pointsCost) });
 
                 } else if (!isCourtesy) {
-                    const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
-                    transaction.update(clientDocRef, { loyaltyPoints: FieldValue.increment(pointsToAdd) });
+                    const serviceRule = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
+                    // Use pointsGenerated if available, fallback to old pointsPerService, then to 1.
+                    const pointsToAdd = Number(serviceRule?.pointsGenerated ?? loyaltySettings?.pointsPerService ?? 1);
+
+                    if (pointsToAdd > 0) {
+                        transaction.update(clientDocRef, { loyaltyPoints: FieldValue.increment(pointsToAdd) });
+                    }
                 }
             }
             
@@ -603,11 +614,16 @@ export async function updateOperatingHours(userId: string, data: { hours: DayHou
     }
 }
 
-export async function updateLoyaltySettings(userId: string, data: LoyaltyProgramSettings) {
+export async function updateLoyaltySettings(userId: string, data: { enabled: boolean; rewards: LoyaltyProgramSettings['rewards'] }) {
     try {
         const barbershopDocRef = doc(db, 'barbershops', userId);
+        // Create a new object to ensure `pointsPerService` is not part of the new settings.
+        const settingsToSave = {
+            enabled: data.enabled,
+            rewards: data.rewards,
+        };
         await updateDoc(barbershopDocRef, {
-             loyaltyProgram: data,
+             loyaltyProgram: settingsToSave,
         });
     } catch (error) {
         console.error("Erro ao atualizar configurações de fidelidade:", error);

@@ -17,11 +17,10 @@ import { Loader2, Gift } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
-type Service = Awaited<ReturnType<typeof getServices>>[0];
-
 const loyaltyRewardSchema = z.object({
   serviceId: z.string(),
   serviceName: z.string(),
+  pointsGenerated: z.coerce.number().min(0, "Os pontos devem ser 0 ou mais."),
   pointsCost: z.coerce.number().min(0, "O custo deve ser 0 ou mais."),
 });
 
@@ -45,7 +44,7 @@ export default function LoyaltyPage() {
     },
   });
 
-  const { fields, replace } = useFieldArray({
+  const { fields } = useFieldArray({
     control: form.control,
     name: 'rewards',
   });
@@ -60,13 +59,17 @@ export default function LoyaltyPage() {
         getServices(user.uid)
       ]).then(([settings, services]) => {
         const loyaltyConfig = settings?.loyaltyProgram;
-        const rewardsMap = new Map(loyaltyConfig?.rewards?.map(r => [r.serviceId, r.pointsCost]));
+        const rewardsMap = new Map(loyaltyConfig?.rewards?.map(r => [r.serviceId, r]));
         
-        const allServicesAsRewards = services.map(service => ({
-          serviceId: service.id,
-          serviceName: service.name,
-          pointsCost: rewardsMap.get(service.id) || 0,
-        }));
+        const allServicesAsRewards = services.map(service => {
+          const existingConfig = rewardsMap.get(service.id);
+          return {
+              serviceId: service.id,
+              serviceName: service.name,
+              pointsGenerated: existingConfig?.pointsGenerated ?? loyaltyConfig?.pointsPerService ?? 1,
+              pointsCost: existingConfig?.pointsCost || 0,
+          };
+        });
         
         const initialFormData = {
           enabled: loyaltyConfig?.enabled || false,
@@ -86,19 +89,15 @@ export default function LoyaltyPage() {
   const onSubmit = async (data: LoyaltyFormValues) => {
     if (!user) return;
     
-    // Filtra apenas as recompensas que têm um custo em pontos maior que 0
-    const activeRewards = data.rewards
-      .filter(reward => reward.pointsCost > 0)
-      .map(reward => ({
-        serviceId: reward.serviceId,
-        serviceName: reward.serviceName,
-        pointsCost: reward.pointsCost,
-      }));
-
+    // The rewards array now holds the full config for each service
     const settingsToSave = {
       enabled: data.enabled,
-      pointsPerService: 1, // Fixo em 1 ponto por serviço concluído, como solicitado
-      rewards: activeRewards,
+      rewards: data.rewards.map(r => ({
+          serviceId: r.serviceId,
+          serviceName: r.serviceName,
+          pointsCost: r.pointsCost,
+          pointsGenerated: r.pointsGenerated,
+      })),
     };
 
     try {
@@ -135,7 +134,7 @@ export default function LoyaltyPage() {
             Programa de Fidelidade
         </h1>
         <p className="text-muted-foreground">
-          Configure como seus clientes ganham e trocam pontos por serviços.
+          Configure quantos pontos cada serviço gera e o custo para resgatar recompensas.
         </p>
       </div>
 
@@ -145,7 +144,7 @@ export default function LoyaltyPage() {
             <CardHeader>
               <CardTitle>Configurações Gerais</CardTitle>
               <CardDescription>
-                Ative o programa e defina as recompensas. Clientes ganharão 1 ponto a cada serviço concluído.
+                Ative o programa e defina as regras de pontos para cada serviço.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
@@ -171,12 +170,13 @@ export default function LoyaltyPage() {
               />
               
               <div className={cn(!form.watch('enabled') && "opacity-50")}>
-                <h3 className="text-lg font-semibold mb-4">Recompensas por Pontos</h3>
+                <h3 className="text-lg font-semibold mb-4">Regras de Pontuação e Recompensa</h3>
                 <div className="border rounded-lg">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Serviço</TableHead>
+                        <TableHead className="w-[180px] text-right">Pontos Gerados</TableHead>
                         <TableHead className="w-[180px] text-right">Custo em Pontos</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -184,6 +184,25 @@ export default function LoyaltyPage() {
                       {fields.map((field, index) => (
                          <TableRow key={field.id}>
                             <TableCell className="font-medium">{field.serviceName}</TableCell>
+                            <TableCell className="text-right">
+                               <FormField
+                                  control={form.control}
+                                  name={`rewards.${index}.pointsGenerated`}
+                                  render={({ field: inputField }) => (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Input 
+                                          type="number" 
+                                          className="w-24 text-right ml-auto" 
+                                          placeholder='1'
+                                          disabled={!form.watch('enabled')}
+                                          {...inputField}
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                            </TableCell>
                             <TableCell className="text-right">
                                <FormField
                                   control={form.control}
@@ -209,7 +228,7 @@ export default function LoyaltyPage() {
                   </Table>
                 </div>
                  <p className="text-xs text-muted-foreground mt-2">
-                    Defina um custo em pontos para os serviços que podem ser resgatados. Deixe em 0 para não incluir como recompensa.
+                    Defina quantos pontos um serviço gera ao ser concluído. Para o custo, deixe em 0 para não incluir como recompensa.
                 </p>
               </div>
 
