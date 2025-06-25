@@ -63,7 +63,6 @@ type Product = {
   price: number;
   purchasePrice: number;
   stock: number;
-  imageUrl: string;
 };
 
 // Versão do Appointment no Firestore armazena referências

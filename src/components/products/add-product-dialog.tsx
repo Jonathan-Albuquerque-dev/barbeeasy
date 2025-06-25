@@ -21,7 +21,6 @@ const productSchema = z.object({
   purchasePrice: z.coerce.number().positive({ message: 'O preço de compra deve ser um número positivo.' }),
   price: z.coerce.number().positive({ message: 'O preço de venda deve ser um número positivo.' }),
   stock: z.coerce.number().int().min(0, { message: 'O estoque não pode ser negativo.' }),
-  imageUrl: z.string().url({ message: 'URL da imagem inválida.' }).or(z.literal('')).optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -45,7 +44,6 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
       purchasePrice: undefined,
       price: undefined,
       stock: undefined,
-      imageUrl: '',
     },
   });
 
@@ -57,11 +55,7 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
 
     setLoading(true);
     try {
-      const productData = {
-        ...data,
-        imageUrl: data.imageUrl || `https://placehold.co/400x400.png`,
-      };
-      await addProduct(user.uid, productData);
+      await addProduct(user.uid, data);
       toast({
         title: 'Sucesso!',
         description: 'O novo produto foi adicionado.',
@@ -161,19 +155,6 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
                     <FormMessage />
                     </FormItem>
                 )}
-            />
-             <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL da Imagem (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input type="url" placeholder="https://exemplo.com/imagem.png" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
             />
             <DialogFooter>
               <DialogClose asChild>
