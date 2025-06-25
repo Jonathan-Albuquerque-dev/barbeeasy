@@ -385,26 +385,55 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
         await updateDoc(appointmentDocRef, updateData as any);
 
         if (status === 'Concluído') {
+            // Fetch all necessary data for history and points update
             const barbershopSettings = await getBarbershopSettings(userId);
-            if (barbershopSettings?.loyaltyProgram?.enabled) {
-                const appointmentSnap = await getDoc(appointmentDocRef);
-                const appointmentData = appointmentSnap.data() as AppointmentDocument;
+            const appointmentSnap = await getDoc(appointmentDocRef);
+            const appointmentData = appointmentSnap.data() as AppointmentDocument;
 
-                if (appointmentData?.clientId) {
-                    const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
+            if (appointmentData?.clientId) {
+                // Fetch service and barber info in parallel
+                 const [serviceSnap, barberSnap] = await Promise.all([
+                    getDocs(query(collection(db, getCollectionPath(userId, 'services')), where('name', '==', appointmentData.service))),
+                    getDoc(doc(db, getCollectionPath(userId, 'staff'), appointmentData.barberId))
+                ]);
+
+                const serviceData = !serviceSnap.empty ? getData<Service>(serviceSnap.docs[0]) : null;
+                const barberData = getData<Staff>(barberSnap);
+
+                const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), appointmentData.clientId);
+                
+                await runTransaction(db, async (transaction) => {
+                    const clientDoc = await transaction.get(clientDocRef);
+                    if (!clientDoc.exists()) {
+                        console.error("Documento do cliente não encontrado para premiar com pontos e atualizar histórico.");
+                        return;
+                    }
+
+                    // --- 1. Update Service History ---
+                    const newHistoryEntry = {
+                        date: format(new Date(`${appointmentData.date}T12:00:00`), 'dd/MM/yyyy'),
+                        service: appointmentData.service,
+                        barber: barberData?.name || 'N/A',
+                        cost: serviceData?.price || 0
+                    };
+                    const currentHistory = clientDoc.data().serviceHistory || [];
+                    const updatedHistory = [...currentHistory, newHistoryEntry];
                     
-                    await runTransaction(db, async (transaction) => {
-                        const clientDoc = await transaction.get(clientDocRef);
-                        if (!clientDoc.exists()) {
-                            console.error("Documento do cliente não encontrado para premiar com pontos.");
-                            return;
-                        }
-                        const currentPoints = clientDoc.data().loyaltyPoints || 0;
+                    // --- 2. Update Loyalty Points ---
+                    const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
+                    const currentPoints = clientDoc.data().loyaltyPoints || 0;
+                    let newPoints = currentPoints;
+                    if (loyaltyEnabled) {
                         const pointsToAdd = barbershopSettings.loyaltyProgram.pointsPerService || 1;
-                        const newPoints = currentPoints + pointsToAdd;
-                        transaction.update(clientDocRef, { loyaltyPoints: newPoints });
+                        newPoints = currentPoints + pointsToAdd;
+                    }
+
+                    // --- 3. Perform Transaction Update ---
+                    transaction.update(clientDocRef, { 
+                        loyaltyPoints: newPoints,
+                        serviceHistory: updatedHistory 
                     });
-                }
+                });
             }
         }
     } catch (error) {
