@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Phone, MapPin, Award, Loader2, Gift } from 'lucide-react';
+import { Mail, Phone, MapPin, Award, Loader2, Gift, Repeat } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -125,6 +125,12 @@ export default function ClientDetailPage() {
                   <Gift className="mr-2 h-4 w-4" />
                   {client.loyaltyPoints || 0} Pontos
                 </Badge>
+                 {client.subscriptionName && (
+                    <Badge variant="outline" className="border-primary/50 text-primary">
+                        <Repeat className="mr-2 h-4 w-4" />
+                        {client.subscriptionName}
+                    </Badge>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { PlusCircle, Award, Loader2 } from "lucide-react";
+import { PlusCircle, Award, Loader2, Repeat } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState, useCallback } from "react";
 import { AddClientDialog } from "@/components/clients/add-client-dialog";
@@ -18,6 +18,7 @@ type ClientListItem = {
   phone: string;
   loyaltyStatus: 'Ouro' | 'Prata' | 'Bronze';
   avatarUrl: string;
+  subscriptionName: string | null;
 };
 
 export default function ClientsPage() {
@@ -89,10 +90,18 @@ export default function ClientsPage() {
                 <TableCell>{client.email}</TableCell>
                 <TableCell>{client.phone}</TableCell>
                 <TableCell>
-                   <Badge variant={client.loyaltyStatus === 'Ouro' ? 'default' : 'secondary'} className={client.loyaltyStatus === 'Ouro' ? 'bg-accent text-accent-foreground' : ''}>
-                    <Award className="mr-2 h-4 w-4" />
-                    {client.loyaltyStatus}
-                  </Badge>
+                   <div className="flex flex-wrap gap-2">
+                     <Badge variant={client.loyaltyStatus === 'Ouro' ? 'default' : 'secondary'} className={client.loyaltyStatus === 'Ouro' ? 'bg-accent text-accent-foreground' : ''}>
+                      <Award className="mr-2 h-4 w-4" />
+                      {client.loyaltyStatus}
+                    </Badge>
+                     {client.subscriptionName && (
+                        <Badge variant="outline">
+                            <Repeat className="mr-2 h-4 w-4" />
+                            Assinante
+                        </Badge>
+                    )}
+                   </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="ghost" size="sm">

@@ -173,6 +173,7 @@ export async function getClients(userId: string) {
             phone: data.phone,
             loyaltyStatus: data.loyaltyStatus,
             avatarUrl: data.avatarUrl,
+            subscriptionName: data.subscriptionName || null,
         };
     });
   } catch (error) {
@@ -664,15 +665,20 @@ export async function getFinancialOverview(
     const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
     const q = query(appointmentsCol, where('status', '==', 'Concluído'));
     
-    const [appointmentsSnap, servicesSnap, staffSnap, clientsSnap] = await Promise.all([
+    const [appointmentsSnap, servicesSnap, staffSnap, clientsSnap, subscriptionsSnap] = await Promise.all([
       getDocs(q),
       getDocs(collection(db, getCollectionPath(userId, 'services'))),
       getDocs(collection(db, getCollectionPath(userId, 'staff'))),
       getDocs(collection(db, getCollectionPath(userId, 'clients'))),
+      getDocs(collection(db, getCollectionPath(userId, 'subscriptions'))),
     ]);
 
     let completedAppointments = getDatas<AppointmentDocument>(appointmentsSnap);
-    
+    const services = getDatas<Service>(servicesSnap);
+    const staff = getDatas<Staff>(staffSnap);
+    const clients = getDatas<Client>(clientsSnap);
+    const subscriptions = getDatas<Subscription>(subscriptionsSnap);
+
     if (dateRange?.from && dateRange?.to) {
         const startDateString = format(dateRange.from, 'yyyy-MM-dd');
         const endDateString = format(dateRange.to, 'yyyy-MM-dd');
@@ -681,23 +687,18 @@ export async function getFinancialOverview(
         });
     }
 
-    const services = getDatas<Service>(servicesSnap);
-    const staff = getDatas<Staff>(staffSnap);
-    const clients = getDatas<Client>(clientsSnap);
-
     const serviceMap = new Map(services.map(s => [s.name, { price: s.price, id: s.id }]));
     const staffMap = new Map(staff.map(s => [s.id, { name: s.name, serviceCommissionRate: s.serviceCommissionRate, productCommissionRate: s.productCommissionRate }]));
     const clientMap = new Map(clients.map(c => [c.id, { name: c.name }]));
+    const subscriptionMap = new Map(subscriptions.map(s => [s.id, { price: s.price, name: s.name }]));
 
-    let totalRevenue = 0;
+    let appointmentRevenue = 0;
     const revenueByService: { [key: string]: number } = {};
     const revenueByBarber: { [key: string]: { revenue: number; commission: number } } = {};
     const revenueByPaymentMethod: { [key: string]: { revenue: number, count: number } } = {};
+    const recentTransactions: FinancialOverview['recentTransactions'] = [];
 
-
-    const recentTransactions = completedAppointments
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .map(app => {
+    completedAppointments.forEach(app => {
         const serviceInfo = serviceMap.get(app.service);
         const staffInfo = staffMap.get(app.barberId);
         const clientInfo = clientMap.get(app.clientId);
@@ -707,14 +708,12 @@ export async function getFinancialOverview(
         const productsValue = (app.soldProducts || []).reduce((sum, p) => sum + (p.price * p.quantity), 0);
         const value = isCourtesy ? 0 : serviceValue + productsValue;
         
-        totalRevenue += value;
+        appointmentRevenue += value;
 
-        // Revenue by Service
         if (app.service && !isCourtesy) {
-            revenueByService[app.service] = (revenueByService[app.service] || 0) + serviceValue + productsValue;
+            revenueByService[app.service] = (revenueByService[app.service] || 0) + value;
         }
 
-        // Revenue by Barber
         if (staffInfo && !isCourtesy) {
             if (!revenueByBarber[staffInfo.name]) {
                 revenueByBarber[staffInfo.name] = { revenue: 0, commission: 0 };
@@ -725,7 +724,6 @@ export async function getFinancialOverview(
             revenueByBarber[staffInfo.name].commission += serviceCommission + productCommission;
         }
 
-        // Revenue by Payment Method
         const paymentMethod = app.paymentMethod || 'Não especificado';
         if (!revenueByPaymentMethod[paymentMethod]) {
             revenueByPaymentMethod[paymentMethod] = { revenue: 0, count: 0 };
@@ -733,8 +731,7 @@ export async function getFinancialOverview(
         revenueByPaymentMethod[paymentMethod].revenue += value;
         revenueByPaymentMethod[paymentMethod].count += 1;
 
-
-        return {
+        recentTransactions.push({
           id: app.id,
           date: app.date,
           clientName: clientInfo?.name || 'Cliente de Balcão',
@@ -742,11 +739,52 @@ export async function getFinancialOverview(
           barberName: staffInfo?.name || 'N/A',
           value: value,
           paymentMethod: app.paymentMethod,
-        };
-      });
+        });
+    });
       
+    let subscriptionRevenue = 0;
+    const subscribedClients = clients.filter(c => c.subscriptionId && c.subscriptionStartDate);
+    
+    subscribedClients.forEach(client => {
+        const subInfo = subscriptionMap.get(client.subscriptionId!);
+        if (!subInfo) return;
+
+        const subStartDate = client.subscriptionStartDate.toDate();
+        if (dateRange?.from && dateRange?.to) {
+            if (subStartDate < dateRange.from || subStartDate > dateRange.to) {
+                return;
+            }
+        }
+
+        const subValue = subInfo.price;
+        subscriptionRevenue += subValue;
+        
+        const paymentMethod = client.subscriptionPaymentMethod || 'Não especificado';
+        if (!revenueByPaymentMethod[paymentMethod]) {
+            revenueByPaymentMethod[paymentMethod] = { revenue: 0, count: 0 };
+        }
+        revenueByPaymentMethod[paymentMethod].revenue += subValue;
+        revenueByPaymentMethod[paymentMethod].count += 1;
+
+        const subServiceName = `Assinatura: ${subInfo.name}`;
+        revenueByService[subServiceName] = (revenueByService[subServiceName] || 0) + subValue;
+
+        recentTransactions.push({
+            id: `sub_${client.id}`,
+            date: format(subStartDate, 'yyyy-MM-dd'),
+            clientName: client.name,
+            service: subServiceName,
+            barberName: 'Sistema',
+            value: subValue,
+            paymentMethod: paymentMethod,
+        });
+    });
+
+    recentTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const totalRevenue = appointmentRevenue + subscriptionRevenue;
     const totalAppointments = completedAppointments.length;
-    const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
+    const averageTicket = totalAppointments > 0 ? appointmentRevenue / totalAppointments : 0;
     const totalCommissions = Object.values(revenueByBarber).reduce((sum, barber) => sum + barber.commission, 0);
 
     return {
@@ -757,7 +795,7 @@ export async function getFinancialOverview(
       revenueByService: Object.entries(revenueByService).map(([service, revenue]) => ({ service, revenue })),
       revenueByBarber: Object.entries(revenueByBarber).map(([barberName, data]) => ({ barberName, ...data })),
       revenueByPaymentMethod: Object.entries(revenueByPaymentMethod).map(([method, data]) => ({ method, ...data })),
-      recentTransactions: recentTransactions.slice(0, 10), // Limit to 10 recent
+      recentTransactions: recentTransactions.slice(0, 10),
     };
 
   } catch (error) {
