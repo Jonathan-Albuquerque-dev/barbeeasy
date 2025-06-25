@@ -23,7 +23,7 @@ const getDatas = <T>(snapshot: any): T[] => {
 };
 
 // --- Definições de Tipo ---
-type Client = {
+export type Client = {
   id: string;
   name: string;
   email: string;
@@ -836,6 +836,19 @@ export async function deleteAppointment(userId: string, appointmentId: string) {
     } catch (error) {
         console.error(`Erro ao excluir agendamento ${appointmentId}:`, error);
         throw new Error("Não foi possível excluir o agendamento.");
+    }
+}
+
+export async function assignSubscriptionToClient(userId: string, clientId: string, subscriptionId: string, subscriptionName: string) {
+    try {
+        const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), clientId);
+        await updateDoc(clientDocRef, {
+            subscriptionId,
+            subscriptionName,
+        });
+    } catch (error) {
+        console.error(`Erro ao vincular assinatura ao cliente ${clientId}:`, error);
+        throw new Error("Não foi possível vincular a assinatura.");
     }
 }
 

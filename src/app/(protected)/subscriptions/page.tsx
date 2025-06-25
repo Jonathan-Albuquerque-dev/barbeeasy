@@ -3,11 +3,12 @@
 import { getSubscriptions, Subscription, getSubscriptionStats, SubscriptionStats } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, PlusCircle, TrendingUp, CheckCircle2, Users, Calendar, DollarSign } from "lucide-react";
+import { Loader2, PlusCircle, TrendingUp, CheckCircle2, Users, Calendar, DollarSign, UserPlus } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState, useCallback } from "react";
 import { AddSubscriptionDialog } from "@/components/subscriptions/add-subscription-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AddSubscriberDialog } from "@/components/subscriptions/add-subscriber-dialog";
 
 
 export default function SubscriptionsPage() {
@@ -41,12 +42,20 @@ export default function SubscriptionsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Planos de Assinatura</h1>
           <p className="text-muted-foreground">Crie e gerencie seus planos de assinatura exclusivos.</p>
         </div>
-        <AddSubscriptionDialog onSubscriptionAdded={fetchSubscriptions}>
-            <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar Assinatura
-            </Button>
-        </AddSubscriptionDialog>
+        <div className="flex items-center gap-2">
+            <AddSubscriberDialog onSubscriberAdded={fetchSubscriptions}>
+                <Button variant="outline">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Adicionar Assinante
+                </Button>
+            </AddSubscriberDialog>
+            <AddSubscriptionDialog onSubscriptionAdded={fetchSubscriptions}>
+                <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Adicionar Plano
+                </Button>
+            </AddSubscriptionDialog>
+        </div>
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
