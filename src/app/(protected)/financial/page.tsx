@@ -52,7 +52,11 @@ export default function FinancialPage() {
         setLoading(false);
       }
     }
-    fetchFinancialData();
+
+    // Only refetch if a complete range is selected, or if the filter is cleared (undefined)
+    if ((financialDateRange?.from && financialDateRange.to) || financialDateRange === undefined) {
+      fetchFinancialData();
+    }
   }, [user, financialDateRange]);
 
 
@@ -162,7 +166,7 @@ export default function FinancialPage() {
                 <Label className="text-sm font-medium">Período</Label>
                 <DateRangePicker date={commissionDateRange} onDateChange={setCommissionDateRange} className="w-full" />
             </div>
-            <Button onClick={handleCalculateCommission} disabled={isCalculating || !selectedBarberId || !commissionDateRange?.from}>
+            <Button onClick={handleCalculateCommission} disabled={isCalculating || !selectedBarberId || !commissionDateRange?.from || !commissionDateRange?.to}>
               {isCalculating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Calcular'}
             </Button>
           </div>
