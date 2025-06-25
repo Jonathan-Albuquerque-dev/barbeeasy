@@ -1,5 +1,5 @@
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference } from 'firebase/firestore';
 import { db } from './firebase';
 
 // Helper para construir o caminho da coleção para um usuário específico
@@ -115,10 +115,11 @@ export async function getClients(userId: string) {
   }
 }
 
-export async function addClient(userId: string, clientData: Omit<Client, 'id'>) {
+export async function addClient(userId: string, clientData: Omit<Client, 'id'>): Promise<string> {
     try {
         const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
-        await addDoc(clientsCol, clientData);
+        const docRef: DocumentReference = await addDoc(clientsCol, clientData);
+        return docRef.id;
     } catch (error) {
         console.error("Erro ao adicionar cliente:", error);
         throw new Error("Não foi possível adicionar o cliente.");

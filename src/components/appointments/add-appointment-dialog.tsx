@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/auth-context';
-import { addAppointment, getClients, getStaff, getServices, getBarbershopSettings, DayHours, getBarberAppointmentsForDate } from '@/lib/data';
+import { addAppointment, getClients, getStaff, getServices, getBarbershopSettings, DayHours, getBarberAppointmentsForDate, addClient } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,14 +18,33 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Loader2, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Input } from '../ui/input';
 
 const appointmentSchema = z.object({
-  clientId: z.string({ required_error: 'Selecione um cliente.' }),
+  clientType: z.enum(['existing', 'new']).default('existing'),
+  clientId: z.string().optional(),
+  newClientName: z.string().optional(),
   barberId: z.string({ required_error: 'Selecione um barbeiro.' }),
   service: z.string().min(1, { message: 'Selecione um serviço.' }),
   date: z.date({ required_error: 'A data é obrigatória.' }),
   time: z.string().min(1, { message: 'A hora é obrigatória.' }),
   status: z.enum(['Confirmado', 'Pendente', 'Concluído'], { required_error: 'O status é obrigatório.' }),
+}).superRefine((data, ctx) => {
+    if (data.clientType === 'existing' && !data.clientId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Selecione um cliente.",
+            path: ["clientId"],
+        });
+    }
+    if (data.clientType === 'new' && (!data.newClientName || data.newClientName.length < 2)) {
+         ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "O nome do novo cliente é obrigatório.",
+            path: ["newClientName"],
+        });
+    }
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -58,7 +77,9 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
+      clientType: 'existing',
       clientId: '',
+      newClientName: '',
       barberId: '',
       service: '',
       date: initialDate || new Date(),
@@ -69,6 +90,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
 
   const selectedDate = form.watch('date');
   const selectedBarberId = form.watch('barberId');
+  const clientType = form.watch('clientType');
 
   useEffect(() => {
     if (open && user?.uid) {
@@ -164,9 +186,38 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
 
     setLoading(true);
     try {
+      let finalClientId = data.clientId;
+
+      if (data.clientType === 'new' && data.newClientName) {
+        // Create a new "walk-in" client
+        finalClientId = await addClient(user.uid, {
+          name: data.newClientName,
+          email: '', // Default empty values
+          phone: '',
+          address: '',
+          loyaltyStatus: 'Bronze',
+          avatarUrl: `https://placehold.co/400x400.png`,
+          serviceHistory: [],
+          preferences: {
+              preferredServices: [],
+              preferredBarber: 'Nenhum',
+              notes: 'Cliente de balcão.'
+          },
+          createdAt: new Date(),
+        });
+      }
+      
+      if (!finalClientId) {
+          throw new Error("ID do cliente não encontrado ou criado.");
+      }
+
       const appointmentData = {
-        ...data,
+        clientId: finalClientId,
+        barberId: data.barberId!,
+        service: data.service,
         date: format(data.date, 'yyyy-MM-dd'),
+        time: data.time,
+        status: data.status,
       };
 
       await addAppointment(user.uid, appointmentData);
@@ -206,24 +257,72 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormField
               control={form.control}
-              name="clientId"
+              name="clientType"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormItem className="space-y-3">
+                    <FormLabel>Tipo de Cliente</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um cliente" />
-                      </SelectTrigger>
+                        <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex items-center gap-6"
+                        >
+                        <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                            <RadioGroupItem value="existing" id="r-existing" />
+                            </FormControl>
+                            <FormLabel htmlFor="r-existing" className="font-normal !mt-0">Cliente Existente</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                            <RadioGroupItem value="new" id="r-new" />
+                            </FormControl>
+                            <FormLabel htmlFor="r-new" className="font-normal !mt-0">Novo Cliente</FormLabel>
+                        </FormItem>
+                        </RadioGroup>
                     </FormControl>
-                    <SelectContent>
-                      {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                    <FormMessage />
                 </FormItem>
               )}
             />
+
+            {clientType === 'existing' ? (
+                <FormField
+                control={form.control}
+                name="clientId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Cliente</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione um cliente" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            ) : (
+                <FormField
+                control={form.control}
+                name="newClientName"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Nome do Novo Cliente</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Digite o nome do cliente" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            )}
+
             <FormField
               control={form.control}
               name="barberId"
