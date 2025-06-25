@@ -1,6 +1,7 @@
 // src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction } from 'firebase/firestore';
 import { db } from './firebase';
+import { format } from 'date-fns';
 
 // Helper para construir o caminho da coleção para um usuário específico
 const getCollectionPath = (userId: string, collectionName: string) => {
@@ -38,7 +39,7 @@ type Client = {
   createdAt?: any; // Firestore Timestamp
 };
 
-type Staff = {
+export type Staff = {
   id: string;
   name: string;
   specializations: string[];
@@ -549,4 +550,47 @@ export async function getFinancialOverview(userId: string): Promise<FinancialOve
       recentTransactions: [],
     };
   }
+}
+
+export async function getCommissionsForPeriod(userId: string, barberId: string, startDate: Date, endDate: Date) {
+    try {
+        const [services, staffMember] = await Promise.all([
+            getServices(userId),
+            getStaffById(userId, barberId)
+        ]);
+
+        if (!staffMember) {
+            throw new Error("Funcionário não encontrado.");
+        }
+
+        const servicePriceMap = new Map(services.map(s => [s.name, s.price]));
+        const commissionRate = staffMember.commissionRate;
+        const startDateString = format(startDate, 'yyyy-MM-dd');
+        const endDateString = format(endDate, 'yyyy-MM-dd');
+
+        const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
+        const q = query(appointmentsCol,
+            where('barberId', '==', barberId),
+            where('status', '==', 'Concluído'),
+            where('date', '>=', startDateString),
+            where('date', '<=', endDateString)
+        );
+
+        const querySnapshot = await getDocs(q);
+        const appointments = getDatas<AppointmentDocument>(querySnapshot);
+
+        const totalCommission = appointments.reduce((total, app) => {
+            const price = servicePriceMap.get(app.service) || 0;
+            return total + (price * commissionRate);
+        }, 0);
+
+        return {
+            totalCommission,
+            appointmentCount: appointments.length,
+        };
+
+    } catch (error) {
+        console.error("Erro ao calcular comissões por período:", error);
+        throw error;
+    }
 }

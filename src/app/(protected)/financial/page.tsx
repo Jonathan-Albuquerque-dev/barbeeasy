@@ -2,28 +2,68 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { getFinancialOverview, FinancialOverview } from '@/lib/data';
-import { Loader2, DollarSign, Users, HandCoins } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getFinancialOverview, FinancialOverview, getCommissionsForPeriod, getStaff } from '@/lib/data';
+import { Loader2, DollarSign, Users, HandCoins, Calculator } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { DateRange } from 'react-day-picker';
+
+type StaffMember = { id: string; name: string };
 
 export default function FinancialPage() {
   const { user } = useAuth();
   const [data, setData] = useState<FinancialOverview | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // State for commission calculation
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [selectedBarberId, setSelectedBarberId] = useState<string>('');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [commissionResult, setCommissionResult] = useState<{ amount: number; barberName: string } | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+
   useEffect(() => {
     async function fetchData() {
       if (user?.uid) {
         setLoading(true);
-        const overview = await getFinancialOverview(user.uid);
+        const [overview, staffList] = await Promise.all([
+            getFinancialOverview(user.uid),
+            getStaff(user.uid)
+        ]);
         setData(overview);
+        setStaff(staffList.map(s => ({ id: s.id, name: s.name })));
         setLoading(false);
       }
     }
     fetchData();
   }, [user]);
+
+  const handleCalculateCommission = async () => {
+    if (!user?.uid || !selectedBarberId || !dateRange?.from || !dateRange?.to) {
+      // Basic validation feedback can be added here
+      return;
+    }
+    setIsCalculating(true);
+    setCommissionResult(null);
+    try {
+      const result = await getCommissionsForPeriod(user.uid, selectedBarberId, dateRange.from, dateRange.to);
+      const selectedBarber = staff.find(s => s.id === selectedBarberId);
+      setCommissionResult({
+          amount: result.totalCommission,
+          barberName: selectedBarber?.name || 'Barbeiro'
+      });
+    } catch (error) {
+      console.error("Error calculating commission:", error);
+      // Add user-facing error feedback here
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
 
   if (loading || !data) {
     return (
@@ -72,6 +112,46 @@ export default function FinancialPage() {
           </CardContent>
         </Card>
       </div>
+      
+       <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="h-6 w-6" />
+            Calcular Comissão por Período
+          </CardTitle>
+          <CardDescription>Selecione um barbeiro e um período para ver a comissão a pagar.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+             <div className="space-y-2">
+                <label className="text-sm font-medium">Barbeiro</label>
+                <Select value={selectedBarberId} onValueChange={setSelectedBarberId}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Selecione um barbeiro" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {staff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-2">
+                <label className="text-sm font-medium">Período</label>
+                <DateRangePicker date={dateRange} onDateChange={setDateRange} className="w-full" />
+            </div>
+            <Button onClick={handleCalculateCommission} disabled={isCalculating || !selectedBarberId || !dateRange?.from}>
+              {isCalculating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Calcular'}
+            </Button>
+          </div>
+          {commissionResult && (
+            <div className="mt-6 p-4 bg-accent/50 rounded-lg">
+              <p className="text-lg font-semibold">
+                Comissão a pagar para {commissionResult.barberName}: 
+                <span className="text-primary ml-2">R${commissionResult.amount.toFixed(2)}</span>
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-8 lg:grid-cols-2">
         <Card>
