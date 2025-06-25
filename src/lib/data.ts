@@ -202,7 +202,7 @@ export async function getServiceHistoryForClient(userId: string, clientId: strin
 
         const appointments = getDatas<AppointmentDocument>(appointmentsSnap);
         const serviceMap = new Map(servicesSnap.docs.map(doc => {
-            const data = doc.data();
+            const data = doc.data() as Service;
             return [data.name, { price: data.price, id: doc.id }];
         }));
         const staffMap = new Map(staffSnap.docs.map(doc => [doc.id, doc.data() as Staff]));
@@ -419,7 +419,6 @@ export async function updateAppointmentProducts(userId: string, appointmentId: s
 export async function updateAppointmentStatus(userId: string, appointmentId: string, status: AppointmentStatus, paymentMethod?: string) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
 
-    // Se o novo status não for 'Concluído', a atualização é simples.
     if (status !== 'Concluído') {
         try {
             await updateDoc(appointmentDocRef, { status: status });
@@ -432,8 +431,6 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
 
     // A lógica para 'Concluído' é mais complexa e precisa ser atômica.
     try {
-        const barbershopSettings = await getBarbershopSettings(userId);
-        
         await runTransaction(db, async (transaction) => {
             const appointmentSnap = await transaction.get(appointmentDocRef);
             if (!appointmentSnap.exists()) {
@@ -453,7 +450,16 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             }
             
             const clientData = clientSnap.data() as Client;
-            let newPoints = clientData.loyaltyPoints || 0;
+            const barbershopSettingsDocRef = doc(db, 'barbershops', userId);
+            const barbershopSettingsSnap = await transaction.get(barbershopSettingsDocRef);
+
+            if (!barbershopSettingsSnap.exists()) {
+                throw new Error("Configurações da barbearia não encontradas.");
+            }
+            const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
+            
+            // Garantir que os pontos sejam sempre tratados como NÚMEROS
+            let newPoints = Number(clientData.loyaltyPoints || 0);
             const loyaltyEnabled = barbershopSettings?.loyaltyProgram?.enabled || false;
             const isCourtesy = paymentMethod?.startsWith('Cortesia');
 
@@ -461,17 +467,17 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                 if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
                     const rewards = barbershopSettings?.loyaltyProgram?.rewards || [];
                     const rewardInfo = rewards.find(r => r.serviceName === appointmentData.service);
-                    const pointsCost = rewardInfo?.pointsCost || 0;
+                    // Garantir que o custo dos pontos seja sempre tratado como NÚMERO
+                    const pointsCost = Number(rewardInfo?.pointsCost || 0);
 
                     if (pointsCost === 0) {
                         throw new Error(`Este serviço não está configurado para resgate com pontos.`);
                     }
-                    if (clientData.loyaltyPoints < pointsCost) {
-                        throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${clientData.loyaltyPoints}`);
+                    if (newPoints < pointsCost) {
+                        throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${newPoints}`);
                     }
                     newPoints -= pointsCost;
                 } else if (!isCourtesy) {
-                    // Ganha pontos apenas em serviços pagos
                     const pointsToAdd = barbershopSettings?.loyaltyProgram?.pointsPerService || 1;
                     newPoints += pointsToAdd;
                 }
@@ -487,7 +493,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
 
     } catch (error: any) {
         console.error(`Erro na transação de conclusão do agendamento ${appointmentId}:`, error);
-        throw new Error(`Falha ao concluir agendamento: ${error.message}`);
+        throw error;
     }
 }
 
@@ -516,7 +522,11 @@ export async function getDashboardStats(userId: string) {
         
         const todaysRevenue = todayAppointments
             .filter(a => a.status === 'Concluído' && !a.paymentMethod?.startsWith('Cortesia'))
-            .reduce((sum, app) => sum + (servicePriceMap.get(app.service) || 0), 0);
+            .reduce((sum, app) => {
+                const servicePrice = servicePriceMap.get(app.service) || 0;
+                const productsTotal = (app.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
+                return sum + servicePrice + productsTotal;
+            }, 0);
 
         const todaysAppointmentsCount = todayAppointments.length;
 
@@ -654,21 +664,25 @@ export async function getFinancialOverview(
         const clientInfo = clientMap.get(app.clientId);
 
         const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
-        const value = isCourtesy ? 0 : (serviceInfo?.price || 0);
+        const serviceValue = serviceInfo?.price || 0;
+        const productsValue = (app.soldProducts || []).reduce((sum, p) => sum + (p.price * p.quantity), 0);
+        const value = isCourtesy ? 0 : serviceValue + productsValue;
+        
         totalRevenue += value;
 
         // Revenue by Service
-        if (app.service) {
-            revenueByService[app.service] = (revenueByService[app.service] || 0) + value;
+        if (app.service && !isCourtesy) {
+            revenueByService[app.service] = (revenueByService[app.service] || 0) + serviceValue + productsValue;
         }
 
         // Revenue by Barber
-        if (staffInfo) {
+        if (staffInfo && !isCourtesy) {
             if (!revenueByBarber[staffInfo.name]) {
                 revenueByBarber[staffInfo.name] = { revenue: 0, commission: 0 };
             }
+            const commissionableValue = serviceValue; // Assume comissão apenas sobre serviços
             revenueByBarber[staffInfo.name].revenue += value;
-            revenueByBarber[staffInfo.name].commission += value * (staffInfo.commissionRate || 0);
+            revenueByBarber[staffInfo.name].commission += commissionableValue * (staffInfo.commissionRate || 0);
         }
 
         // Revenue by Payment Method
@@ -748,7 +762,8 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
         const appointmentsInPeriod = allAppointmentsForBarber.filter(app => 
             app.status === 'Concluído' &&
             app.date >= startDateString &&
-            app.date <= endDateString
+            app.date <= endDateString &&
+            !app.paymentMethod?.startsWith('Cortesia')
         );
 
         const totalCommission = appointmentsInPeriod.reduce((total, app) => {
