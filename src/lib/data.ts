@@ -465,7 +465,10 @@ export async function updateLoyaltySettings(userId: string, data: LoyaltyProgram
     }
 }
 
-export async function getFinancialOverview(userId: string): Promise<FinancialOverview> {
+export async function getFinancialOverview(
+  userId: string,
+  dateRange?: { from: Date; to: Date }
+): Promise<FinancialOverview> {
   try {
     const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
     const q = query(appointmentsCol, where('status', '==', 'Concluído'));
@@ -477,7 +480,16 @@ export async function getFinancialOverview(userId: string): Promise<FinancialOve
       getDocs(collection(db, getCollectionPath(userId, 'clients'))),
     ]);
 
-    const completedAppointments = getDatas<AppointmentDocument>(appointmentsSnap);
+    let completedAppointments = getDatas<AppointmentDocument>(appointmentsSnap);
+    
+    if (dateRange?.from && dateRange?.to) {
+        const startDateString = format(dateRange.from, 'yyyy-MM-dd');
+        const endDateString = format(dateRange.to, 'yyyy-MM-dd');
+        completedAppointments = completedAppointments.filter(app => {
+            return app.date >= startDateString && app.date <= endDateString;
+        });
+    }
+
     const services = getDatas<Service>(servicesSnap);
     const staff = getDatas<Staff>(staffSnap);
     const clients = getDatas<Client>(clientsSnap);

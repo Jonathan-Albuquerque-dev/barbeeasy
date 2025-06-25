@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { getFinancialOverview, FinancialOverview, getCommissionsForPeriod, getStaff } from '@/lib/data';
-import { Loader2, DollarSign, Users, HandCoins, Calculator } from 'lucide-react';
+import { Loader2, DollarSign, Users, HandCoins, Calculator, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { DateRange } from 'react-day-picker';
+import { Label } from '@/components/ui/label';
 
 type StaffMember = { id: string; name: string };
 
@@ -22,35 +23,47 @@ export default function FinancialPage() {
   // State for commission calculation
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [selectedBarberId, setSelectedBarberId] = useState<string>('');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [commissionDateRange, setCommissionDateRange] = useState<DateRange | undefined>();
   const [commissionResult, setCommissionResult] = useState<{ amount: number; barberName: string } | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
 
+  // State for page-wide financial filter
+  const [financialDateRange, setFinancialDateRange] = useState<DateRange | undefined>();
+
   useEffect(() => {
-    async function fetchData() {
+    // Fetch staff list only once, as it's not dependent on the date filter
+    async function fetchStaffList() {
+      if (user?.uid) {
+        const staffList = await getStaff(user.uid);
+        setStaff(staffList.map(s => ({ id: s.id, name: s.name })));
+      }
+    }
+    fetchStaffList();
+  }, [user]);
+
+  useEffect(() => {
+    // Fetch financial data whenever the user or the date range changes
+    async function fetchFinancialData() {
       if (user?.uid) {
         setLoading(true);
-        const [overview, staffList] = await Promise.all([
-            getFinancialOverview(user.uid),
-            getStaff(user.uid)
-        ]);
+        const validRange = financialDateRange?.from && financialDateRange.to ? financialDateRange : undefined;
+        const overview = await getFinancialOverview(user.uid, validRange);
         setData(overview);
-        setStaff(staffList.map(s => ({ id: s.id, name: s.name })));
         setLoading(false);
       }
     }
-    fetchData();
-  }, [user]);
+    fetchFinancialData();
+  }, [user, financialDateRange]);
+
 
   const handleCalculateCommission = async () => {
-    if (!user?.uid || !selectedBarberId || !dateRange?.from || !dateRange?.to) {
-      // Basic validation feedback can be added here
+    if (!user?.uid || !selectedBarberId || !commissionDateRange?.from || !commissionDateRange?.to) {
       return;
     }
     setIsCalculating(true);
     setCommissionResult(null);
     try {
-      const result = await getCommissionsForPeriod(user.uid, selectedBarberId, dateRange.from, dateRange.to);
+      const result = await getCommissionsForPeriod(user.uid, selectedBarberId, commissionDateRange.from, commissionDateRange.to);
       const selectedBarber = staff.find(s => s.id === selectedBarberId);
       setCommissionResult({
           amount: result.totalCommission,
@@ -58,7 +71,6 @@ export default function FinancialPage() {
       });
     } catch (error) {
       console.error("Error calculating commission:", error);
-      // Add user-facing error feedback here
     } finally {
       setIsCalculating(false);
     }
@@ -73,11 +85,23 @@ export default function FinancialPage() {
     );
   }
 
+  const filterIsActive = financialDateRange?.from && financialDateRange?.to;
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Visão Financeira</h1>
-        <p className="text-muted-foreground">Analise a receita e o desempenho da sua barbearia.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight">Visão Financeira</h1>
+            <p className="text-muted-foreground">Analise a receita e o desempenho da sua barbearia.</p>
+        </div>
+        <div className="flex items-center gap-2">
+            <DateRangePicker date={financialDateRange} onDateChange={setFinancialDateRange} />
+            {filterIsActive && (
+                <Button variant="ghost" size="icon" onClick={() => setFinancialDateRange(undefined)} aria-label="Limpar filtro">
+                    <X className="h-4 w-4" />
+                </Button>
+            )}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -124,7 +148,7 @@ export default function FinancialPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
              <div className="space-y-2">
-                <label className="text-sm font-medium">Barbeiro</label>
+                <Label className="text-sm font-medium">Barbeiro</Label>
                 <Select value={selectedBarberId} onValueChange={setSelectedBarberId}>
                     <SelectTrigger>
                         <SelectValue placeholder="Selecione um barbeiro" />
@@ -135,10 +159,10 @@ export default function FinancialPage() {
                 </Select>
             </div>
             <div className="space-y-2">
-                <label className="text-sm font-medium">Período</label>
-                <DateRangePicker date={dateRange} onDateChange={setDateRange} className="w-full" />
+                <Label className="text-sm font-medium">Período</Label>
+                <DateRangePicker date={commissionDateRange} onDateChange={setCommissionDateRange} className="w-full" />
             </div>
-            <Button onClick={handleCalculateCommission} disabled={isCalculating || !selectedBarberId || !dateRange?.from}>
+            <Button onClick={handleCalculateCommission} disabled={isCalculating || !selectedBarberId || !commissionDateRange?.from}>
               {isCalculating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Calcular'}
             </Button>
           </div>
