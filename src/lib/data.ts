@@ -34,6 +34,7 @@ type Client = {
     preferredBarber: string;
     notes: string;
   };
+  createdAt?: any; // Firestore Timestamp
 };
 
 type Staff = {
@@ -210,9 +211,10 @@ async function populateAppointments(userId: string, appointments: AppointmentDoc
 
 export async function getTodaysAppointments(userId: string) {
   try {
+    const todayString = new Date().toISOString().split('T')[0];
     const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
-    // Em um app real, você filtraria pela data de hoje usando um Timestamp.
-    const appointmentSnapshot = await getDocs(appointmentsCol);
+    const q = query(appointmentsCol, where("date", "==", todayString));
+    const appointmentSnapshot = await getDocs(q);
     const appointments = getDatas<AppointmentDocument>(appointmentSnapshot);
     return await populateAppointments(userId, appointments);
   } catch (error) {
@@ -248,15 +250,68 @@ export async function addAppointment(userId: string, appointmentData: Omit<Appoi
     }
 }
 
+export async function getDashboardStats(userId: string) {
+    try {
+        const servicesCol = collection(db, getCollectionPath(userId, 'services'));
+        const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
+        
+        const todayString = new Date().toISOString().split('T')[0];
+        const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
+        const appointmentsQuery = query(appointmentsCol, where("date", "==", todayString));
 
-// NOTA: Estatísticas de painel geralmente requerem agregações, que são melhor
-// tratadas com Cloud Functions. Para simplicidade, manteremos esta função mockada.
-export async function getDashboardStats() {
-  return {
-    todaysRevenue: 85.00,
-    todaysAppointments: 5,
-    pendingAppointments: 1,
-    newClients: 3,
-    averageDuration: 48,
-  }
+        const [servicesSnapshot, clientsSnapshot, appointmentsSnapshot] = await Promise.all([
+            getDocs(servicesCol),
+            getDocs(clientsCol),
+            getDocs(appointmentsQuery)
+        ]);
+        
+        const services = getDatas<Service>(servicesSnapshot);
+        const clients = getDatas<Client>(clientsSnapshot);
+        const todayAppointments = getDatas<AppointmentDocument>(appointmentsSnapshot);
+
+        const servicePriceMap = new Map(services.map(s => [s.name, s.price]));
+        const serviceDurationMap = new Map(services.map(s => [s.name, s.duration]));
+        
+        const todaysRevenue = todayAppointments
+            .filter(a => a.status === 'Concluído')
+            .reduce((sum, app) => sum + (servicePriceMap.get(app.service) || 0), 0);
+
+        const todaysAppointmentsCount = todayAppointments.length;
+
+        const pendingAppointments = todayAppointments.filter(a => a.status === 'Pendente').length;
+
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        
+        const newClients = clients.filter(c => {
+            if (!c.createdAt) return false;
+            const createdAtDate = c.createdAt.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
+            return createdAtDate > oneMonthAgo;
+        }).length;
+
+        const totalDuration = todayAppointments
+            .reduce((sum, app) => sum + (serviceDurationMap.get(app.service) || 0), 0);
+        
+        const averageDuration = todaysAppointmentsCount > 0 
+            ? Math.round(totalDuration / todaysAppointmentsCount) 
+            : 0;
+
+        return {
+            todaysRevenue,
+            todaysAppointments: todaysAppointmentsCount,
+            pendingAppointments,
+            newClients,
+            averageDuration,
+        };
+
+    } catch (error) {
+        console.error("Erro ao buscar estatísticas do painel:", error);
+        return {
+            todaysRevenue: 0,
+            todaysAppointments: 0,
+            pendingAppointments: 0,
+            newClients: 0,
+            averageDuration: 0,
+        };
+    }
 }

@@ -66,7 +66,8 @@ export function AddClientDialog({ onClientAdded, children }: AddClientDialogProp
             preferredServices: [],
             preferredBarber: 'Nenhum',
             notes: 'Nenhuma observação.'
-        }
+        },
+        createdAt: new Date(),
       };
 
       await addClient(user.uid, clientData);

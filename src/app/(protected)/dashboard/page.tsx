@@ -23,7 +23,7 @@ export default function DashboardPage() {
       if (user?.uid) {
         setLoading(true);
         const [fetchedStats, fetchedAppointments] = await Promise.all([
-          getDashboardStats(), // Note: This is still mocked
+          getDashboardStats(user.uid),
           getTodaysAppointments(user.uid)
         ]);
         setStats(fetchedStats);
@@ -59,9 +59,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">R${stats.todaysRevenue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              +20.1% em relação ao mês passado
-            </p>
           </CardContent>
         </Card>
         <Card>
@@ -80,14 +77,11 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Novos Clientes</CardTitle>
+            <CardTitle className="text-sm font-medium">Novos Clientes (Mês)</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">+{stats.newClients}</div>
-            <p className="text-xs text-muted-foreground">
-              +180.1% em relação ao mês passado
-            </p>
           </CardContent>
         </Card>
         <Card>
@@ -97,9 +91,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.averageDuration} min</div>
-            <p className="text-xs text-muted-foreground">
-              -5% em relação a ontem
-            </p>
           </CardContent>
         </Card>
       </div>
