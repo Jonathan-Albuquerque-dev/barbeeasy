@@ -151,13 +151,7 @@ export default function DashboardPage() {
                 return (
                 <TableRow key={appointment.id}>
                   <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={appointment.client.avatarUrl} alt={appointment.client.name} data-ai-hint="person face" />
-                        <AvatarFallback>{appointment.client.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="font-medium">{appointment.client.name}</div>
-                    </div>
+                    <div className="font-medium">{appointment.client.name}</div>
                   </TableCell>
                   <TableCell>{appointment.service}</TableCell>
                   <TableCell>{appointment.barber.name}</TableCell>
