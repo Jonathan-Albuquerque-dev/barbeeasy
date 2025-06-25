@@ -150,14 +150,24 @@ export async function getSubscriptions(): Promise<Subscription[]> {
 async function populateAppointments(appointments: AppointmentDocument[]) {
     return Promise.all(
         appointments.map(async (app) => {
-            const clientSnap = await getDoc(doc(db, 'clients', app.clientId));
-            const barberSnap = await getDoc(doc(db, 'staff', app.barberId));
+            try {
+                const clientSnap = await getDoc(doc(db, 'clients', app.clientId));
+                const barberSnap = await getDoc(doc(db, 'staff', app.barberId));
 
-            return {
-                ...app,
-                client: getData<{id: string, name: string, avatarUrl: string}>(clientSnap) || { name: 'Cliente não encontrado', avatarUrl: ''},
-                barber: getData<{id: string, name: string}>(barberSnap) || { name: 'Barbeiro não encontrado'},
-            };
+                return {
+                    ...app,
+                    client: getData<{id: string, name: string, avatarUrl: string}>(clientSnap) || { id: 'unknown', name: 'Cliente não encontrado', avatarUrl: ''},
+                    barber: getData<{id: string, name: string}>(barberSnap) || { id: 'unknown', name: 'Barbeiro não encontrado'},
+                };
+            } catch (error) {
+                console.error(`Erro ao popular dados para o agendamento ${app.id}:`, error);
+                // Retorna um objeto de fallback para não quebrar a UI
+                return {
+                    ...app,
+                    client: { id: app.clientId, name: 'Erro de permissão', avatarUrl: '' },
+                    barber: { id: app.barberId, name: 'Erro' },
+                };
+            }
         })
     );
 }
@@ -184,8 +194,8 @@ export async function getAppointmentsForDate(date: Date) {
     const appointmentSnapshot = await getDocs(q);
     const appointments = getDatas<AppointmentDocument>(appointmentSnapshot);
     
-    // Se não houver dados no DB, retorna dados de exemplo para fins de demonstração.
-    if (appointments.length === 0) {
+    // Se não houver dados no DB, retorna dados de exemplo para fins de demonstração em desenvolvimento.
+    if (appointments.length === 0 && process.env.NODE_ENV === 'development') {
       return [
         { id: 'mock-1', client: {id: '1', name: 'João da Silva (Exemplo)', avatarUrl: 'https://placehold.co/100x100.png' }, barber: { id: '1', name: 'Sam Smith' }, service: 'Corte Clássico', date: date.toDateString(), time: '09:00', status: 'Confirmado' },
         { id: 'mock-2', client: {id: '2', name: 'Miguel Johnson (Exemplo)', avatarUrl: 'https://placehold.co/100x100.png' }, barber: { id: '3', name: 'Alex Chen' }, service: 'Corte Degradê Moderno', date: date.toDateString(), time: '09:30', status: 'Confirmado' },
