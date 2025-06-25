@@ -70,7 +70,7 @@ export default function SubscriptionsPage() {
                                 {service.serviceName}
                             </span>
                              <span className="font-mono text-right bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">
-                                -R${service.discount.toFixed(2)}
+                                {service.discount}% OFF
                             </span>
                         </li>
                         ))}

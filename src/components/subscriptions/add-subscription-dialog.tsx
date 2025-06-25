@@ -19,7 +19,7 @@ import { Separator } from '../ui/separator';
 
 const includedServiceSchema = z.object({
   serviceId: z.string().min(1, 'Selecione um serviço.'),
-  discount: z.coerce.number().min(0, 'O desconto deve ser um número positivo.'),
+  discount: z.coerce.number().min(0, 'O desconto não pode ser negativo.').max(100, 'O desconto não pode ser maior que 100.'),
 });
 
 const subscriptionSchema = z.object({
@@ -173,9 +173,9 @@ export function AddSubscriptionDialog({ onSubscriptionAdded, children }: AddSubs
                             name={`includedServices.${index}.discount`}
                             render={({ field }) => (
                                 <FormItem className="w-32">
-                                <FormLabel className="sr-only">Desconto</FormLabel>
+                                <FormLabel className="sr-only">Desconto (%)</FormLabel>
                                 <FormControl>
-                                    <Input type="number" step="0.01" placeholder="Desconto (R$)" {...field} />
+                                    <Input type="number" step="1" placeholder="Desconto (%)" {...field} />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>
@@ -196,7 +196,7 @@ export function AddSubscriptionDialog({ onSubscriptionAdded, children }: AddSubs
                     Adicionar Serviço ao Plano
                 </Button>
                  {form.formState.errors.includedServices && (
-                    <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.includedServices.message}</p>
+                    <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.includedServices?.message}</p>
                  )}
             </div>
 
