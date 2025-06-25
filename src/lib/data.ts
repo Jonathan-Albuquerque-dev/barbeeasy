@@ -1,5 +1,5 @@
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
 // Helper para construir o caminho da coleção para um usuário específico
@@ -139,6 +139,16 @@ export async function getServices(userId: string): Promise<Service[]> {
     console.error("Erro ao buscar serviços:", error);
     return [];
   }
+}
+
+export async function addService(userId: string, serviceData: Omit<Service, 'id'>) {
+    try {
+        const servicesCol = collection(db, getCollectionPath(userId, 'services'));
+        await addDoc(servicesCol, serviceData);
+    } catch (error) {
+        console.error("Erro ao adicionar serviço:", error);
+        throw new Error("Não foi possível adicionar o serviço.");
+    }
 }
 
 // Assinaturas são globais para o aplicativo, não por barbearia.

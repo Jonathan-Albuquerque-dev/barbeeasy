@@ -3,9 +3,10 @@
 import { getServices } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, DollarSign, Tag, Loader2 } from "lucide-react";
+import { Clock, DollarSign, Tag, Loader2, PlusCircle } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { AddServiceDialog } from "@/components/services/add-service-dialog";
 
 type Service = Awaited<ReturnType<typeof getServices>>[0];
 
@@ -14,17 +15,21 @@ export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchServices() {
-      if (user?.uid) {
-        setLoading(true);
-        const fetchedServices = await getServices(user.uid);
-        setServices(fetchedServices);
-        setLoading(false);
-      }
+  const fetchServices = useCallback(async () => {
+    if (user?.uid) {
+      // Don't set loading to true here to avoid full-page loader on re-fetch
+      const fetchedServices = await getServices(user.uid);
+      setServices(fetchedServices);
+      setLoading(false);
     }
-    fetchServices();
   }, [user]);
+
+  useEffect(() => {
+    if (user?.uid) {
+        setLoading(true);
+        fetchServices();
+    }
+  }, [user, fetchServices]);
 
   if (loading) {
     return (
@@ -41,7 +46,12 @@ export default function ServicesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Catálogo de Serviços</h1>
           <p className="text-muted-foreground">Navegue por todos os serviços e tratamentos disponíveis.</p>
         </div>
-        <Button>Adicionar Serviço</Button>
+        <AddServiceDialog onServiceAdded={fetchServices}>
+            <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar Serviço
+            </Button>
+        </AddServiceDialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
