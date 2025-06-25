@@ -112,6 +112,7 @@ export type FinancialOverview = {
   totalCommissions: number;
   revenueByService: { service: string; revenue: number }[];
   revenueByBarber: { barberName: string; revenue: number; commission: number }[];
+  revenueByPaymentMethod: { method: string; revenue: number; count: number }[];
   recentTransactions: {
     id: string;
     date: string;
@@ -512,6 +513,8 @@ export async function getFinancialOverview(
     let totalRevenue = 0;
     const revenueByService: { [key: string]: number } = {};
     const revenueByBarber: { [key: string]: { revenue: number; commission: number } } = {};
+    const revenueByPaymentMethod: { [key: string]: { revenue: number, count: number } } = {};
+
 
     const recentTransactions = completedAppointments
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -537,6 +540,15 @@ export async function getFinancialOverview(
             revenueByBarber[staffInfo.name].commission += value * (staffInfo.commissionRate || 0);
         }
 
+        // Revenue by Payment Method
+        const paymentMethod = app.paymentMethod || 'Não especificado';
+        if (!revenueByPaymentMethod[paymentMethod]) {
+            revenueByPaymentMethod[paymentMethod] = { revenue: 0, count: 0 };
+        }
+        revenueByPaymentMethod[paymentMethod].revenue += value;
+        revenueByPaymentMethod[paymentMethod].count += 1;
+
+
         return {
           id: app.id,
           date: app.date,
@@ -559,6 +571,7 @@ export async function getFinancialOverview(
       totalCommissions,
       revenueByService: Object.entries(revenueByService).map(([service, revenue]) => ({ service, revenue })),
       revenueByBarber: Object.entries(revenueByBarber).map(([barberName, data]) => ({ barberName, ...data })),
+      revenueByPaymentMethod: Object.entries(revenueByPaymentMethod).map(([method, data]) => ({ method, ...data })),
       recentTransactions: recentTransactions.slice(0, 10), // Limit to 10 recent
     };
 
@@ -571,6 +584,7 @@ export async function getFinancialOverview(
       totalCommissions: 0,
       revenueByService: [],
       revenueByBarber: [],
+      revenueByPaymentMethod: [],
       recentTransactions: [],
     };
   }

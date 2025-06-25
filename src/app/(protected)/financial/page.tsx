@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { getFinancialOverview, FinancialOverview, getCommissionsForPeriod, getStaff } from '@/lib/data';
-import { Loader2, DollarSign, Users, HandCoins, Calculator, X } from 'lucide-react';
+import { Loader2, DollarSign, Users, HandCoins, Calculator, X, CreditCard } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -180,25 +180,25 @@ export default function FinancialPage() {
           )}
         </CardContent>
       </Card>
-
-      <div className="grid gap-8 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Receita por Serviço</CardTitle>
-          </CardHeader>
-          <CardContent>
-             <ResponsiveContainer width="100%" height={300}>
-              <RechartsBarChart data={data.revenueByService} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Receita por Serviço</CardTitle>
+        </CardHeader>
+        <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+            <RechartsBarChart data={data.revenueByService} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="service" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" height={60} interval={0} />
                 <YAxis tickFormatter={(value) => `R$${value}`} />
                 <Tooltip formatter={(value: number) => [`R$${value.toFixed(2)}`, 'Receita']} />
                 <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              </RechartsBarChart>
+            </RechartsBarChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        </CardContent>
+      </Card>
 
+      <div className="grid gap-8 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Desempenho da Equipe</CardTitle>
@@ -218,6 +218,35 @@ export default function FinancialPage() {
                     <TableCell className="font-medium">{barber.barberName}</TableCell>
                     <TableCell className="text-right">R${barber.revenue.toFixed(2)}</TableCell>
                     <TableCell className="text-right">R${barber.commission.toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Receita por Forma de Pagamento
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Forma de Pagamento</TableHead>
+                  <TableHead>Transações</TableHead>
+                  <TableHead className="text-right">Receita Gerada</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.revenueByPaymentMethod.map(item => (
+                  <TableRow key={item.method}>
+                    <TableCell className="font-medium">{item.method}</TableCell>
+                    <TableCell>{item.count}</TableCell>
+                    <TableCell className="text-right">R${item.revenue.toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
