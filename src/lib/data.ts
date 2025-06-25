@@ -1,6 +1,6 @@
 
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, FieldValue, arrayUnion } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment } from 'firebase/firestore';
 import { db } from './firebase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -481,7 +481,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                         throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${currentPoints}`);
                     }
                     
-                    transaction.update(clientDocRef, { loyaltyPoints: FieldValue.increment(-pointsCost) });
+                    transaction.update(clientDocRef, { loyaltyPoints: increment(-pointsCost) });
 
                 } else if (!isCourtesy) {
                     const serviceRule = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
@@ -489,7 +489,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                     const pointsToAdd = Number(serviceRule?.pointsGenerated ?? loyaltySettings?.pointsPerService ?? 1);
 
                     if (pointsToAdd > 0) {
-                        transaction.update(clientDocRef, { loyaltyPoints: FieldValue.increment(pointsToAdd) });
+                        transaction.update(clientDocRef, { loyaltyPoints: increment(pointsToAdd) });
                     }
                 }
             }
