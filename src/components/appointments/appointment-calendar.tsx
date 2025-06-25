@@ -1,16 +1,34 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
-import { getAppointmentsForDate, getTodaysAppointments } from '@/lib/data';
+import { getAppointmentsForDate } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '../ui/badge';
 import { useAuth } from '@/contexts/auth-context';
+import { AddAppointmentDialog } from './add-appointment-dialog';
 
-type Appointment = Awaited<ReturnType<typeof getTodaysAppointments>>[0];
+type Appointment = {
+  id: string;
+  clientId: string;
+  barberId: string;
+  service: string;
+  date: string;
+  time: string;
+  status: 'Concluído' | 'Confirmado' | 'Pendente';
+  client: {
+    id: string;
+    name: string;
+    avatarUrl: string;
+  };
+  barber: {
+    id: string;
+    name: string;
+  };
+};
 
 export function AppointmentCalendar() {
   const { user } = useAuth();
@@ -18,18 +36,18 @@ export function AppointmentCalendar() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      if (!user?.uid || !date) return;
-      
-      setLoading(true);
-      const fetchedAppointments = await getAppointmentsForDate(user.uid, date);
-      setAppointments(fetchedAppointments as Appointment[]);
-      setLoading(false);
-    };
-
-    fetchAppointments();
+  const fetchAppointments = useCallback(async () => {
+    if (!user?.uid || !date) return;
+    
+    setLoading(true);
+    const fetchedAppointments = await getAppointmentsForDate(user.uid, date);
+    setAppointments(fetchedAppointments as Appointment[]);
+    setLoading(false);
   }, [date, user]);
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
 
   return (
     <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -59,10 +77,12 @@ export function AppointmentCalendar() {
                   {loading ? 'Carregando agendamentos...' : `${appointments.length} agendamentos marcados.`}
                 </CardDescription>
               </div>
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Agendar
-              </Button>
+              <AddAppointmentDialog onAppointmentAdded={fetchAppointments} initialDate={date}>
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Agendar
+                </Button>
+              </AddAppointmentDialog>
             </div>
           </CardHeader>
           <CardContent>

@@ -1,4 +1,4 @@
-import { AppointmentCalendar } from "@/components/clients/appointment-calendar";
+import { AppointmentCalendar } from "@/components/appointments/appointment-calendar";
 
 export default function AppointmentsPage() {
   return (

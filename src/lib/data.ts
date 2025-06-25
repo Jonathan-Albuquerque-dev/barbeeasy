@@ -238,6 +238,17 @@ export async function getAppointmentsForDate(userId: string, date: Date) {
   }
 }
 
+export async function addAppointment(userId: string, appointmentData: Omit<AppointmentDocument, 'id'>) {
+    try {
+        const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
+        await addDoc(appointmentsCol, appointmentData);
+    } catch (error) {
+        console.error("Erro ao adicionar agendamento:", error);
+        throw new Error("Não foi possível adicionar o agendamento.");
+    }
+}
+
+
 // NOTA: Estatísticas de painel geralmente requerem agregações, que são melhor
 // tratadas com Cloud Functions. Para simplicidade, manteremos esta função mockada.
 export async function getDashboardStats() {
