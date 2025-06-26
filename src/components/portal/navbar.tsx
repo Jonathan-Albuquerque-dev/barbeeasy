@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { Scissors, LayoutDashboard, LogOut, User as UserIcon, Calendar, Star, Menu } from 'lucide-react';
 import { app } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
@@ -111,6 +111,7 @@ export function PortalNavbar() {
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="w-64">
+                         <SheetTitle className="sr-only">Menu Principal</SheetTitle>
                          <Link href={rootLink} className="mr-6 flex items-center space-x-2 mb-6" onClick={() => setMobileMenuOpen(false)}>
                             <Scissors className="h-6 w-6 text-primary" />
                             <span className="font-bold">BarberEasy</span>
