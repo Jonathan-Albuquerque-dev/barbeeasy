@@ -4,7 +4,7 @@ import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, Docu
 import { db } from './firebase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile, User } from 'firebase/auth';
 
 // Helper para construir o caminho da coleção para um usuário específico
 const getCollectionPath = (userId: string, collectionName: string) => {
@@ -1294,6 +1294,27 @@ export async function createStandaloneSale(userId: string, saleData: {
 
 // --- New Functions for Customer Portal ---
 
+export async function updateClientProfile(barbershopId: string, clientId: string, authUser: User, data: { name: string; phone: string; avatarUrl: string }) {
+    try {
+        // Update Firestore
+        const clientDocRef = doc(db, getCollectionPath(barbershopId, 'clients'), clientId);
+        await updateDoc(clientDocRef, {
+            name: data.name,
+            phone: data.phone,
+            avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
+        });
+
+        // Update Auth Profile
+        await updateAuthProfile(authUser, {
+            displayName: data.name,
+            photoURL: data.avatarUrl,
+        });
+    } catch (error) {
+        console.error("Erro ao atualizar perfil do cliente:", error);
+        throw new Error("Não foi possível atualizar o perfil.");
+    }
+}
+
 export async function createClientAccount(barbershopId: string, data: { name: string; email: string; phone: string; password: any; }) {
     const auth = getAuth();
     try {
@@ -1384,7 +1405,7 @@ export async function getAllAppointmentsForClient(userId: string, authUid: strin
         allAppointments.sort((a, b) => {
             const dateA = new Date(`${a.date}T${a.time}`);
             const dateB = new Date(`${b.date}T${b.time}`);
-            return dateB.getTime() - dateA.getTime();
+            return dateB.getTime() - new Date(a.date).getTime();
         });
         
         return allAppointments;
