@@ -61,7 +61,7 @@ export default function ProductsPage() {
           <Card key={product.id} className="flex flex-col overflow-hidden group">
             <div className="relative aspect-video w-full">
               <Image
-                src={`https://placehold.co/600x400.png`}
+                src={product.imageUrl || `https://placehold.co/600x400.png`}
                 alt={product.name}
                 fill
                 className="object-cover transition-transform duration-300 group-hover:scale-105"

@@ -18,6 +18,7 @@ import { Loader2 } from 'lucide-react';
 const productSchema = z.object({
   name: z.string().min(2, { message: 'O nome do produto é obrigatório.' }),
   description: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
+  imageUrl: z.string().url({ message: 'Insira uma URL de imagem válida.' }).or(z.literal('')).optional(),
   purchasePrice: z.coerce.number().positive({ message: 'O preço de compra deve ser um número positivo.' }),
   price: z.coerce.number().positive({ message: 'O preço de venda deve ser um número positivo.' }),
   stock: z.coerce.number().int().min(0, { message: 'O estoque não pode ser negativo.' }),
@@ -41,6 +42,7 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
     defaultValues: {
       name: '',
       description: '',
+      imageUrl: '',
       purchasePrice: undefined,
       price: undefined,
       stock: undefined,
@@ -110,6 +112,19 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Descreva o produto..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL da Imagem (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input type="url" placeholder="https://exemplo.com/imagem.png" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
