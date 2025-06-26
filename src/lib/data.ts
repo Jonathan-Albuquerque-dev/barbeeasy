@@ -891,14 +891,18 @@ export async function getFinancialOverview(
 
 export async function getCommissionsForPeriod(userId: string, barberId: string, startDate: Date, endDate: Date) {
     try {
-        const [services, staffMember] = await Promise.all([
+        const [services, staffMember, clientsSnap] = await Promise.all([
             getServices(userId),
-            getStaffById(userId, barberId)
+            getStaffById(userId, barberId),
+            getDocs(collection(db, getCollectionPath(userId, 'clients')))
         ]);
 
         if (!staffMember) {
             throw new Error("Funcionário não encontrado.");
         }
+
+        const allClients = getDatas<Client>(clientsSnap);
+        const clientMap = new Map(allClients.map(c => [c.id, c.name]));
 
         const servicePriceMap = new Map(services.map(s => [s.name, s.price]));
         const serviceCommissionRate = staffMember.serviceCommissionRate;
@@ -923,16 +927,42 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
 
         let totalServiceCommission = 0;
         let totalProductCommission = 0;
+        const detailedServices: { date: string; clientName: string; serviceName: string; servicePrice: number; commission: number; }[] = [];
+        const detailedProducts: { date: string; clientName: string; productName: string; quantity: number; productPrice: number; subtotal: number, commission: number; }[] = [];
 
         appointmentsInPeriod.forEach((app) => {
+            const clientName = clientMap.get(app.clientId) || 'Cliente de Balcão';
+            
             const isSubscription = app.paymentMethod === 'Assinante';
             if (!isSubscription) {
                 const servicePrice = servicePriceMap.get(app.service) || 0;
-                totalServiceCommission += (servicePrice * serviceCommissionRate);
+                const commission = servicePrice * serviceCommissionRate;
+                totalServiceCommission += commission;
+                detailedServices.push({
+                    date: format(new Date(`${app.date}T12:00:00Z`), 'dd/MM/yyyy', { locale: ptBR }),
+                    clientName,
+                    serviceName: app.service,
+                    servicePrice,
+                    commission
+                });
             }
 
-            const productsValue = (app.soldProducts || []).reduce((sum, p) => sum + (p.price * p.quantity), 0);
-            totalProductCommission += (productsValue * productCommissionRate);
+            if (app.soldProducts) {
+                app.soldProducts.forEach(p => {
+                    const subtotal = p.price * p.quantity;
+                    const commission = subtotal * productCommissionRate;
+                    totalProductCommission += commission;
+                    detailedProducts.push({
+                        date: format(new Date(`${app.date}T12:00:00Z`), 'dd/MM/yyyy', { locale: ptBR }),
+                        clientName,
+                        productName: p.name,
+                        quantity: p.quantity,
+                        productPrice: p.price,
+                        subtotal,
+                        commission
+                    });
+                });
+            }
         });
 
         return {
@@ -940,6 +970,8 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
             totalProductCommission,
             totalCommission: totalServiceCommission + totalProductCommission,
             appointmentCount: appointmentsInPeriod.length,
+            services: detailedServices,
+            products: detailedProducts,
         };
 
     } catch (error) {

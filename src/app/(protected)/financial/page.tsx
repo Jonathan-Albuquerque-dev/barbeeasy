@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 
 
 type StaffMember = { id: string; name: string };
+type CommissionResult = (Awaited<ReturnType<typeof getCommissionsForPeriod>>) & { barberName: string; };
 
 export default function FinancialPage() {
   const { user } = useAuth();
@@ -29,14 +30,10 @@ export default function FinancialPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [selectedBarberId, setSelectedBarberId] = useState<string>('');
   const [commissionDateRange, setCommissionDateRange] = useState<DateRange | undefined>();
-  const [commissionResult, setCommissionResult] = useState<{
-    totalCommission: number;
-    totalServiceCommission: number;
-    totalProductCommission: number;
-    barberName: string;
-  } | null>(null);
+  const [commissionResult, setCommissionResult] = useState<CommissionResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isGeneratingCommissionReport, setIsGeneratingCommissionReport] = useState(false);
 
   // State for page-wide financial filter
   const [financialDateRange, setFinancialDateRange] = useState<DateRange | undefined>();
@@ -81,9 +78,7 @@ export default function FinancialPage() {
       const result = await getCommissionsForPeriod(user.uid, selectedBarberId, commissionDateRange.from, commissionDateRange.to);
       const selectedBarber = staff.find(s => s.id === selectedBarberId);
       setCommissionResult({
-          totalCommission: result.totalCommission,
-          totalServiceCommission: result.totalServiceCommission,
-          totalProductCommission: result.totalProductCommission,
+          ...result,
           barberName: selectedBarber?.name || 'Barbeiro'
       });
     } catch (error) {
@@ -181,6 +176,77 @@ export default function FinancialPage() {
     setIsGeneratingReport(false);
   }
 
+  const handleGenerateCommissionReport = () => {
+    if (!commissionResult || !commissionDateRange?.from || !commissionDateRange?.to) return;
+
+    setIsGeneratingCommissionReport(true);
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(18);
+    doc.text('Relatório de Comissão', 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    const periodText = `Período: ${format(commissionDateRange.from, 'dd/MM/yyyy')} a ${format(commissionDateRange.to, 'dd/MM/yyyy')}`;
+    doc.text(`Barbeiro: ${commissionResult.barberName}`, 14, 29);
+    doc.text(periodText, 14, 36);
+
+    // Summary
+    let startY = 46;
+    doc.setFontSize(12);
+    doc.text('Resumo da Comissão', 14, startY);
+    startY += 7;
+    doc.setFontSize(10);
+    doc.text(`Comissão Total: R$ ${commissionResult.totalCommission.toFixed(2)}`, 14, startY);
+    startY += 5;
+    doc.text(`Comissão de Serviços: R$ ${commissionResult.totalServiceCommission.toFixed(2)}`, 14, startY);
+    startY += 5;
+    doc.text(`Comissão de Produtos: R$ ${commissionResult.totalProductCommission.toFixed(2)}`, 14, startY);
+
+    let lastY = startY;
+
+    // Services table
+    if (commissionResult.services.length > 0) {
+        const servicesTableData = commissionResult.services.map(s => [
+            s.date,
+            s.clientName,
+            s.serviceName,
+            `R$ ${s.servicePrice.toFixed(2)}`,
+            `R$ ${s.commission.toFixed(2)}`,
+        ]);
+
+        autoTable(doc, {
+            startY: lastY + 10,
+            head: [['Data', 'Cliente', 'Serviço', 'Valor Serviço', 'Comissão']],
+            body: servicesTableData,
+            headStyles: { fillColor: [0, 100, 35] },
+        });
+        lastY = (doc as any).lastAutoTable.finalY || lastY;
+    }
+    
+    // Products table
+    if (commissionResult.products.length > 0) {
+        const productsTableData = commissionResult.products.map(p => [
+            p.date,
+            p.clientName,
+            p.productName,
+            p.quantity.toString(),
+            `R$ ${p.subtotal.toFixed(2)}`,
+            `R$ ${p.commission.toFixed(2)}`,
+        ]);
+
+        autoTable(doc, {
+            startY: lastY + 10,
+            head: [['Data', 'Cliente', 'Produto', 'Qtd', 'Subtotal', 'Comissão']],
+            body: productsTableData,
+            headStyles: { fillColor: [0, 100, 35] },
+        });
+    }
+    
+    doc.save(`relatorio-comissao-${commissionResult.barberName.replace(/\s+/g, '-')}.pdf`);
+    setIsGeneratingCommissionReport(false);
+  }
+
   if (loading || !data) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -275,14 +341,22 @@ export default function FinancialPage() {
             </Button>
           </div>
           {commissionResult && (
-            <div className="mt-6 p-4 bg-accent/50 rounded-lg space-y-2">
-              <p className="text-lg font-semibold">
-                Comissão a pagar para {commissionResult.barberName}: 
-                <span className="text-primary ml-2">R${commissionResult.totalCommission.toFixed(2)}</span>
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Serviços: R${commissionResult.totalServiceCommission.toFixed(2)} | Produtos: R${commissionResult.totalProductCommission.toFixed(2)}
-              </p>
+             <div className="mt-6 p-4 bg-accent/50 rounded-lg space-y-4">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="text-lg font-semibold">
+                            Comissão a pagar para {commissionResult.barberName}: 
+                            <span className="text-primary ml-2">R${commissionResult.totalCommission.toFixed(2)}</span>
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            Serviços: R${commissionResult.totalServiceCommission.toFixed(2)} | Produtos: R${commissionResult.totalProductCommission.toFixed(2)}
+                        </p>
+                    </div>
+                    <Button onClick={handleGenerateCommissionReport} disabled={isGeneratingCommissionReport}>
+                        {isGeneratingCommissionReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                        Gerar Relatório
+                    </Button>
+                </div>
             </div>
           )}
         </CardContent>
