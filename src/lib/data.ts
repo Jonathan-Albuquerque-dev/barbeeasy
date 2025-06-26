@@ -1,9 +1,10 @@
 
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit } from 'firebase/firestore';
 import { db } from './firebase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile } from 'firebase/auth';
 
 // Helper para construir o caminho da coleção para um usuário específico
 const getCollectionPath = (userId: string, collectionName: string) => {
@@ -42,6 +43,7 @@ export type Client = {
   subscriptionName?: string;
   subscriptionPaymentMethod?: string;
   subscriptionStartDate?: any;
+  authUid?: string; // Link to Firebase Auth user
 };
 
 export type Staff = {
@@ -227,6 +229,22 @@ export async function getClientById(userId: string, id: string): Promise<Client 
     return undefined;
   }
 }
+
+export async function getClientByAuthId(barbershopId: string, authId: string): Promise<Client | undefined> {
+  try {
+    const clientsCol = collection(db, getCollectionPath(barbershopId, 'clients'));
+    const q = query(clientsCol, where("authUid", "==", authId), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        return getData<Client>(querySnapshot.docs[0]);
+    }
+    return undefined;
+  } catch (error) {
+    console.error(`Erro ao buscar cliente pelo authId ${authId}:`, error);
+    return undefined;
+  }
+}
+
 
 export async function getServiceHistoryForClient(userId: string, clientId: string) {
     try {
@@ -522,9 +540,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
         await runTransaction(db, async (transaction) => {
             // --- READ PHASE ---
             const appointmentSnap = await transaction.get(appointmentDocRef);
-            if (!appointmentSnap.exists()) return;
-            if (appointmentSnap.data().status === 'Concluído') {
-                console.log("Agendamento já está concluído. Nenhuma ação tomada.");
+            if (!appointmentSnap.exists() || appointmentSnap.data().status === 'Concluído') {
                 return;
             }
 
@@ -539,7 +555,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             
             if (!clientSnap.exists()) throw new Error("Cliente não encontrado na transação.");
             if (!barbershopSettingsSnap.exists()) throw new Error("Configurações da barbearia não encontradas.");
-
+            
             const clientData = clientSnap.data() as Client;
             const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
             const soldProducts = appointmentData.soldProducts || [];
@@ -557,47 +573,37 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
 
             // --- LOGIC / VALIDATION PHASE ---
             if (paymentMethod === 'Assinante') {
-                if (!subscriptionSnap || !subscriptionSnap.exists()) {
-                    throw new Error("Este cliente não é um assinante ou o plano não foi encontrado.");
-                }
+                if (!subscriptionSnap || !subscriptionSnap.exists()) throw new Error("Este cliente não é um assinante ou o plano não foi encontrado.");
                 const subscriptionData = subscriptionSnap!.data() as Subscription;
                 const serviceIsIncluded = subscriptionData.includedServices.some(s => s.serviceName === appointmentData.service);
-                if (!serviceIsIncluded) {
-                    throw new Error(`O serviço "${appointmentData.service}" não está incluso na assinatura deste cliente.`);
-                }
+                if (!serviceIsIncluded) throw new Error(`O serviço "${appointmentData.service}" não está incluso na assinatura deste cliente.`);
             }
             
             for (let i = 0; i < productSnaps.length; i++) {
                 const productSnap = productSnaps[i];
                 const soldProduct = soldProducts[i];
-                if (!productSnap.exists()) {
-                    throw new Error(`Produto "${soldProduct.name}" não foi encontrado no estoque.`);
-                }
-                const currentStock = productSnap.data().stock;
-                if (currentStock < soldProduct.quantity) {
-                    throw new Error(`Estoque insuficiente para "${soldProduct.name}". Disponível: ${currentStock}, Pedido: ${soldProduct.quantity}.`);
+                if (!productSnap.exists() || productSnap.data().stock < soldProduct.quantity) {
+                    throw new Error(`Estoque insuficiente para "${soldProduct.name}".`);
                 }
             }
             
-            // --- WRITE PHASE ---
             const loyaltySettings = barbershopSettings.loyaltyProgram;
-            const loyaltyEnabled = loyaltySettings?.enabled || false;
-            if (loyaltyEnabled) {
+            if (loyaltySettings?.enabled && paymentMethod === 'Cortesia (Pontos Fidelidade)') {
+                const rewardInfo = loyaltySettings.rewards.find(r => r.serviceName === appointmentData.service);
+                const pointsCost = Number(rewardInfo?.pointsCost || 0);
+                if (pointsCost === 0) throw new Error(`Este serviço não está configurado para resgate.`);
+                if (Number(clientData.loyaltyPoints || 0) < pointsCost) throw new Error(`Pontos insuficientes.`);
+            }
+
+            // --- WRITE PHASE ---
+            if (loyaltySettings?.enabled) {
                 if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
-                    const rewardInfo = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
+                    const rewardInfo = loyaltySettings.rewards.find(r => r.serviceName === appointmentData.service);
                     const pointsCost = Number(rewardInfo?.pointsCost || 0);
-
-                    if (pointsCost === 0) throw new Error(`Este serviço não está configurado para resgate com pontos.`);
-                    
-                    const currentPoints = Number(clientData.loyaltyPoints || 0);
-                    if (currentPoints < pointsCost) throw new Error(`Pontos insuficientes. Necessário: ${pointsCost}, Disponível: ${currentPoints}`);
-                    
                     transaction.update(clientDocRef, { loyaltyPoints: increment(-pointsCost) });
-
                 } else if (!paymentMethod?.startsWith('Cortesia') && paymentMethod !== 'Assinante') {
-                    const serviceRule = loyaltySettings?.rewards?.find(r => r.serviceName === appointmentData.service);
+                    const serviceRule = loyaltySettings.rewards.find(r => r.serviceName === appointmentData.service);
                     const pointsToAdd = Number(serviceRule?.pointsGenerated ?? loyaltySettings?.pointsPerService ?? 1);
-
                     if (pointsToAdd > 0) {
                         transaction.update(clientDocRef, { loyaltyPoints: increment(pointsToAdd) });
                     }
@@ -605,11 +611,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             }
 
             for (let i = 0; i < productSnaps.length; i++) {
-                const productSnap = productSnaps[i];
-                const soldProduct = soldProducts[i];
-                transaction.update(productSnap.ref, {
-                    stock: increment(-soldProduct.quantity)
-                });
+                transaction.update(productSnaps[i].ref, { stock: increment(-soldProducts[i].quantity) });
             }
             
             transaction.update(appointmentDocRef, {
@@ -1039,6 +1041,32 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
             }
         });
 
+        // Add standalone sales to product commissions
+        const salesCol = collection(db, getCollectionPath(userId, 'sales'));
+        const salesQuery = query(salesCol, where('barberId', '==', barberId));
+        const salesSnap = await getDocs(salesQuery);
+        let salesInPeriod = getDatas<SaleDocument>(salesSnap).filter(sale => 
+            sale.date >= startDateString && sale.date <= endDateString
+        );
+
+        salesInPeriod.forEach(sale => {
+            const clientName = clientMap.get(sale.clientId) || 'Cliente de Balcão';
+            sale.soldProducts.forEach(p => {
+                const subtotal = p.price * p.quantity;
+                const commission = subtotal * productCommissionRate;
+                totalProductCommission += commission;
+                detailedProducts.push({
+                    date: format(new Date(`${sale.date}T12:00:00Z`), 'dd/MM/yyyy', { locale: ptBR }),
+                    clientName,
+                    productName: p.name,
+                    quantity: p.quantity,
+                    productPrice: p.price,
+                    subtotal,
+                    commission
+                });
+            });
+        });
+
         return {
             totalServiceCommission,
             totalProductCommission,
@@ -1261,5 +1289,55 @@ export async function createStandaloneSale(userId: string, saleData: {
     } catch (error) {
         console.error("Erro na transação de venda avulsa:", error);
         throw error; // Re-throw to be caught in the UI
+    }
+}
+
+// --- New Functions for Customer Portal ---
+
+export async function getTheBarbershopId(): Promise<string> {
+    const q = query(collection(db, "barbershops"), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].id;
+    }
+    throw new Error("Nenhuma barbearia foi encontrada no sistema.");
+}
+
+export async function createClientAccount(barbershopId: string, data: { name: string; email: string; phone: string; password: any; }) {
+    const auth = getAuth();
+    try {
+        // 1. Create user in Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+        const user = userCredential.user;
+
+        // Add display name to auth user
+        await updateAuthProfile(user, { displayName: data.name });
+
+        // 2. Create the client document in the barbershop's subcollection
+        const clientData = {
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            address: '',
+            loyaltyStatus: 'Bronze' as const,
+            loyaltyPoints: 0,
+            avatarUrl: `https://placehold.co/400x400.png`,
+            preferences: {
+                preferredServices: [],
+                preferredBarber: 'Nenhum',
+                notes: ''
+            },
+            createdAt: new Date(),
+            authUid: user.uid // Link to the auth user
+        };
+
+        const clientsCol = collection(db, getCollectionPath(barbershopId, 'clients'));
+        // We don't know the ID beforehand, so we use addDoc
+        await addDoc(clientsCol, clientData);
+
+        return user;
+    } catch (error) {
+        console.error("Erro ao criar conta de cliente:", error);
+        throw error;
     }
 }

@@ -11,16 +11,22 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isBarberOwner } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
+    if (!loading) {
+        if (!user) {
+            router.replace('/login');
+        } else if (!isBarberOwner) {
+            // If a logged-in user is not an owner, redirect them away from admin panel
+            router.replace('/portal/agendar');
+        }
     }
-  }, [user, loading, router]);
+  }, [user, loading, isBarberOwner, router]);
 
-  if (loading || !user) {
+  // Show loader while checking auth or if the user is not an owner yet
+  if (loading || !user || !isBarberOwner) {
     return (
         <div className="flex h-screen items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
