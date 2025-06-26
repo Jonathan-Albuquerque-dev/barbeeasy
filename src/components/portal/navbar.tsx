@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Scissors, LayoutDashboard, LogOut, User as UserIcon, Calendar, Star, Menu } from 'lucide-react';
 import { app } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
