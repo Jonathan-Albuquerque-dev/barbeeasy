@@ -1,7 +1,7 @@
 
 'use client';
 
-import { getStaffById } from '@/lib/data';
+import { getStaffById, getStaffPerformanceHistory } from '@/lib/data';
 import { useParams, notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,28 +13,46 @@ import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState } from 'react';
 import type { Staff } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+type PerformanceHistory = Awaited<ReturnType<typeof getStaffPerformanceHistory>>;
 
 export default function StaffDetailPage() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const [member, setMember] = useState<Staff | null>(null);
+  const [history, setHistory] = useState<PerformanceHistory | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchStaffMember() {
+    async function fetchStaffData() {
       if (user?.uid && params?.id) {
         setLoading(true);
         const staffId = Array.isArray(params.id) ? params.id[0] : params.id;
-        const fetchedMember = await getStaffById(user.uid, staffId);
+        
+        const [fetchedMember, fetchedHistory] = await Promise.all([
+            getStaffById(user.uid, staffId),
+            getStaffPerformanceHistory(user.uid, staffId)
+        ]);
+
         if (!fetchedMember) {
           notFound();
         }
         setMember(fetchedMember);
+        setHistory(fetchedHistory);
         setLoading(false);
       }
     }
-    fetchStaffMember();
+    fetchStaffData();
   }, [user, params]);
+
+  const renderValue = (value: string | number) => {
+    if (typeof value === 'number') {
+      return `R$${value.toFixed(2)}`;
+    }
+    return <Badge variant="secondary">{value}</Badge>;
+  };
 
   if (loading || !member) {
     return (
@@ -49,10 +67,10 @@ export default function StaffDetailPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{member.name}</h1>
-          <p className="text-muted-foreground">Perfil do Funcionário</p>
+          <p className="text-muted-foreground">Perfil e Desempenho do Funcionário</p>
         </div>
         <Button asChild variant="outline">
-          <Link href="/staff">Voltar para Todos os Funcionários</Link>
+          <Link href="/staff">Voltar para a Equipe</Link>
         </Button>
       </div>
       
@@ -99,6 +117,85 @@ export default function StaffDetailPage() {
                 </CardContent>
             </Card>
           </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico de Desempenho</CardTitle>
+          <CardDescription>
+            Veja todos os serviços e produtos vendidos por {member.name}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Tabs defaultValue="services" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="services">Serviços Realizados</TabsTrigger>
+                    <TabsTrigger value="products">Produtos Vendidos</TabsTrigger>
+                </TabsList>
+                <TabsContent value="services" className="mt-4">
+                    <div className="border rounded-lg">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Data</TableHead>
+                                    <TableHead>Cliente</TableHead>
+                                    <TableHead>Serviço</TableHead>
+                                    <TableHead className="text-right">Valor</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {history?.services && history.services.length > 0 ? (
+                                    history.services.map((item, index) => (
+                                        <TableRow key={`service-${index}`}>
+                                            <TableCell>{new Date(`${item.date}T12:00:00Z`).toLocaleDateString('pt-BR')}</TableCell>
+                                            <TableCell>{item.clientName}</TableCell>
+                                            <TableCell className="font-medium">{item.service}</TableCell>
+                                            <TableCell className="text-right">{renderValue(item.value)}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center h-24">Nenhum serviço registrado.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </TabsContent>
+                <TabsContent value="products" className="mt-4">
+                     <div className="border rounded-lg">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Data</TableHead>
+                                    <TableHead>Cliente</TableHead>
+                                    <TableHead>Produto</TableHead>
+                                    <TableHead className="text-center">Qtd.</TableHead>
+                                    <TableHead className="text-right">Valor</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {history?.products && history.products.length > 0 ? (
+                                    history.products.map((item, index) => (
+                                        <TableRow key={`product-${index}`}>
+                                            <TableCell>{new Date(`${item.date}T12:00:00Z`).toLocaleDateString('pt-BR')}</TableCell>
+                                            <TableCell>{item.clientName}</TableCell>
+                                            <TableCell className="font-medium">{item.product}</TableCell>
+                                            <TableCell className="text-center">{item.quantity}</TableCell>
+                                            <TableCell className="text-right">R${item.value.toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center h-24">Nenhum produto vendido.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </TabsContent>
+            </Tabs>
         </CardContent>
       </Card>
     </div>

@@ -494,10 +494,9 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
         await runTransaction(db, async (transaction) => {
             // --- READ PHASE ---
             const appointmentSnap = await transaction.get(appointmentDocRef);
-            if (!appointmentSnap.exists() || appointmentSnap.data().status === 'Concluído') {
-                if (appointmentSnap.data()?.status === 'Concluído') {
-                    console.log("Agendamento já está concluído. Nenhuma ação tomada.");
-                }
+            if (!appointmentSnap.exists()) return;
+            if (appointmentSnap.data().status === 'Concluído') {
+                console.log("Agendamento já está concluído. Nenhuma ação tomada.");
                 return;
             }
 
@@ -516,7 +515,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             const clientData = clientSnap.data() as Client;
             const barbershopSettings = barbershopSettingsSnap.data() as BarbershopSettings;
             const soldProducts = appointmentData.soldProducts || [];
-
+            
             let subscriptionSnap;
             if (paymentMethod === 'Assinante') {
                 if (!clientData.subscriptionId) throw new Error("Este cliente não é um assinante.");
@@ -538,7 +537,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                     throw new Error(`O serviço "${appointmentData.service}" não está incluso na assinatura deste cliente.`);
                 }
             }
-
+            
             for (let i = 0; i < productSnaps.length; i++) {
                 const productSnap = productSnaps[i];
                 const soldProduct = soldProducts[i];
@@ -550,16 +549,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                     throw new Error(`Estoque insuficiente para "${soldProduct.name}". Disponível: ${currentStock}, Pedido: ${soldProduct.quantity}.`);
                 }
             }
-
-            // --- WRITE PHASE ---
-            for (let i = 0; i < productSnaps.length; i++) {
-                const productSnap = productSnaps[i];
-                const soldProduct = soldProducts[i];
-                transaction.update(productSnap.ref, {
-                    stock: increment(-soldProduct.quantity)
-                });
-            }
-
+            
             const loyaltySettings = barbershopSettings.loyaltyProgram;
             const loyaltyEnabled = loyaltySettings?.enabled || false;
             if (loyaltyEnabled) {
@@ -582,6 +572,15 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                         transaction.update(clientDocRef, { loyaltyPoints: increment(pointsToAdd) });
                     }
                 }
+            }
+
+            // --- WRITE PHASE ---
+            for (let i = 0; i < productSnaps.length; i++) {
+                const productSnap = productSnaps[i];
+                const soldProduct = soldProducts[i];
+                transaction.update(productSnap.ref, {
+                    stock: increment(-soldProduct.quantity)
+                });
             }
             
             transaction.update(appointmentDocRef, {
@@ -1048,5 +1047,75 @@ export async function getSubscriptionStats(userId: string): Promise<Subscription
             monthlyAppointments: 0,
             monthlyRevenue: 0,
         };
+    }
+}
+
+export async function getStaffPerformanceHistory(userId: string, staffId: string) {
+    try {
+        const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
+        const q = query(appointmentsCol, 
+            where('barberId', '==', staffId), 
+            where('status', '==', 'Concluído')
+        );
+
+        const [appointmentsSnap, servicesSnap, clientsSnap] = await Promise.all([
+            getDocs(q),
+            getDocs(collection(db, getCollectionPath(userId, 'services'))),
+            getDocs(collection(db, getCollectionPath(userId, 'clients'))),
+        ]);
+
+        const appointments = getDatas<AppointmentDocument>(appointmentsSnap);
+        const serviceMap = new Map(servicesSnap.docs.map(doc => {
+            const data = doc.data() as Service;
+            return [data.name, { price: data.price }];
+        }));
+        const clientMap = new Map(clientsSnap.docs.map(doc => [doc.id, doc.data().name]));
+
+        const servicesHistory: { date: string; clientName: string; service: string; value: string | number }[] = [];
+        const productsHistory: { date: string; clientName: string; product: string; quantity: number; value: number }[] = [];
+
+        for (const app of appointments) {
+            const clientName = clientMap.get(app.clientId) || 'Cliente de Balcão';
+            
+            // Handle service
+            let serviceValue: string | number;
+            if (app.paymentMethod === 'Assinante') {
+                serviceValue = 'Assinatura';
+            } else if (app.paymentMethod?.startsWith('Cortesia')) {
+                serviceValue = 'Cortesia';
+            } else {
+                serviceValue = serviceMap.get(app.service)?.price || 0;
+            }
+
+            servicesHistory.push({
+                date: app.date,
+                clientName: clientName,
+                service: app.service,
+                value: serviceValue,
+            });
+
+            // Handle sold products
+            if (app.soldProducts && app.soldProducts.length > 0) {
+                app.soldProducts.forEach(p => {
+                    productsHistory.push({
+                        date: app.date,
+                        clientName: clientName,
+                        product: p.name,
+                        quantity: p.quantity,
+                        value: p.price * p.quantity,
+                    });
+                });
+            }
+        }
+        
+        const sortByDate = (a: { date: string }, b: { date: string }) => new Date(b.date).getTime() - new Date(a.date).getTime();
+        servicesHistory.sort(sortByDate);
+        productsHistory.sort(sortByDate);
+
+        return { services: servicesHistory, products: productsHistory };
+
+    } catch (error) {
+        console.error("Erro ao buscar histórico do funcionário:", error);
+        return { services: [], products: [] };
     }
 }
