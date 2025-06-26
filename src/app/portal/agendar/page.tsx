@@ -12,7 +12,7 @@ function AgendarPageContent() {
 
   if (!barbershopId) {
     return (
-        <div className="container mx-auto py-12">
+        <div className="container mx-auto py-12 px-4">
             <Card className="mx-auto max-w-4xl text-center">
                 <CardHeader>
                     <CardTitle className="text-2xl text-destructive">Erro: Barbearia não encontrada</CardTitle>
@@ -26,7 +26,7 @@ function AgendarPageContent() {
   }
 
   return (
-    <div className="container mx-auto py-12">
+    <div className="container mx-auto py-12 px-4">
       <div className="mx-auto max-w-4xl">
         <h1 className="text-4xl font-bold tracking-tight text-center">Faça seu Agendamento</h1>
         <p className="mt-2 text-lg text-muted-foreground text-center">

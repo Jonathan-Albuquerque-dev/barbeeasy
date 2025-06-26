@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 
 function PerfilPageContent() {
     return (
-         <div className="container mx-auto py-12">
+         <div className="container mx-auto py-12 px-4">
             <div className="mx-auto max-w-4xl space-y-8">
                 <div className="text-center">
                     <h1 className="text-4xl font-bold tracking-tight">Meu Perfil</h1>
