@@ -25,6 +25,7 @@ import {
   Gift,
   DollarSign,
   Package,
+  ShoppingCart,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -40,6 +41,7 @@ const menuItems = [
   { href: '/clients', label: 'Clientes', icon: Users },
   { href: '/services', label: 'Serviços', icon: Scissors },
   { href: '/products', label: 'Produtos', icon: Package },
+  { href: '/sales', label: 'Vendas', icon: ShoppingCart },
   { href: '/staff', label: 'Equipe', icon: User },
   { href: '/subscriptions', label: 'Assinaturas', icon: Repeat },
   { href: '/loyalty', label: 'Fidelidade', icon: Gift },

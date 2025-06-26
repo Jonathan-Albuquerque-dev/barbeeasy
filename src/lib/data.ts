@@ -1,6 +1,6 @@
 
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -89,6 +89,23 @@ export type AppointmentDocument = {
     price: number;
   }[];
 };
+
+export type SaleDocument = {
+    id: string;
+    clientId: string;
+    barberId: string;
+    date: string; // yyyy-MM-dd
+    time: string; // HH:mm
+    paymentMethod: string;
+    soldProducts: {
+      productId: string;
+      name: string;
+      quantity: number;
+      price: number;
+    }[];
+    total: number;
+};
+
 
 export type AppointmentStatus = 'Concluído' | 'Confirmado' | 'Pendente' | 'Em atendimento';
 
@@ -738,10 +755,13 @@ export async function getFinancialOverview(
 ): Promise<FinancialOverview> {
   try {
     const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
-    const q = query(appointmentsCol, where('status', '==', 'Concluído'));
+    const salesCol = collection(db, getCollectionPath(userId, 'sales'));
+
+    const qAppointments = query(appointmentsCol, where('status', '==', 'Concluído'));
     
-    const [appointmentsSnap, servicesSnap, staffSnap, clientsSnap, subscriptionsSnap] = await Promise.all([
-      getDocs(q),
+    const [appointmentsSnap, salesSnap, servicesSnap, staffSnap, clientsSnap, subscriptionsSnap] = await Promise.all([
+      getDocs(qAppointments),
+      getDocs(salesCol),
       getDocs(collection(db, getCollectionPath(userId, 'services'))),
       getDocs(collection(db, getCollectionPath(userId, 'staff'))),
       getDocs(collection(db, getCollectionPath(userId, 'clients'))),
@@ -749,6 +769,7 @@ export async function getFinancialOverview(
     ]);
 
     let completedAppointments = getDatas<AppointmentDocument>(appointmentsSnap);
+    let sales = getDatas<SaleDocument>(salesSnap);
     const services = getDatas<Service>(servicesSnap);
     const staff = getDatas<Staff>(staffSnap);
     const clients = getDatas<Client>(clientsSnap);
@@ -760,6 +781,9 @@ export async function getFinancialOverview(
         completedAppointments = completedAppointments.filter(app => {
             return app.date >= startDateString && app.date <= endDateString;
         });
+        sales = sales.filter(sale => {
+            return sale.date >= startDateString && sale.date <= endDateString;
+        });
     }
 
     const serviceMap = new Map(services.map(s => [s.name, { price: s.price, id: s.id }]));
@@ -767,12 +791,13 @@ export async function getFinancialOverview(
     const clientMap = new Map(clients.map(c => [c.id, { name: c.name }]));
     const subscriptionMap = new Map(subscriptions.map(s => [s.id, { price: s.price, name: s.name }]));
 
-    let appointmentRevenue = 0;
+    let revenueFromItems = 0;
     const revenueByService: { [key: string]: number } = {};
     const revenueByBarber: { [key: string]: { revenue: number; commission: number } } = {};
     const revenueByPaymentMethod: { [key: string]: { revenue: number, count: number } } = {};
     const allTransactions: FinancialOverview['transactions'] = [];
 
+    // Process Appointments
     completedAppointments.forEach(app => {
         const serviceInfo = serviceMap.get(app.service);
         const staffInfo = staffMap.get(app.barberId);
@@ -784,14 +809,10 @@ export async function getFinancialOverview(
         const serviceValue = serviceInfo?.price || 0;
         const productsValue = (app.soldProducts || []).reduce((sum, p) => sum + (p.price * p.quantity), 0);
         
-        const transactionValue = isSubscription 
-            ? productsValue
-            : isCourtesy 
-                ? 0 
-                : serviceValue + productsValue;
+        const transactionValue = isSubscription ? productsValue : isCourtesy ? 0 : serviceValue + productsValue;
 
         if (!isCourtesy) {
-            appointmentRevenue += transactionValue;
+            revenueFromItems += transactionValue;
 
             if (staffInfo) {
                 if (!revenueByBarber[staffInfo.name]) {
@@ -825,6 +846,45 @@ export async function getFinancialOverview(
           value: transactionValue,
           paymentMethod: app.paymentMethod,
           soldProducts: app.soldProducts || [],
+        });
+    });
+
+    // Process Standalone Sales
+    sales.forEach(sale => {
+        const staffInfo = staffMap.get(sale.barberId);
+        const clientInfo = clientMap.get(sale.clientId);
+        const transactionValue = sale.total;
+
+        revenueFromItems += transactionValue;
+
+        if (staffInfo) {
+            if (!revenueByBarber[staffInfo.name]) {
+                revenueByBarber[staffInfo.name] = { revenue: 0, commission: 0 };
+            }
+            const productCommission = transactionValue * (staffInfo.productCommissionRate || 0);
+            revenueByBarber[staffInfo.name].revenue += transactionValue;
+            revenueByBarber[staffInfo.name].commission += productCommission;
+        }
+
+        const saleServiceName = 'Venda de Produtos';
+        revenueByService[saleServiceName] = (revenueByService[saleServiceName] || 0) + transactionValue;
+
+        const paymentMethod = sale.paymentMethod || 'Não especificado';
+        if (!revenueByPaymentMethod[paymentMethod]) {
+            revenueByPaymentMethod[paymentMethod] = { revenue: 0, count: 0 };
+        }
+        revenueByPaymentMethod[paymentMethod].revenue += transactionValue;
+        revenueByPaymentMethod[paymentMethod].count += 1;
+
+        allTransactions.push({
+            id: sale.id,
+            date: sale.date,
+            clientName: clientInfo?.name || 'Cliente de Balcão',
+            service: saleServiceName,
+            barberName: staffInfo?.name || 'N/A',
+            value: transactionValue,
+            paymentMethod: sale.paymentMethod,
+            soldProducts: sale.soldProducts || [],
         });
     });
       
@@ -869,9 +929,9 @@ export async function getFinancialOverview(
 
     allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const totalRevenue = appointmentRevenue + subscriptionRevenue;
+    const totalRevenue = revenueFromItems + subscriptionRevenue;
     const totalAppointments = completedAppointments.length;
-    const averageTicket = totalAppointments > 0 ? appointmentRevenue / totalAppointments : 0;
+    const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
     const totalCommissions = Object.values(revenueByBarber).reduce((sum, barber) => sum + barber.commission, 0);
 
     return {
@@ -1145,5 +1205,61 @@ export async function getStaffPerformanceHistory(
     } catch (error) {
         console.error("Erro ao buscar histórico do funcionário:", error);
         return { services: [], products: [] };
+    }
+}
+
+
+export async function createStandaloneSale(userId: string, saleData: {
+    clientId: string;
+    barberId: string;
+    paymentMethod: string;
+    cart: { productId: string; name: string; quantity: number; price: number }[];
+}) {
+    try {
+        await runTransaction(db, async (transaction) => {
+            // Phase 1: Read all product stocks
+            const productRefsAndData = await Promise.all(saleData.cart.map(async (item) => {
+                const productRef = doc(db, getCollectionPath(userId, 'products'), item.productId);
+                const productSnap = await transaction.get(productRef);
+                return { ref: productRef, snap: productSnap, item };
+            }));
+
+            // Phase 2: Validate stock
+            for (const { snap, item } of productRefsAndData) {
+                if (!snap.exists()) {
+                    throw new Error(`Produto "${item.name}" não encontrado.`);
+                }
+                const stock = snap.data().stock as number;
+                if (stock < item.quantity) {
+                    throw new Error(`Estoque insuficiente para "${item.name}". Disponível: ${stock}.`);
+                }
+            }
+
+            // Phase 3: Write sale and update stocks
+            const salesCol = collection(db, getCollectionPath(userId, 'sales'));
+            const now = new Date();
+            const total = saleData.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            const newSaleDoc = {
+                clientId: saleData.clientId,
+                barberId: saleData.barberId,
+                date: format(now, 'yyyy-MM-dd'),
+                time: format(now, 'HH:mm'),
+                paymentMethod: saleData.paymentMethod,
+                soldProducts: saleData.cart.map(({ productId, name, quantity, price }) => ({ productId, name, quantity, price })), // ensure we only save what's needed
+                total,
+            };
+
+            // Use addDoc semantics within transaction by creating a new doc ref
+            const newSaleRef = doc(salesCol);
+            transaction.set(newSaleRef, newSaleDoc);
+
+            for (const { ref, item } of productRefsAndData) {
+                transaction.update(ref, { stock: increment(-item.quantity) });
+            }
+        });
+    } catch (error) {
+        console.error("Erro na transação de venda avulsa:", error);
+        throw error; // Re-throw to be caught in the UI
     }
 }
