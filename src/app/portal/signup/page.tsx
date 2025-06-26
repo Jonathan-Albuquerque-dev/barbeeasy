@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { Scissors, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -109,9 +109,6 @@ function ClientSignupPageContent() {
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center">
           <div className="flex justify-center items-center gap-3 mb-4">
-            <div className="p-2 bg-primary/20 rounded-lg">
-              <Scissors className="size-8 text-primary" />
-            </div>
              {barbershopName ? (
                 <h1 className="text-3xl font-bold text-primary">{barbershopName}</h1>
             ) : (

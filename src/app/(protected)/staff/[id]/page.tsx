@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Star, Scissors, Loader2, FileDown, X } from 'lucide-react';
+import { Star, Briefcase, Loader2, FileDown, X } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState } from 'react';
 import type { Staff } from '@/lib/data';
@@ -155,7 +155,7 @@ export default function StaffDetailPage() {
              <Card className="bg-background/80">
                 <CardHeader>
                     <CardTitle className="flex items-center justify-center gap-2">
-                        <Scissors className="h-5 w-5" />
+                        <Briefcase className="h-5 w-5" />
                         Detalhes Profissionais
                     </CardTitle>
                 </CardHeader>

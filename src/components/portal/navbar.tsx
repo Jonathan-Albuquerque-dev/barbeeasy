@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Scissors, LayoutDashboard, LogOut, User as UserIcon, Calendar, Star, Menu } from 'lucide-react';
+import { LayoutDashboard, LogOut, User as UserIcon, Calendar, Star, Menu } from 'lucide-react';
 import { app } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { getSubscriptions } from '@/lib/data';
@@ -113,7 +113,6 @@ export function PortalNavbar() {
                     <SheetContent side="left" className="w-64">
                          <SheetTitle className="sr-only">Menu Principal</SheetTitle>
                          <Link href={rootLink} className="mr-6 flex items-center space-x-2 mb-6" onClick={() => setMobileMenuOpen(false)}>
-                            <Scissors className="h-6 w-6 text-primary" />
                             <div>
                                 <span className="font-bold font-body text-lg leading-none"><span className="text-foreground">Barbe</span><span className="text-primary">Easy</span></span>
                                 <p className="text-xs text-muted-foreground">Gestão de Barbearia</p>
@@ -128,7 +127,6 @@ export function PortalNavbar() {
                 {/* Desktop Menu */}
                 <div className="mr-4 hidden md:flex items-center">
                     <Link href={rootLink} className="mr-6 flex items-center space-x-2">
-                        <Scissors className="h-6 w-6 text-primary" />
                         <div>
                             <span className="font-bold font-body text-lg leading-none"><span className="text-foreground">Barbe</span><span className="text-primary">Easy</span></span>
                             <p className="text-xs text-muted-foreground">Gestão de Barbearia</p>

@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Scissors, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { app } from '@/lib/firebase';
 
@@ -90,9 +90,6 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center">
             <div className="flex justify-center items-center gap-3 mb-4">
-                <div className="p-2 bg-primary/20 rounded-lg">
-                    <Scissors className="size-8 text-primary" />
-                </div>
                 <div>
                   <h1 className="text-3xl font-bold leading-none font-body">
                     <span className="text-foreground">Barbe</span><span className="text-primary">Easy</span>

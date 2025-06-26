@@ -16,7 +16,7 @@ import {
 import {
   Calendar,
   Users,
-  Scissors,
+  Tag,
   User,
   LayoutDashboard,
   LogOut,
@@ -39,7 +39,7 @@ const menuItems = [
   { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
   { href: '/appointments', label: 'Agendamentos', icon: Calendar },
   { href: '/clients', label: 'Clientes', icon: Users },
-  { href: '/services', label: 'Serviços', icon: Scissors },
+  { href: '/services', label: 'Serviços', icon: Tag },
   { href: '/products', label: 'Produtos', icon: Package },
   { href: '/sales', label: 'Vendas', icon: ShoppingCart },
   { href: '/staff', label: 'Equipe', icon: User },
@@ -69,10 +69,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader className="p-4">
-          <div className="flex items-center gap-3">
-             <div className="p-1.5 bg-primary/20 rounded-lg">
-                <Scissors className="size-7 text-primary" />
-            </div>
+          <div className="flex items-center">
             <div className="group-data-[collapsible=icon]:hidden">
               <div>
                 <h1 className="text-2xl font-bold leading-none font-body">
