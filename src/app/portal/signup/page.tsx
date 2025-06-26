@@ -115,7 +115,12 @@ function ClientSignupPageContent() {
              {barbershopName ? (
                 <h1 className="text-3xl font-bold text-primary">{barbershopName}</h1>
             ) : (
-                <h1 className="text-3xl font-bold text-primary">BarberEasy</h1>
+                <div>
+                    <h1 className="text-3xl font-bold leading-none font-body">
+                        <span className="text-foreground">Barbe</span><span className="text-primary">Easy</span>
+                    </h1>
+                    <p className="text-sm text-muted-foreground text-left">Gestão de Barbearia</p>
+                </div>
             )}
           </div>
           <CardTitle className="text-2xl">Crie sua Conta de Cliente</CardTitle>

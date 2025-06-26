@@ -74,9 +74,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <Scissors className="size-7 text-primary" />
             </div>
             <div className="group-data-[collapsible=icon]:hidden">
-              <h1 className="text-2xl font-bold text-primary">
-                BarberEasy
-              </h1>
+              <div>
+                <h1 className="text-2xl font-bold leading-none font-body">
+                  <span className="text-sidebar-foreground">Barbe</span><span className="text-primary">Easy</span>
+                </h1>
+                <p className="text-xs text-sidebar-foreground/80">Gestão de Barbearia</p>
+              </div>
             </div>
           </div>
         </SidebarHeader>

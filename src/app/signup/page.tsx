@@ -107,7 +107,12 @@ export default function SignupPage() {
             <div className="p-2 bg-primary/20 rounded-lg">
               <Scissors className="size-8 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold text-primary">BarberEasy</h1>
+            <div>
+              <h1 className="text-3xl font-bold leading-none font-body">
+                <span className="text-foreground">Barbe</span><span className="text-primary">Easy</span>
+              </h1>
+              <p className="text-sm text-muted-foreground text-left">Gestão de Barbearia</p>
+            </div>
           </div>
           <CardTitle className="text-2xl">Crie sua Conta</CardTitle>
           <CardDescription>Cadastre sua barbearia e comece a gerenciar.</CardDescription>

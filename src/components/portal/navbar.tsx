@@ -114,7 +114,10 @@ export function PortalNavbar() {
                          <SheetTitle className="sr-only">Menu Principal</SheetTitle>
                          <Link href={rootLink} className="mr-6 flex items-center space-x-2 mb-6" onClick={() => setMobileMenuOpen(false)}>
                             <Scissors className="h-6 w-6 text-primary" />
-                            <span className="font-bold">BarberEasy</span>
+                            <div>
+                                <span className="font-bold font-body text-lg leading-none"><span className="text-foreground">Barbe</span><span className="text-primary">Easy</span></span>
+                                <p className="text-xs text-muted-foreground">Gestão de Barbearia</p>
+                            </div>
                         </Link>
                         <nav className="flex flex-col space-y-4 text-lg font-medium">
                             <NavContent />
@@ -126,7 +129,10 @@ export function PortalNavbar() {
                 <div className="mr-4 hidden md:flex items-center">
                     <Link href={rootLink} className="mr-6 flex items-center space-x-2">
                         <Scissors className="h-6 w-6 text-primary" />
-                        <span className="font-bold">BarberEasy</span>
+                        <div>
+                            <span className="font-bold font-body text-lg leading-none"><span className="text-foreground">Barbe</span><span className="text-primary">Easy</span></span>
+                            <p className="text-xs text-muted-foreground">Gestão de Barbearia</p>
+                        </div>
                     </Link>
                     <nav className="flex items-center space-x-6 text-sm font-medium">
                         <NavContent />
