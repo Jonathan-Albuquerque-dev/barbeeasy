@@ -43,9 +43,9 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
       name: '',
       description: '',
       imageUrl: '',
-      purchasePrice: undefined,
-      price: undefined,
-      stock: undefined,
+      purchasePrice: '' as any,
+      price: '' as any,
+      stock: '' as any,
     },
   });
 

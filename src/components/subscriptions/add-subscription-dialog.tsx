@@ -46,7 +46,7 @@ export function AddSubscriptionDialog({ onSubscriptionAdded, children }: AddSubs
     resolver: zodResolver(subscriptionSchema),
     defaultValues: {
       name: '',
-      price: undefined,
+      price: '' as any,
       includedServices: [],
     },
   });

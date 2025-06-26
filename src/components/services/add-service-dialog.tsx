@@ -40,8 +40,8 @@ export function AddServiceDialog({ onServiceAdded, children }: AddServiceDialogP
     defaultValues: {
       name: '',
       description: '',
-      price: undefined, // Start with empty fields
-      duration: undefined,
+      price: '' as any,
+      duration: '' as any,
     },
   });
 

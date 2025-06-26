@@ -43,8 +43,8 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
     defaultValues: {
       name: '',
       specializations: '',
-      serviceCommissionRate: undefined,
-      productCommissionRate: undefined,
+      serviceCommissionRate: '' as any,
+      productCommissionRate: '' as any,
       bio: '',
       avatarUrl: '',
     },
