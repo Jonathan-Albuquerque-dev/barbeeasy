@@ -3,6 +3,7 @@ import { ProfileSettings } from "@/components/settings/profile-settings";
 import { HoursSettings } from "@/components/settings/hours-settings";
 import { SecuritySettings } from "@/components/settings/security-settings";
 import { Settings as SettingsIcon } from "lucide-react";
+import { ThemeToggle } from "@/components/settings/theme-toggle";
 
 export default function SettingsPage() {
   return (
@@ -18,9 +19,10 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile">Perfil da Barbearia</TabsTrigger>
-          <TabsTrigger value="hours">Horários de Funcionamento</TabsTrigger>
+          <TabsTrigger value="hours">Horários</TabsTrigger>
+          <TabsTrigger value="appearance">Aparência</TabsTrigger>
           <TabsTrigger value="security">Segurança</TabsTrigger>
         </TabsList>
         <TabsContent value="profile" className="mt-6">
@@ -28,6 +30,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="hours" className="mt-6">
           <HoursSettings />
+        </TabsContent>
+        <TabsContent value="appearance" className="mt-6">
+            <ThemeToggle />
         </TabsContent>
         <TabsContent value="security" className="mt-6">
             <SecuritySettings />
