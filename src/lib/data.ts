@@ -1341,3 +1341,53 @@ export async function createClientAccount(barbershopId: string, data: { name: st
         throw error;
     }
 }
+
+
+export async function getAllAppointmentsForClient(userId: string, clientId: string) {
+    try {
+        const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
+        const q = query(appointmentsCol, where('clientId', '==', clientId));
+
+        const [appointmentsSnap, servicesSnap, staffSnap] = await Promise.all([
+            getDocs(q),
+            getDocs(collection(db, getCollectionPath(userId, 'services'))),
+            getDocs(collection(db, getCollectionPath(userId, 'staff'))),
+        ]);
+
+        const appointments = getDatas<AppointmentDocument>(appointmentsSnap);
+        const serviceMap = new Map(servicesSnap.docs.map(doc => {
+            const data = doc.data() as Service;
+            return [data.name, { price: data.price, id: doc.id }];
+        }));
+        const staffMap = new Map(staffSnap.docs.map(doc => [doc.id, doc.data() as Staff]));
+        
+        const allAppointments = appointments.map(app => {
+            const serviceInfo = serviceMap.get(app.service);
+            const barberInfo = staffMap.get(app.barberId);
+            
+            const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
+            const productsTotal = (app.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
+            const totalValue = (serviceInfo?.price || 0) + productsTotal;
+            
+            return {
+                status: app.status,
+                date: app.date, // "yyyy-MM-dd"
+                time: app.time, // "HH:mm"
+                service: app.service,
+                barber: barberInfo?.name || 'N/A',
+                cost: isCourtesy ? 0 : totalValue,
+            };
+        });
+        
+        allAppointments.sort((a, b) => {
+            const dateA = new Date(`${a.date}T${a.time}`);
+            const dateB = new Date(`${b.date}T${b.time}`);
+            return dateB.getTime() - dateA.getTime();
+        });
+        
+        return allAppointments;
+    } catch (error) {
+        console.error("Erro ao buscar todos os agendamentos do cliente:", error);
+        return [];
+    }
+}

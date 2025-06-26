@@ -1,23 +1,35 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { getClientByAuthId, getServiceHistoryForClient } from '@/lib/data';
+import { getClientByAuthId, getAllAppointmentsForClient } from '@/lib/data';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-type ServiceHistoryItem = { date: string; service: string; barber: string; cost: number };
+type AppointmentItem = {
+    date: string;
+    time: string;
+    service: string;
+    barber: string;
+    cost: number;
+    status: 'Concluído' | 'Confirmado' | 'Pendente' | 'Em atendimento';
+};
 
 export default function MeusAgendamentosPage() {
     const { user, barbershopId } = useAuth();
-    const [history, setHistory] = useState<ServiceHistoryItem[]>([]);
+    const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchHistory() {
-            if (!user || !barbershopId) return;
+            if (!user || !barbershopId) {
+                setLoading(false);
+                return;
+            };
 
             try {
                 setLoading(true);
@@ -26,8 +38,8 @@ export default function MeusAgendamentosPage() {
                     throw new Error("Não foi possível encontrar seu perfil de cliente.");
                 }
 
-                const serviceHistory = await getServiceHistoryForClient(barbershopId, clientProfile.id);
-                setHistory(serviceHistory);
+                const allAppointments = await getAllAppointmentsForClient(barbershopId, clientProfile.id);
+                setAppointments(allAppointments);
             } catch (err: any) {
                 setError(err.message || "Ocorreu um erro ao buscar seus dados.");
             } finally {
@@ -37,6 +49,31 @@ export default function MeusAgendamentosPage() {
 
         fetchHistory();
     }, [user, barbershopId]);
+    
+    const { upcomingAppointments, pastAppointments } = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const upcoming: AppointmentItem[] = [];
+        const past: AppointmentItem[] = [];
+
+        appointments.forEach(item => {
+            const itemDate = new Date(`${item.date}T00:00:00`); 
+            
+            if (item.status === 'Concluído') {
+                past.push(item);
+            } else if (itemDate >= today) {
+                upcoming.push(item);
+            } else {
+                past.push(item);
+            }
+        });
+
+        upcoming.sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
+        past.sort((a, b) => new Date(`${b.date}T${b.time}`).getTime() - new Date(`${a.date}T${a.time}`).getTime());
+
+        return { upcomingAppointments: upcoming, pastAppointments: past };
+    }, [appointments]);
 
     if (loading) {
         return (
@@ -55,12 +92,14 @@ export default function MeusAgendamentosPage() {
         );
     }
     
-    // Simple split for demonstration. A robust solution would compare with current date more accurately.
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const upcomingAppointments = history.filter(item => new Date(item.date.split('/').reverse().join('-')) >= today);
-    const pastAppointments = history.filter(item => new Date(item.date.split('/').reverse().join('-')) < today);
-
+    const getStatusBadgeVariant = (status: AppointmentItem['status']) => {
+        switch (status) {
+            case 'Confirmado': return 'secondary';
+            case 'Pendente': return 'outline';
+            case 'Em atendimento': return 'default';
+            default: return 'secondary';
+        }
+    };
 
     return (
         <div className="container mx-auto py-12">
@@ -80,12 +119,12 @@ export default function MeusAgendamentosPage() {
                          {upcomingAppointments.length > 0 ? (
                             <ul className="space-y-4">
                                 {upcomingAppointments.map((item, index) => (
-                                    <li key={index} className="flex justify-between items-center p-4 rounded-lg border">
+                                    <li key={`upcoming-${index}`} className="flex justify-between items-center p-4 rounded-lg border">
                                         <div>
                                             <p className="font-semibold">{item.service}</p>
-                                            <p className="text-sm text-muted-foreground">com {item.barber} em {item.date}</p>
+                                            <p className="text-sm text-muted-foreground">com {item.barber} em {format(new Date(`${item.date}T${item.time}`), "dd/MM/yyyy 'às' HH:mm", {locale: ptBR})}</p>
                                         </div>
-                                        <Badge>Confirmado</Badge>
+                                        <Badge variant={getStatusBadgeVariant(item.status)}>{item.status}</Badge>
                                     </li>
                                 ))}
                             </ul>
@@ -103,17 +142,21 @@ export default function MeusAgendamentosPage() {
                         {pastAppointments.length > 0 ? (
                             <ul className="space-y-4">
                                 {pastAppointments.map((item, index) => (
-                                    <li key={index} className="flex justify-between items-center p-4 rounded-lg border">
+                                    <li key={`past-${index}`} className="flex justify-between items-center p-4 rounded-lg border">
                                         <div>
                                             <p className="font-semibold">{item.service}</p>
-                                            <p className="text-sm text-muted-foreground">com {item.barber} em {item.date}</p>
+                                            <p className="text-sm text-muted-foreground">com {item.barber} em {format(new Date(`${item.date}T${item.time}`), "dd/MM/yyyy 'às' HH:mm", {locale: ptBR})}</p>
                                         </div>
-                                        <Badge variant="secondary">R${item.cost.toFixed(2)}</Badge>
+                                        {item.status === 'Concluído' ? (
+                                             <Badge variant="success">R${item.cost.toFixed(2)}</Badge>
+                                        ) : (
+                                            <Badge variant="destructive">{item.status}</Badge>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
                         ) : (
-                            <p className="text-muted-foreground text-center py-8">Você ainda não tem serviços concluídos.</p>
+                            <p className="text-muted-foreground text-center py-8">Você ainda não tem serviços em seu histórico.</p>
                         )}
                     </CardContent>
                 </Card>
