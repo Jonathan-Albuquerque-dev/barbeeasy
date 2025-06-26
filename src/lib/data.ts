@@ -921,8 +921,7 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
         const appointmentsInPeriod = allAppointmentsForBarber.filter(app => 
             app.status === 'Concluído' &&
             app.date >= startDateString &&
-            app.date <= endDateString &&
-            !app.paymentMethod?.startsWith('Cortesia')
+            app.date <= endDateString
         );
 
         let totalServiceCommission = 0;
@@ -934,18 +933,22 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
             const clientName = clientMap.get(app.clientId) || 'Cliente de Balcão';
             
             const isSubscription = app.paymentMethod === 'Assinante';
-            if (!isSubscription) {
-                const servicePrice = servicePriceMap.get(app.service) || 0;
-                const commission = servicePrice * serviceCommissionRate;
-                totalServiceCommission += commission;
-                detailedServices.push({
-                    date: format(new Date(`${app.date}T12:00:00Z`), 'dd/MM/yyyy', { locale: ptBR }),
-                    clientName,
-                    serviceName: app.service,
-                    servicePrice,
-                    commission
-                });
+            const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
+            const servicePrice = servicePriceMap.get(app.service) || 0;
+            let serviceCommission = 0;
+
+            if (!isSubscription && !isCourtesy) {
+                serviceCommission = servicePrice * serviceCommissionRate;
+                totalServiceCommission += serviceCommission;
             }
+
+            detailedServices.push({
+                date: format(new Date(`${app.date}T12:00:00Z`), 'dd/MM/yyyy', { locale: ptBR }),
+                clientName,
+                serviceName: app.service,
+                servicePrice: servicePrice,
+                commission: serviceCommission
+            });
 
             if (app.soldProducts) {
                 app.soldProducts.forEach(p => {
