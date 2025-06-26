@@ -1,13 +1,14 @@
 'use client';
 
 import { getProducts } from "@/lib/data";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, DollarSign, PlusCircle, ShoppingCart, Package } from "lucide-react";
+import { Loader2, PlusCircle, Package, Edit } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState, useCallback } from "react";
 import { AddProductDialog } from "@/components/products/add-product-dialog";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
 
 type Product = Awaited<ReturnType<typeof getProducts>>[0];
 
@@ -56,28 +57,32 @@ export default function ProductsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {products.map(product => (
-          <Card key={product.id} className="flex flex-col">
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl mb-1">{product.name}</CardTitle>
-                    <Badge 
-                        variant={product.stock > 5 ? 'secondary' : (product.stock > 0 ? 'default' : 'destructive')}
-                    >
-                        {product.stock > 0 ? `${product.stock} em estoque` : 'Fora de estoque'}
-                    </Badge>
-                </div>
-                <CardDescription className="text-sm line-clamp-3 h-[60px]">{product.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow flex items-end">
-              <div className="flex items-center pt-2">
-                <DollarSign className="h-5 w-5 mr-2 text-muted-foreground"/>
-                <span className="font-semibold text-xl text-foreground">R${product.price.toFixed(2)}</span>
+          <Card key={product.id} className="flex flex-col overflow-hidden group">
+            <div className="relative aspect-video w-full">
+              <Image
+                src={`https://placehold.co/600x400.png`}
+                alt={product.name}
+                fill
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                data-ai-hint="product cosmetics"
+              />
+            </div>
+            <CardContent className="p-4 flex flex-col flex-grow">
+              <div className="flex justify-between items-start gap-4 mb-2">
+                  <h3 className="font-semibold text-lg line-clamp-1">{product.name}</h3>
+                  <p className="text-lg font-bold text-primary whitespace-nowrap">R${product.price.toFixed(2)}</p>
               </div>
+              <p className="text-sm text-muted-foreground flex-grow line-clamp-3">{product.description}</p>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full" disabled={product.stock === 0}>
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Adicionar ao Carrinho
+            <CardFooter className="p-4 pt-0 flex justify-between items-center">
+              <Badge 
+                  variant={product.stock > 5 ? 'secondary' : (product.stock > 0 ? 'default' : 'destructive')}
+              >
+                  {product.stock > 0 ? `${product.stock} em estoque` : 'Fora de estoque'}
+              </Badge>
+              <Button variant="outline" size="sm">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Editar
               </Button>
             </CardFooter>
           </Card>
