@@ -139,7 +139,7 @@ export type FinancialOverview = {
   revenueByService: { service: string; revenue: number }[];
   revenueByBarber: { barberName: string; revenue: number; commission: number }[];
   revenueByPaymentMethod: { method: string; revenue: number; count: number }[];
-  recentTransactions: {
+  transactions: {
     id: string;
     date: string;
     clientName: string;
@@ -147,6 +147,12 @@ export type FinancialOverview = {
     barberName: string;
     value: number;
     paymentMethod?: string;
+    soldProducts?: {
+      productId: string;
+      name: string;
+      quantity: number;
+      price: number;
+    }[];
   }[];
 };
 
@@ -754,7 +760,7 @@ export async function getFinancialOverview(
     const revenueByService: { [key: string]: number } = {};
     const revenueByBarber: { [key: string]: { revenue: number; commission: number } } = {};
     const revenueByPaymentMethod: { [key: string]: { revenue: number, count: number } } = {};
-    const recentTransactions: FinancialOverview['recentTransactions'] = [];
+    const allTransactions: FinancialOverview['transactions'] = [];
 
     completedAppointments.forEach(app => {
         const serviceInfo = serviceMap.get(app.service);
@@ -799,7 +805,7 @@ export async function getFinancialOverview(
         revenueByPaymentMethod[paymentMethod].revenue += transactionValue;
         revenueByPaymentMethod[paymentMethod].count += 1;
 
-        recentTransactions.push({
+        allTransactions.push({
           id: app.id,
           date: app.date,
           clientName: clientInfo?.name || 'Cliente de Balcão',
@@ -807,6 +813,7 @@ export async function getFinancialOverview(
           barberName: staffInfo?.name || 'N/A',
           value: transactionValue,
           paymentMethod: app.paymentMethod,
+          soldProducts: app.soldProducts || [],
         });
     });
       
@@ -837,7 +844,7 @@ export async function getFinancialOverview(
         const subServiceName = `Assinatura: ${subInfo.name}`;
         revenueByService[subServiceName] = (revenueByService[subServiceName] || 0) + subValue;
 
-        recentTransactions.push({
+        allTransactions.push({
             id: `sub_${client.id}`,
             date: format(subStartDate, 'yyyy-MM-dd'),
             clientName: client.name,
@@ -845,10 +852,11 @@ export async function getFinancialOverview(
             barberName: 'Sistema',
             value: subValue,
             paymentMethod: paymentMethod,
+            soldProducts: [],
         });
     });
 
-    recentTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const totalRevenue = appointmentRevenue + subscriptionRevenue;
     const totalAppointments = completedAppointments.length;
@@ -863,7 +871,7 @@ export async function getFinancialOverview(
       revenueByService: Object.entries(revenueByService).map(([service, revenue]) => ({ service, revenue })),
       revenueByBarber: Object.entries(revenueByBarber).map(([barberName, data]) => ({ barberName, ...data })),
       revenueByPaymentMethod: Object.entries(revenueByPaymentMethod).map(([method, data]) => ({ method, ...data })),
-      recentTransactions: recentTransactions.slice(0, 10),
+      transactions: allTransactions,
     };
 
   } catch (error) {
@@ -876,7 +884,7 @@ export async function getFinancialOverview(
       revenueByService: [],
       revenueByBarber: [],
       revenueByPaymentMethod: [],
-      recentTransactions: [],
+      transactions: [],
     };
   }
 }

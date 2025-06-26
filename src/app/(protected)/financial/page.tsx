@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { getFinancialOverview, FinancialOverview, getCommissionsForPeriod, getStaff } from '@/lib/data';
-import { Loader2, DollarSign, Users, HandCoins, Calculator, X, CreditCard } from 'lucide-react';
+import { Loader2, DollarSign, Users, HandCoins, Calculator, X, CreditCard, FileDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,6 +13,10 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { DateRange } from 'react-day-picker';
 import { Label } from '@/components/ui/label';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { format } from 'date-fns';
+
 
 type StaffMember = { id: string; name: string };
 
@@ -32,6 +36,7 @@ export default function FinancialPage() {
     barberName: string;
   } | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // State for page-wide financial filter
   const [financialDateRange, setFinancialDateRange] = useState<DateRange | undefined>();
@@ -88,6 +93,93 @@ export default function FinancialPage() {
     }
   };
 
+  const handleGenerateReport = () => {
+    if (!data || !financialDateRange?.from || !financialDateRange?.to) return;
+
+    setIsGeneratingReport(true);
+
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(18);
+    doc.text('Relatório Financeiro', 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    const dateText = `Período: ${format(financialDateRange.from, 'dd/MM/yyyy')} a ${format(financialDateRange.to, 'dd/MM/yyyy')}`;
+    doc.text(dateText, 14, 29);
+
+    // Summary
+    let startY = 40;
+    doc.setFontSize(12);
+    doc.text('Resumo do Período', 14, startY);
+    startY += 7;
+    doc.setFontSize(10);
+    doc.text(`Receita Total: R$ ${data.totalRevenue.toFixed(2)}`, 14, startY);
+    startY += 5;
+    doc.text(`Ticket Médio (Serviços): R$ ${data.averageTicket.toFixed(2)}`, 14, startY);
+    startY += 5;
+    doc.text(`Total de Agendamentos Concluídos: ${data.totalAppointments}`, 14, startY);
+    startY += 5;
+    doc.text(`Total de Comissões: R$ ${data.totalCommissions.toFixed(2)}`, 14, startY);
+
+    // Products table
+    const productsSold = data.transactions
+      .flatMap(tx => tx.soldProducts || [])
+      .reduce((acc, product) => {
+        const existing = acc[product.productId];
+        if (existing) {
+          existing.quantity += product.quantity;
+        } else {
+          acc[product.productId] = { ...product };
+        }
+        return acc;
+      }, {} as Record<string, { name: string; quantity: number; price: number; productId: string }>);
+
+    const productTableData = Object.values(productsSold).map(p => [
+      p.name,
+      p.quantity.toString(),
+      `R$ ${p.price.toFixed(2)}`,
+      `R$ ${(p.price * p.quantity).toFixed(2)}`,
+    ]);
+
+    let lastY = startY;
+
+    if (productTableData.length > 0) {
+      autoTable(doc, {
+        startY: lastY + 10,
+        head: [['Produtos Vendidos', 'Quantidade', 'Preço Unitário', 'Subtotal']],
+        body: productTableData,
+        headStyles: { fillColor: [0, 100, 35] },
+      });
+      lastY = (doc as any).lastAutoTable.finalY || lastY;
+    }
+    
+    // Services table
+    const servicesTableData = data.revenueByService.map(service => {
+        const { service: serviceName, revenue } = service;
+        const quantity = data.transactions.filter(tx => tx.service === serviceName && !tx.paymentMethod?.startsWith('Cortesia')).length;
+        const unitPrice = quantity > 0 ? revenue / quantity : 0;
+        
+        return [
+            serviceName,
+            quantity.toString(),
+            `R$ ${unitPrice.toFixed(2)}`,
+            `R$ ${revenue.toFixed(2)}`,
+        ];
+    }).filter(row => parseInt(row[1]) > 0);
+
+    if (servicesTableData.length > 0) {
+      autoTable(doc, {
+        startY: lastY + 10,
+        head: [['Serviços / Assinaturas', 'Quantidade', 'Preço Unitário', 'Subtotal']],
+        body: servicesTableData,
+        headStyles: { fillColor: [0, 100, 35] },
+      });
+    }
+    
+    doc.save('relatorio-financeiro.pdf');
+    setIsGeneratingReport(false);
+  }
 
   if (loading || !data) {
     return (
@@ -113,6 +205,10 @@ export default function FinancialPage() {
                     <X className="h-4 w-4" />
                 </Button>
             )}
+             <Button onClick={handleGenerateReport} disabled={!filterIsActive || isGeneratingReport}>
+                {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                Gerar Relatório
+            </Button>
         </div>
       </div>
 
@@ -283,7 +379,7 @@ export default function FinancialPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.recentTransactions.map(tx => (
+              {data.transactions.slice(0, 10).map(tx => (
                 <TableRow key={tx.id}>
                   <TableCell>{new Date(`${tx.date}T00:00:00`).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</TableCell>
                   <TableCell className="font-medium">{tx.clientName}</TableCell>
