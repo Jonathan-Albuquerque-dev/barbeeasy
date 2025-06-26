@@ -4,6 +4,7 @@ import { HoursSettings } from "@/components/settings/hours-settings";
 import { SecuritySettings } from "@/components/settings/security-settings";
 import { Settings as SettingsIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/settings/theme-toggle";
+import { ShareableLinksSettings } from "@/components/settings/shareable-links-settings";
 
 export default function SettingsPage() {
   return (
@@ -19,10 +20,11 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">Perfil da Barbearia</TabsTrigger>
           <TabsTrigger value="hours">Horários</TabsTrigger>
           <TabsTrigger value="appearance">Aparência</TabsTrigger>
+          <TabsTrigger value="share">Compartilhar</TabsTrigger>
           <TabsTrigger value="security">Segurança</TabsTrigger>
         </TabsList>
         <TabsContent value="profile" className="mt-6">
@@ -33,6 +35,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="appearance" className="mt-6">
             <ThemeToggle />
+        </TabsContent>
+        <TabsContent value="share" className="mt-6">
+            <ShareableLinksSettings />
         </TabsContent>
         <TabsContent value="security" className="mt-6">
             <SecuritySettings />
