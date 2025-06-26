@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { createClientAccount } from '@/lib/data';
+import { createClientAccount, getBarbershopSettings } from '@/lib/data';
 
 const signupSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
@@ -30,6 +30,17 @@ function ClientSignupPageContent() {
   const barbershopId = searchParams.get('barbershopId');
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [barbershopName, setBarbershopName] = useState('');
+
+  useEffect(() => {
+    if (barbershopId) {
+        getBarbershopSettings(barbershopId).then(settings => {
+            if (settings) {
+                setBarbershopName(settings.name);
+            }
+        });
+    }
+  }, [barbershopId]);
 
   const {
     register,
@@ -101,10 +112,14 @@ function ClientSignupPageContent() {
             <div className="p-2 bg-primary/20 rounded-lg">
               <Scissors className="size-8 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold text-primary">BarberEasy</h1>
+             {barbershopName ? (
+                <h1 className="text-3xl font-bold text-primary">{barbershopName}</h1>
+            ) : (
+                <h1 className="text-3xl font-bold text-primary">BarberEasy</h1>
+            )}
           </div>
           <CardTitle className="text-2xl">Crie sua Conta de Cliente</CardTitle>
-          <CardDescription>Cadastre-se para agendar seu próximo corte.</CardDescription>
+          <CardDescription>{barbershopName ? `Cadastre-se para agendar seu próximo corte na ${barbershopName}.` : 'Cadastre-se para agendar seu próximo corte.'}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

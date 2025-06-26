@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Scissors, Loader2 } from 'lucide-react';
 import { app } from '@/lib/firebase';
+import { getBarbershopSettings } from '@/lib/data';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
@@ -27,9 +28,20 @@ function ClientLoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const barbershopId = searchParams.get('barbershopId');
+  const [barbershopName, setBarbershopName] = useState('');
 
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (barbershopId) {
+        getBarbershopSettings(barbershopId).then(settings => {
+            if (settings) {
+                setBarbershopName(settings.name);
+            }
+        });
+    }
+  }, [barbershopId]);
 
   const {
     register,
@@ -71,10 +83,14 @@ function ClientLoginPageContent() {
                 <div className="p-2 bg-primary/20 rounded-lg">
                     <Scissors className="size-8 text-primary" />
                 </div>
-                <h1 className="text-3xl font-bold text-primary">BarberEasy</h1>
+                {barbershopName ? (
+                     <h1 className="text-3xl font-bold text-primary">{barbershopName}</h1>
+                ) : (
+                    <h1 className="text-3xl font-bold text-primary">BarberEasy</h1>
+                )}
             </div>
           <CardTitle className="text-2xl">Bem-vindo(a)!</CardTitle>
-          <CardDescription>Acesse sua conta para agendar um horário.</CardDescription>
+          <CardDescription>{barbershopName ? `Acesse sua conta para agendar na ${barbershopName}.` : 'Acesse sua conta para agendar um horário.'}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
