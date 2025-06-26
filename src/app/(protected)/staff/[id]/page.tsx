@@ -8,13 +8,19 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Star, Scissors, Loader2 } from 'lucide-react';
+import { Star, Scissors, Loader2, FileDown, X } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState } from 'react';
 import type { Staff } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import type { DateRange } from 'react-day-picker';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 type PerformanceHistory = Awaited<ReturnType<typeof getStaffPerformanceHistory>>;
 
@@ -24,6 +30,8 @@ export default function StaffDetailPage() {
   const [member, setMember] = useState<Staff | null>(null);
   const [history, setHistory] = useState<PerformanceHistory | null>(null);
   const [loading, setLoading] = useState(true);
+  const [historyDateRange, setHistoryDateRange] = useState<DateRange | undefined>();
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   useEffect(() => {
     async function fetchStaffData() {
@@ -31,9 +39,11 @@ export default function StaffDetailPage() {
         setLoading(true);
         const staffId = Array.isArray(params.id) ? params.id[0] : params.id;
         
+        const validRange = historyDateRange?.from && historyDateRange.to ? historyDateRange : undefined;
+
         const [fetchedMember, fetchedHistory] = await Promise.all([
             getStaffById(user.uid, staffId),
-            getStaffPerformanceHistory(user.uid, staffId)
+            getStaffPerformanceHistory(user.uid, staffId, validRange)
         ]);
 
         if (!fetchedMember) {
@@ -44,8 +54,11 @@ export default function StaffDetailPage() {
         setLoading(false);
       }
     }
-    fetchStaffData();
-  }, [user, params]);
+    
+    if ((historyDateRange?.from && historyDateRange.to) || historyDateRange === undefined) {
+      fetchStaffData();
+    }
+  }, [user, params, historyDateRange]);
 
   const renderValue = (value: string | number) => {
     if (typeof value === 'number') {
@@ -53,6 +66,58 @@ export default function StaffDetailPage() {
     }
     return <Badge variant="secondary">{value}</Badge>;
   };
+
+  const handleGenerateReport = () => {
+    if (!member || !history || !historyDateRange?.from || !historyDateRange?.to) return;
+    setIsGeneratingReport(true);
+
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text(`Relatório de Desempenho - ${member.name}`, 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Período: ${format(historyDateRange.from, 'dd/MM/yyyy')} a ${format(historyDateRange.to, 'dd/MM/yyyy')}`, 14, 29);
+
+    let lastY = 35;
+
+    if (history.services.length > 0) {
+        const servicesData = history.services.map(s => [
+            new Date(`${s.date}T12:00:00Z`).toLocaleDateString('pt-BR'),
+            s.clientName,
+            s.service,
+            typeof s.value === 'number' ? `R$${s.value.toFixed(2)}` : s.value,
+        ]);
+        autoTable(doc, {
+            startY: lastY + 10,
+            head: [['Data', 'Cliente', 'Serviço', 'Valor']],
+            body: servicesData,
+            headStyles: { fillColor: [0, 100, 35] },
+        });
+        lastY = (doc as any).lastAutoTable.finalY || lastY;
+    }
+
+    if (history.products.length > 0) {
+        const productsData = history.products.map(p => [
+            new Date(`${p.date}T12:00:00Z`).toLocaleDateString('pt-BR'),
+            p.clientName,
+            p.product,
+            p.quantity.toString(),
+            `R$${p.value.toFixed(2)}`,
+        ]);
+        autoTable(doc, {
+            startY: lastY + 10,
+            head: [['Data', 'Cliente', 'Produto', 'Qtd.', 'Valor']],
+            body: productsData,
+            headStyles: { fillColor: [0, 100, 35] },
+        });
+    }
+
+    doc.save(`relatorio-desempenho-${member.name.replace(/\s+/g, '-')}.pdf`);
+    setIsGeneratingReport(false);
+  }
+
+  const filterIsActive = historyDateRange?.from && historyDateRange?.to;
 
   if (loading || !member) {
     return (
@@ -122,10 +187,26 @@ export default function StaffDetailPage() {
       
       <Card>
         <CardHeader>
-          <CardTitle>Histórico de Desempenho</CardTitle>
-          <CardDescription>
-            Veja todos os serviços e produtos vendidos por {member.name}.
-          </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <CardTitle>Histórico de Desempenho</CardTitle>
+                    <CardDescription>
+                        Veja todos os serviços e produtos vendidos por {member.name}.
+                    </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                    <DateRangePicker date={historyDateRange} onDateChange={setHistoryDateRange} />
+                    {filterIsActive && (
+                        <Button variant="ghost" size="icon" onClick={() => setHistoryDateRange(undefined)} aria-label="Limpar filtro">
+                            <X className="h-4 w-4" />
+                        </Button>
+                    )}
+                    <Button onClick={handleGenerateReport} disabled={!filterIsActive || isGeneratingReport}>
+                        {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                        Gerar Relatório
+                    </Button>
+                </div>
+            </div>
         </CardHeader>
         <CardContent>
             <Tabs defaultValue="services" className="w-full">
@@ -156,7 +237,7 @@ export default function StaffDetailPage() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center h-24">Nenhum serviço registrado.</TableCell>
+                                        <TableCell colSpan={4} className="text-center h-24">Nenhum serviço registrado neste período.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -188,7 +269,7 @@ export default function StaffDetailPage() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center h-24">Nenhum produto vendido.</TableCell>
+                                        <TableCell colSpan={5} className="text-center h-24">Nenhum produto vendido neste período.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>

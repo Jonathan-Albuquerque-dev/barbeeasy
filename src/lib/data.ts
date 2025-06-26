@@ -240,7 +240,7 @@ export async function getServiceHistoryForClient(userId: string, clientId: strin
             const totalValue = (serviceInfo?.price || 0) + productsTotal;
             
             return {
-                date: format(dateObject, 'dd/MM/yyyy'),
+                date: format(dateObject, 'dd/MM/yyyy', { locale: ptBR }),
                 service: app.service,
                 barber: barberInfo?.name || 'N/A',
                 cost: isCourtesy ? 0 : totalValue,
@@ -517,11 +517,9 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             const soldProducts = appointmentData.soldProducts || [];
             
             let subscriptionSnap;
-            if (paymentMethod === 'Assinante') {
-                if (!clientData.subscriptionId) throw new Error("Este cliente não é um assinante.");
+            if (clientData.subscriptionId) {
                 const subscriptionDocRef = doc(db, getCollectionPath(userId, 'subscriptions'), clientData.subscriptionId);
                 subscriptionSnap = await transaction.get(subscriptionDocRef);
-                if (!subscriptionSnap.exists()) throw new Error("Plano de assinatura do cliente não encontrado.");
             }
 
             const productReads = soldProducts.map(p => 
@@ -531,6 +529,9 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
 
             // --- LOGIC / VALIDATION PHASE ---
             if (paymentMethod === 'Assinante') {
+                if (!subscriptionSnap || !subscriptionSnap.exists()) {
+                    throw new Error("Este cliente não é um assinante ou o plano não foi encontrado.");
+                }
                 const subscriptionData = subscriptionSnap!.data() as Subscription;
                 const serviceIsIncluded = subscriptionData.includedServices.some(s => s.serviceName === appointmentData.service);
                 if (!serviceIsIncluded) {
@@ -550,6 +551,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                 }
             }
             
+            // --- WRITE PHASE ---
             const loyaltySettings = barbershopSettings.loyaltyProgram;
             const loyaltyEnabled = loyaltySettings?.enabled || false;
             if (loyaltyEnabled) {
@@ -574,7 +576,6 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
                 }
             }
 
-            // --- WRITE PHASE ---
             for (let i = 0; i < productSnaps.length; i++) {
                 const productSnap = productSnaps[i];
                 const soldProduct = soldProducts[i];
@@ -1050,7 +1051,11 @@ export async function getSubscriptionStats(userId: string): Promise<Subscription
     }
 }
 
-export async function getStaffPerformanceHistory(userId: string, staffId: string) {
+export async function getStaffPerformanceHistory(
+    userId: string, 
+    staffId: string,
+    dateRange?: { from: Date; to: Date }
+) {
     try {
         const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
         const q = query(appointmentsCol, 
@@ -1064,12 +1069,21 @@ export async function getStaffPerformanceHistory(userId: string, staffId: string
             getDocs(collection(db, getCollectionPath(userId, 'clients'))),
         ]);
 
-        const appointments = getDatas<AppointmentDocument>(appointmentsSnap);
+        let appointments = getDatas<AppointmentDocument>(appointmentsSnap);
         const serviceMap = new Map(servicesSnap.docs.map(doc => {
             const data = doc.data() as Service;
             return [data.name, { price: data.price }];
         }));
         const clientMap = new Map(clientsSnap.docs.map(doc => [doc.id, doc.data().name]));
+
+        if (dateRange?.from && dateRange?.to) {
+            const startDateString = format(dateRange.from, 'yyyy-MM-dd');
+            const endDateString = format(dateRange.to, 'yyyy-MM-dd');
+            appointments = appointments.filter(app => {
+                return app.date >= startDateString && app.date <= endDateString;
+            });
+        }
+
 
         const servicesHistory: { date: string; clientName: string; service: string; value: string | number }[] = [];
         const productsHistory: { date: string; clientName: string; product: string; quantity: number; value: number }[] = [];
