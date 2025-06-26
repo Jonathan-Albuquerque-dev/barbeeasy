@@ -34,8 +34,12 @@ type Staff = { id: string; name: string };
 type Service = { id: string; name: string; duration: number; }; 
 type BarbershopSettings = { operatingHours: DayHours; appointmentInterval: 30 | 60 };
 
-export function BookingForm() {
-  const { user, barbershopId } = useAuth();
+interface BookingFormProps {
+    barbershopId: string;
+}
+
+export function BookingForm({ barbershopId }: BookingFormProps) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);

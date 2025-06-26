@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getAuth, signOut } from 'firebase/auth';
 
 import { useAuth } from '@/contexts/auth-context';
@@ -24,11 +24,14 @@ export function PortalNavbar() {
     const { user, isBarberOwner } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const auth = getAuth(app);
+    const barbershopId = searchParams.get('barbershopId');
 
     const handleSignOut = async () => {
         await signOut(auth);
-        router.push('/portal/login');
+        const loginUrl = barbershopId ? `/portal/login?barbershopId=${barbershopId}` : '/portal/login';
+        router.push(loginUrl);
     };
     
     const getInitials = (name: string | null | undefined) => {
@@ -44,30 +47,36 @@ export function PortalNavbar() {
     }
 
     const navLinks = [
-        { href: "/portal/agendar", label: "Agendar" },
-        { href: "/portal/meus-agendamentos", label: "Meus Agendamentos" }
+        { href: `/portal/agendar`, label: "Agendar" },
+        { href: `/portal/meus-agendamentos`, label: "Meus Agendamentos" }
     ];
+
+    const rootLink = barbershopId ? `/?barbershopId=${barbershopId}` : '/';
+    const loginLink = barbershopId ? `/portal/login?barbershopId=${barbershopId}` : '/portal/login';
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="container flex h-14 items-center">
                 <div className="mr-4 flex items-center">
-                    <Link href="/" className="mr-6 flex items-center space-x-2">
+                    <Link href={rootLink} className="mr-6 flex items-center space-x-2">
                         <Scissors className="h-6 w-6 text-primary" />
                         <span className="font-bold">BarberEasy</span>
                     </Link>
                     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-                        {navLinks.map(link => (
-                            <Link
-                                key={link.href}
-                                href={link.href}
-                                className={cn("transition-colors hover:text-foreground/80", 
-                                pathname === link.href ? "text-foreground" : "text-foreground/60"
-                                )}
-                            >
-                                {link.label}
-                            </Link>
-                        ))}
+                        {navLinks.map(link => {
+                            const finalHref = barbershopId ? `${link.href}?barbershopId=${barbershopId}` : link.href;
+                            return (
+                                <Link
+                                    key={link.href}
+                                    href={finalHref}
+                                    className={cn("transition-colors hover:text-foreground/80", 
+                                    pathname === link.href ? "text-foreground" : "text-foreground/60"
+                                    )}
+                                >
+                                    {link.label}
+                                </Link>
+                            )
+                        })}
                     </nav>
                 </div>
                 <div className="flex flex-1 items-center justify-end space-x-4">
@@ -105,7 +114,7 @@ export function PortalNavbar() {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     ) : (
-                        <Button onClick={() => router.push('/portal/login')}>Fazer Login</Button>
+                        <Button onClick={() => router.push(loginLink)}>Fazer Login</Button>
                     )}
                 </div>
             </div>

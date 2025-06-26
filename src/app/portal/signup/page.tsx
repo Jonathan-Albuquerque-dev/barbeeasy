@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Scissors, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { createClientAccount, getTheBarbershopId } from '@/lib/data';
+import { createClientAccount } from '@/lib/data';
 
 const signupSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
@@ -24,8 +24,10 @@ const signupSchema = z.object({
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
-export default function ClientSignupPage() {
+function ClientSignupPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const barbershopId = searchParams.get('barbershopId');
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -38,21 +40,26 @@ export default function ClientSignupPage() {
   });
 
   const onSubmit = async (data: SignupFormValues) => {
+    if (!barbershopId) {
+        toast({
+            variant: 'destructive',
+            title: 'Erro de Configuração',
+            description: 'Não foi possível identificar a barbearia. Por favor, use o link de cadastro fornecido pela barbearia.',
+        });
+        return;
+    }
+    
     setLoading(true);
     try {
-      const barbershopId = await getTheBarbershopId();
-      if (!barbershopId) {
-        throw new Error("Não foi possível encontrar a barbearia. O sistema pode não estar configurado.");
-      }
-      
       await createClientAccount(barbershopId, data);
 
       toast({
         title: 'Conta Criada com Sucesso!',
-        description: `Bem-vindo, ${data.name}!`,
+        description: `Bem-vindo, ${data.name}! Faça login para continuar.`,
       });
-
-      router.push('/'); // Go to root, which will redirect to the correct portal
+      
+      const loginUrl = `/portal/login?barbershopId=${barbershopId}`;
+      router.push(loginUrl);
     } catch (error: any) {
       console.error(error);
       let description = 'Ocorreu um erro. Por favor, tente novamente.';
@@ -68,6 +75,23 @@ export default function ClientSignupPage() {
       setLoading(false);
     }
   };
+
+  const loginLink = barbershopId ? `/portal/login?barbershopId=${barbershopId}` : '/portal/login';
+
+  if (!barbershopId) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-background p-4">
+              <Card className="w-full max-w-md shadow-2xl">
+                  <CardHeader className="text-center">
+                      <CardTitle className="text-2xl text-destructive">Link de Cadastro Inválido</CardTitle>
+                      <CardDescription>
+                          Parece que o link que você está usando está incompleto. Por favor, solicite um novo link de cadastro à sua barbearia.
+                      </CardDescription>
+                  </CardHeader>
+              </Card>
+          </div>
+      )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -134,7 +158,7 @@ export default function ClientSignupPage() {
           </form>
           <div className="mt-6 text-center text-sm">
             Já tem uma conta?{' '}
-            <Link href="/portal/login" className="font-medium text-primary hover:underline">
+            <Link href={loginLink} className="font-medium text-primary hover:underline">
               Faça login
             </Link>
           </div>
@@ -142,4 +166,13 @@ export default function ClientSignupPage() {
       </Card>
     </div>
   );
+}
+
+
+export default function ClientSignupPage() {
+    return (
+        <Suspense fallback={<div>Carregando...</div>}>
+            <ClientSignupPageContent />
+        </Suspense>
+    )
 }

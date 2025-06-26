@@ -1,34 +1,34 @@
 'use client';
 
-import { useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, Suspense } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2 } from 'lucide-react';
 import { PortalNavbar } from '@/components/portal/navbar';
 
-export default function PortalLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function PortalLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading, isBarberOwner } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const isAuthPage = pathname.includes('/portal/login') || pathname.includes('/portal/signup');
+  const barbershopId = searchParams.get('barbershopId');
 
   useEffect(() => {
-    // This layout is for any logged-in user.
-    // If not logged in, and not on an auth page, redirect to the customer login page.
-    if (!loading && !user && !isAuthPage) {
-      router.replace('/portal/login');
-    }
-    
-    // If a barber owner somehow lands here, send them to their dashboard.
-    if (!loading && user && isBarberOwner) {
+    if (!loading) {
+      if (!user && !isAuthPage) {
+        const loginUrl = barbershopId
+          ? `/portal/login?barbershopId=${barbershopId}`
+          : '/portal/login';
+        router.replace(loginUrl);
+      }
+      
+      if (user && isBarberOwner) {
         router.replace('/dashboard');
+      }
     }
-  }, [user, loading, isBarberOwner, isAuthPage, router]);
+  }, [user, loading, isBarberOwner, isAuthPage, router, barbershopId, pathname]);
 
   if ((loading || !user) && !isAuthPage) {
     return (
@@ -42,7 +42,6 @@ export default function PortalLayout({
       return <>{children}</>;
   }
 
-
   return (
     <div className="min-h-screen flex flex-col">
         <PortalNavbar />
@@ -51,4 +50,21 @@ export default function PortalLayout({
         </main>
     </div>
   );
+}
+
+
+export default function PortalLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+    return (
+        <Suspense fallback={
+            <div className="flex h-screen items-center justify-center bg-background">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        }>
+            <PortalLayoutContent>{children}</PortalLayoutContent>
+        </Suspense>
+    )
 }

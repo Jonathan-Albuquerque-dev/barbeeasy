@@ -1294,15 +1294,6 @@ export async function createStandaloneSale(userId: string, saleData: {
 
 // --- New Functions for Customer Portal ---
 
-export async function getTheBarbershopId(): Promise<string> {
-    const q = query(collection(db, "barbershops"), limit(1));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-        return querySnapshot.docs[0].id;
-    }
-    throw new Error("Nenhuma barbearia foi encontrada no sistema.");
-}
-
 export async function createClientAccount(barbershopId: string, data: { name: string; email: string; phone: string; password: any; }) {
     const auth = getAuth();
     try {
@@ -1343,8 +1334,19 @@ export async function createClientAccount(barbershopId: string, data: { name: st
 }
 
 
-export async function getAllAppointmentsForClient(userId: string, clientId: string) {
+export async function getAllAppointmentsForClient(userId: string, authUid: string) {
     try {
+        // This function now needs to find the client's document first using the authUid
+        const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
+        const clientQuery = query(clientsCol, where("authUid", "==", authUid), limit(1));
+        const clientSnapshot = await getDocs(clientQuery);
+
+        if (clientSnapshot.empty) {
+            // This can happen if a user is authenticated but hasn't completed client profile setup for this barbershop
+            return [];
+        }
+        const clientId = clientSnapshot.docs[0].id;
+
         const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
         const q = query(appointmentsCol, where('clientId', '==', clientId));
 

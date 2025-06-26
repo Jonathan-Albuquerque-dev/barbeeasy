@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { getClientByAuthId, getAllAppointmentsForClient } from '@/lib/data';
+import { getAllAppointmentsForClient } from '@/lib/data';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useSearchParams } from 'next/navigation';
 
 type AppointmentItem = {
     date: string;
@@ -18,8 +19,11 @@ type AppointmentItem = {
     status: 'Concluído' | 'Confirmado' | 'Pendente' | 'Em atendimento';
 };
 
-export default function MeusAgendamentosPage() {
-    const { user, barbershopId } = useAuth();
+function MeusAgendamentosContent() {
+    const { user } = useAuth();
+    const searchParams = useSearchParams();
+    const barbershopId = searchParams.get('barbershopId');
+
     const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -27,18 +31,18 @@ export default function MeusAgendamentosPage() {
     useEffect(() => {
         async function fetchHistory() {
             if (!user || !barbershopId) {
+                // Wait for user and barbershopId to be available
+                if (!user) setError("Você precisa estar logado para ver seus agendamentos.");
+                if (!barbershopId) setError("Nenhuma barbearia selecionada. Por favor, acesse pelo link correto.");
                 setLoading(false);
                 return;
             };
 
             try {
                 setLoading(true);
-                const clientProfile = await getClientByAuthId(barbershopId, user.uid);
-                if (!clientProfile) {
-                    throw new Error("Não foi possível encontrar seu perfil de cliente.");
-                }
-
-                const allAppointments = await getAllAppointmentsForClient(barbershopId, clientProfile.id);
+                // The client document is now linked via authUid to the client's auth account.
+                // We don't need to fetch the client profile first. We just need the barbershopId.
+                const allAppointments = await getAllAppointmentsForClient(barbershopId, user.uid);
                 setAppointments(allAppointments);
             } catch (err: any) {
                 setError(err.message || "Ocorreu um erro ao buscar seus dados.");
@@ -164,3 +168,13 @@ export default function MeusAgendamentosPage() {
         </div>
     );
 }
+
+
+export default function MeusAgendamentosPage() {
+    return (
+        <Suspense fallback={<div className="flex h-[50vh] items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+            <MeusAgendamentosContent />
+        </Suspense>
+    );
+}
+

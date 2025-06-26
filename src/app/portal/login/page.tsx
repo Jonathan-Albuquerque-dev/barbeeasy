@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import Link from 'next/link';
 
@@ -23,8 +23,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function ClientLoginPage() {
+function ClientLoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const barbershopId = searchParams.get('barbershopId');
+
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -42,8 +45,10 @@ export default function ClientLoginPage() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
-      // The root page will handle redirection to the correct portal
-      router.push('/'); 
+      // The root page will handle redirection. If we have a barbershopId,
+      // we can redirect directly to the booking page for a better UX.
+      const destination = barbershopId ? `/portal/agendar?barbershopId=${barbershopId}` : '/';
+      router.push(destination); 
     } catch (error: any) {
       console.error(error);
       toast({
@@ -55,6 +60,8 @@ export default function ClientLoginPage() {
       setLoading(false);
     }
   };
+
+  const signupLink = barbershopId ? `/portal/signup?barbershopId=${barbershopId}` : '/portal/signup';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -100,7 +107,7 @@ export default function ClientLoginPage() {
           <div className="mt-6 text-center text-sm">
             <p>
               Não tem uma conta?{' '}
-              <Link href="/portal/signup" className="font-medium text-primary hover:underline">
+              <Link href={signupLink} className="font-medium text-primary hover:underline">
                 Cadastre-se
               </Link>
             </p>
@@ -109,4 +116,12 @@ export default function ClientLoginPage() {
       </Card>
     </div>
   );
+}
+
+export default function ClientLoginPage() {
+    return (
+        <Suspense fallback={<div>Carregando...</div>}>
+            <ClientLoginPageContent />
+        </Suspense>
+    )
 }
