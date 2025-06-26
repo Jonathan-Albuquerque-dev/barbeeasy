@@ -344,6 +344,16 @@ export async function addProduct(userId: string, productData: Omit<Product, 'id'
     }
 }
 
+export async function updateProduct(userId: string, productId: string, productData: Partial<Omit<Product, 'id'>>) {
+    try {
+        const productDocRef = doc(db, getCollectionPath(userId, 'products'), productId);
+        await updateDoc(productDocRef, productData);
+    } catch (error) {
+        console.error("Erro ao atualizar produto:", error);
+        throw new Error("Não foi possível atualizar os dados do produto.");
+    }
+}
+
 // --- Funções de Assinatura ---
 export async function getSubscriptions(userId: string): Promise<Subscription[]> {
     try {

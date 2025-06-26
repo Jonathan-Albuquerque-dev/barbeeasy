@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback } from "react";
 import { AddProductDialog } from "@/components/products/add-product-dialog";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
+import { EditProductDialog } from "@/components/products/edit-product-dialog";
 
 type Product = Awaited<ReturnType<typeof getProducts>>[0];
 
@@ -80,10 +81,12 @@ export default function ProductsPage() {
               >
                   {product.stock > 0 ? `${product.stock} em estoque` : 'Fora de estoque'}
               </Badge>
-              <Button variant="outline" size="sm">
-                  <Edit className="mr-2 h-4 w-4" />
-                  Editar
-              </Button>
+              <EditProductDialog product={product} onProductUpdated={fetchProducts}>
+                <Button variant="outline" size="sm">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                </Button>
+              </EditProductDialog>
             </CardFooter>
           </Card>
         ))}
