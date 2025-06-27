@@ -150,24 +150,24 @@ export function AddSubscriptionDialog({ onSubscriptionAdded, children }: AddSubs
                     Adicione os serviços que farão parte do plano. Para o desconto, use 100 para serviços que serão gratuitos para o assinante.
                 </p>
                  {fields.map((field, index) => (
-                    <div key={field.id} className="flex items-end gap-2 p-2 border-b">
+                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto] items-end gap-2 p-2 border-b">
                         <FormField
                             control={form.control}
                             name={`includedServices.${index}.serviceId`}
                             render={({ field }) => (
-                                <FormItem className="flex-grow">
-                                <FormLabel className="sr-only">Serviço</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecione um serviço" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {availableServices.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
+                                <FormItem>
+                                    <FormLabel>Serviço</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecione um serviço" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                        {availableServices.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
@@ -175,12 +175,12 @@ export function AddSubscriptionDialog({ onSubscriptionAdded, children }: AddSubs
                             control={form.control}
                             name={`includedServices.${index}.discount`}
                             render={({ field }) => (
-                                <FormItem className="w-32">
-                                <FormLabel className="sr-only">Desconto (%)</FormLabel>
-                                <FormControl>
-                                    <Input type="number" step="1" placeholder="Desconto em %" {...field} />
-                                </FormControl>
-                                <FormMessage />
+                                <FormItem>
+                                    <FormLabel>Desconto (%)</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" step="1" placeholder="Ex: 100" {...field} className="w-32" />
+                                    </FormControl>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                          />
@@ -194,7 +194,7 @@ export function AddSubscriptionDialog({ onSubscriptionAdded, children }: AddSubs
                     variant="outline"
                     size="sm"
                     className="mt-2"
-                    onClick={() => append({ serviceId: '', discount: 0 })}
+                    onClick={() => append({ serviceId: '', discount: '' as any })}
                 >
                     Adicionar Serviço ao Plano
                 </Button>
