@@ -146,6 +146,9 @@ export function AddSubscriptionDialog({ onSubscriptionAdded, children }: AddSubs
             
             <div>
                 <h3 className="text-sm font-medium mb-2">Serviços Inclusos e Descontos</h3>
+                <p className="text-xs text-muted-foreground mb-4">
+                    Adicione os serviços que farão parte do plano. Para o desconto, use 100 para serviços que serão gratuitos para o assinante.
+                </p>
                  {fields.map((field, index) => (
                     <div key={field.id} className="flex items-end gap-2 p-2 border-b">
                         <FormField
@@ -175,7 +178,7 @@ export function AddSubscriptionDialog({ onSubscriptionAdded, children }: AddSubs
                                 <FormItem className="w-32">
                                 <FormLabel className="sr-only">Desconto (%)</FormLabel>
                                 <FormControl>
-                                    <Input type="number" step="1" placeholder="Desconto (%)" {...field} />
+                                    <Input type="number" step="1" placeholder="Desconto em %" {...field} />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>
