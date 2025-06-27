@@ -448,7 +448,7 @@ async function populateAppointments(userId: string, appointments: AppointmentDoc
 
 export async function getTodaysAppointments(userId: string) {
   try {
-    const todayString = new Date().toISOString().split('T')[0];
+    const todayString = format(new Date(), 'yyyy-MM-dd');
     const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
     const q = query(appointmentsCol, where("date", "==", todayString));
     
@@ -467,8 +467,7 @@ export async function getTodaysAppointments(userId: string) {
 }
 
 export async function getAppointmentsForDate(userId: string, date: Date) {
-    // Consulta simplificada com strings. Use Timestamps para apps robustos.
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = format(date, 'yyyy-MM-dd');
   try {
     const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
     const q = query(appointmentsCol, where("date", "==", dateString));
@@ -489,7 +488,7 @@ export async function getAppointmentsForDate(userId: string, date: Date) {
 }
 
 export async function getBarberAppointmentsForDate(userId: string, barberId: string, date: Date) {
-  const dateString = date.toISOString().split('T')[0];
+  const dateString = format(date, 'yyyy-MM-dd');
   try {
     const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
     const q = query(appointmentsCol, 
@@ -631,7 +630,7 @@ export async function getDashboardStats(userId: string) {
         const servicesCol = collection(db, getCollectionPath(userId, 'services'));
         const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
         
-        const todayString = new Date().toISOString().split('T')[0];
+        const todayString = format(new Date(), 'yyyy-MM-dd');
         const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
         const appointmentsQuery = query(appointmentsCol, where("date", "==", todayString));
 
@@ -1414,3 +1413,4 @@ export async function getAllAppointmentsForClient(userId: string, authUid: strin
         return [];
     }
 }
+
