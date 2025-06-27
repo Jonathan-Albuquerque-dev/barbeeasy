@@ -89,7 +89,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center">
-            <div className="flex justify-center items-center gap-3 mb-4">
+            <div className="flex justify-center items-center gap-3">
                 <div>
                   <h1 className="text-3xl font-bold leading-none font-body">
                     <span className="text-foreground">Barbe</span><span className="text-primary">Easy</span>
@@ -97,10 +97,8 @@ export default function LoginPage() {
                   <p className="text-sm text-muted-foreground text-left">Gestão de Barbearia</p>
                 </div>
             </div>
-          <CardTitle className="text-2xl">Bem-vindo(a) de volta!</CardTitle>
-          <CardDescription>Faça login para gerenciar sua barbearia.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
