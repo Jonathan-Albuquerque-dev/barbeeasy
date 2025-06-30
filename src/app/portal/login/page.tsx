@@ -27,7 +27,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 function ClientLoginPageContent() {
   const searchParams = useSearchParams();
   const barbershopId = searchParams.get('barbershopId');
-  const { login } = useClientSession();
+  const { setClientSession } = useClientSession();
   const [barbershopName, setBarbershopName] = useState('');
 
   const { toast } = useToast();
@@ -73,7 +73,7 @@ function ClientLoginPageContent() {
           avatarUrl: clientData.avatarUrl,
           barbershopId: barbershopId,
         };
-        login(session); // Call login from context. Redirect is handled by layout.
+        setClientSession(session); // Call setClientSession from context. Redirect is handled by layout.
       } else {
         toast({
             variant: 'destructive',
@@ -111,7 +111,7 @@ function ClientLoginPageContent() {
                     </div>
                 )}
             </div>
-          <CardTitle className="text-2xl">Bem-vindo(a)!</CardTitle>
+          <CardTitle>Bem-vindo(a)!</CardTitle>
           <CardDescription>{barbershopName ? `Acesse sua conta para agendar na ${barbershopName}.` : 'Acesse sua conta para agendar um horário.'}</CardDescription>
         </CardHeader>
         <CardContent>

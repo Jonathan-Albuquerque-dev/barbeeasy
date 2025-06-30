@@ -33,7 +33,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 function ClientSignupPageContent() {
   const searchParams = useSearchParams();
   const barbershopId = searchParams.get('barbershopId');
-  const { login } = useClientSession();
+  const { setClientSession } = useClientSession();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [barbershopName, setBarbershopName] = useState('');
@@ -82,7 +82,7 @@ function ClientSignupPageContent() {
           avatarUrl: newClient.avatarUrl,
           barbershopId: barbershopId,
       };
-      login(session); // Call login from context to set session and trigger redirect
+      setClientSession(session); // Call setClientSession from context to set session and trigger redirect
 
     } catch (error: any) {
       console.error(error);

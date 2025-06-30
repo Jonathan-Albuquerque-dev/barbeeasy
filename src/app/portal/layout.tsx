@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, Suspense } from 'react';
@@ -14,14 +13,14 @@ type ClientSession = Omit<Client, 'password' | 'preferences' | 'loyaltyPoints' |
 interface ClientSessionContextType {
   session: ClientSession | null;
   loading: boolean;
-  login: (sessionData: ClientSession) => void;
+  setClientSession: (sessionData: ClientSession) => void;
   logout: () => void;
 }
 
 const ClientSessionContext = createContext<ClientSessionContextType>({
   session: null,
   loading: true,
-  login: () => {},
+  setClientSession: () => {},
   logout: () => {},
 });
 
@@ -70,7 +69,7 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [session, loading, isAuthPage, pathname, router, barbershopId]);
   
-  const login = (sessionData: ClientSession) => {
+  const setClientSession = (sessionData: ClientSession) => {
     setSession(sessionData);
     localStorage.setItem('clientSession', JSON.stringify(sessionData));
   };
@@ -83,7 +82,7 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
     router.push(loginUrl);
   };
   
-  const contextValue = { session, loading, login, logout };
+  const contextValue = { session, loading, setClientSession, logout };
 
   return (
     <ClientSessionContext.Provider value={contextValue}>
