@@ -1,16 +1,21 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getTodaysAppointments, getDashboardStats, getServices } from "@/lib/data";
+import { getDashboardStats, getServices, populateAppointments, Subscription } from "@/lib/data";
 import { Users, Calendar, DollarSign, Clock, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/auth-context";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import type { AppointmentStatus, AppointmentDocument, Service } from "@/lib/data";
 import { AppointmentStatusUpdater } from "@/components/appointments/appointment-status-updater";
 import { Button } from "@/components/ui/button";
 import { AppointmentDetailsDialog } from "@/components/appointments/appointment-details-dialog";
 import { Badge } from "@/components/ui/badge";
+
+import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
 
 type PopulatedAppointment = AppointmentDocument & {
   client: { id: string; name: string; avatarUrl: string; subscriptionId?: string };
@@ -27,28 +32,46 @@ export default function DashboardPage() {
 
   const servicePriceMap = useMemo(() => new Map(services.map(s => [s.name, s.price])), [services]);
 
-  const fetchDashboardData = async () => {
-      if (user?.uid) {
-        setLoading(true);
-        const [fetchedStats, fetchedAppointments, fetchedServices] = await Promise.all([
-          getDashboardStats(user.uid),
-          getTodaysAppointments(user.uid),
-          getServices(user.uid)
-        ]);
-        
-        // Sort appointments by time before setting the state
-        fetchedAppointments.sort((a, b) => a.time.localeCompare(b.time));
-
-        setStats(fetchedStats);
-        setAppointments(fetchedAppointments as PopulatedAppointment[]);
-        setServices(fetchedServices);
-        setLoading(false);
-      }
+  const fetchStats = useCallback(() => {
+    if (user?.uid) {
+      getDashboardStats(user.uid).then(setStats);
     }
+  }, [user]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [user]);
+    if (!user?.uid) return;
+
+    // Fetch static data once
+    getServices(user.uid).then(setServices);
+    fetchStats(); // Fetch initial stats
+
+    const todayString = format(new Date(), 'yyyy-MM-dd');
+    const appointmentsCol = collection(db, `barbershops/${user.uid}/appointments`);
+    const q = query(appointmentsCol, where("date", "==", todayString));
+
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+        setLoading(true);
+        const appointmentDocs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AppointmentDocument[];
+        
+        const subscriptionsSnap = await getDocs(collection(db, `barbershops/${user.uid}/subscriptions`));
+        const subscriptions = subscriptionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Subscription[];
+
+        const populated = await populateAppointments(user.uid, appointmentDocs, subscriptions);
+        
+        populated.sort((a, b) => a.time.localeCompare(b.time));
+        setAppointments(populated as PopulatedAppointment[]);
+        
+        // Update stats whenever appointments change
+        fetchStats();
+        
+        setLoading(false);
+    }, (error) => {
+        console.error("Error fetching real-time appointments: ", error);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, fetchStats]);
 
   const handleStatusChange = (appointmentId: string, newStatus: AppointmentStatus) => {
     setAppointments(prevAppointments =>
@@ -56,11 +79,6 @@ export default function DashboardPage() {
         app.id === appointmentId ? { ...app, status: newStatus } : app
       )
     );
-
-    // Re-fetch stats to reflect changes in revenue or pending counts
-    if (user?.uid) {
-      getDashboardStats(user.uid).then(setStats);
-    }
   };
 
   const getBadgeVariant = (status: AppointmentStatus) => {
@@ -179,7 +197,7 @@ export default function DashboardPage() {
                         onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
                         totalValue={totalValue}
                       />
-                      <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchDashboardData}>
+                      <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchStats}>
                         <Button variant="outline" size="sm">Detalhes</Button>
                       </AppointmentDetailsDialog>
                     </div>

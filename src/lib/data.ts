@@ -2,7 +2,7 @@
 // src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit } from 'firebase/firestore';
 import { db } from './firebase';
-import { format } from 'date-fns';
+import { format, sub } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile, User } from 'firebase/auth';
 
@@ -396,7 +396,7 @@ export async function addSubscription(userId: string, subscriptionData: Omit<Sub
     }
 }
 
-async function populateAppointments(userId: string, appointments: AppointmentDocument[], subscriptions: Subscription[]) {
+export async function populateAppointments(userId: string, appointments: AppointmentDocument[], subscriptions: Subscription[]) {
     const subscriptionsMap = new Map(subscriptions.map(sub => [sub.id, sub]));
 
     return Promise.all(
@@ -491,8 +491,11 @@ export async function getBarberAppointmentsForDate(userId: string, barberId: str
 export async function addAppointment(userId: string, appointmentData: Omit<AppointmentDocument, 'id' | 'soldProducts'>) {
     try {
         const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
+        const dateInUTC = new Date(appointmentData.date);
+        const correctedDate = format(dateInUTC, 'yyyy-MM-dd', { timeZone: 'UTC' });
         await addDoc(appointmentsCol, {
           ...appointmentData,
+          date: correctedDate,
           soldProducts: [],
         });
     } catch (error) {

@@ -1,10 +1,11 @@
+
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
-import { getAppointmentsForDate, AppointmentStatus, AppointmentDocument, getServices, Service } from '@/lib/data';
+import { AppointmentStatus, AppointmentDocument, getServices, Service, Subscription, populateAppointments } from '@/lib/data';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { AddAppointmentDialog } from './add-appointment-dialog';
@@ -16,6 +17,8 @@ import { format, addDays, subDays, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 type Appointment = AppointmentDocument & {
   client: {
@@ -40,24 +43,35 @@ export function AppointmentCalendar() {
 
   const servicePriceMap = useMemo(() => new Map(services.map(s => [s.name, s.price])), [services]);
 
-  const fetchAppointments = useCallback(async () => {
+  useEffect(() => {
     if (!user?.uid || !date) return;
     
     setLoading(true);
-    const [fetchedAppointments, fetchedServices] = await Promise.all([
-      getAppointmentsForDate(user.uid, date),
-      getServices(user.uid)
-    ]);
     
-    fetchedAppointments.sort((a, b) => a.time.localeCompare(b.time));
-    setAppointments(fetchedAppointments as Appointment[]);
-    setServices(fetchedServices);
-    setLoading(false);
-  }, [date, user]);
+    getServices(user.uid).then(setServices);
+    
+    const dateString = format(date, 'yyyy-MM-dd');
+    const appointmentsCol = collection(db, `barbershops/${user.uid}/appointments`);
+    const q = query(appointmentsCol, where("date", "==", dateString));
 
-  useEffect(() => {
-    fetchAppointments();
-  }, [fetchAppointments]);
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+        const appointmentDocs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AppointmentDocument[];
+
+        const subscriptionsSnap = await getDocs(collection(db, `barbershops/${user.uid}/subscriptions`));
+        const subscriptions = subscriptionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Subscription[];
+
+        const populated = await populateAppointments(user.uid, appointmentDocs, subscriptions);
+        
+        populated.sort((a, b) => a.time.localeCompare(b.time));
+        setAppointments(populated as Appointment[]);
+        setLoading(false);
+    }, (error) => {
+        console.error(`Error fetching real-time appointments for ${dateString}: `, error);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [date, user]);
 
   const handleStatusChange = (appointmentId: string, newStatus: AppointmentStatus) => {
     setAppointments(prevAppointments =>
@@ -133,7 +147,7 @@ export function AppointmentCalendar() {
              <Button variant="ghost" onClick={() => setDate(new Date())}>Hoje</Button>
           )}
         </div>
-        <AddAppointmentDialog onAppointmentAdded={fetchAppointments} initialDate={date}>
+        <AddAppointmentDialog onAppointmentAdded={() => {}} initialDate={date}>
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
             Novo Agendamento
@@ -184,7 +198,7 @@ export function AppointmentCalendar() {
                         onStatusChange={(newStatus) => handleStatusChange(app.id, newStatus)}
                         totalValue={totalValue}
                       />
-                      <AppointmentDetailsDialog appointment={app} onAppointmentUpdate={fetchAppointments}>
+                      <AppointmentDetailsDialog appointment={app} onAppointmentUpdate={() => {}}>
                         <Button variant="outline" size="sm">Detalhes</Button>
                       </AppointmentDetailsDialog>
                     </div>
