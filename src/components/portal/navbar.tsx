@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -95,43 +94,45 @@ export function PortalNavbar() {
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container flex h-14 items-center px-4">
-                {/* Mobile Menu */}
-                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                    <SheetTrigger asChild>
-                        <Button variant="ghost" size="icon" className="md:hidden mr-4">
-                            <Menu className="h-5 w-5" />
-                            <span className="sr-only">Abrir menu</span>
-                        </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-64">
-                         <SheetTitle className="sr-only">Menu Principal</SheetTitle>
-                         <Link href={rootLink} className="mr-6 flex items-center space-x-2 mb-6" onClick={() => setMobileMenuOpen(false)}>
+            <div className="container flex h-14 items-center justify-between px-4">
+                <div className="flex items-center">
+                    {/* Mobile Menu */}
+                    <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="md:hidden mr-4">
+                                <Menu className="h-5 w-5" />
+                                <span className="sr-only">Abrir menu</span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-64">
+                             <SheetTitle className="sr-only">Menu Principal</SheetTitle>
+                             <Link href={rootLink} className="mr-6 flex items-center space-x-2 mb-6" onClick={() => setMobileMenuOpen(false)}>
+                                <div>
+                                    <span className="font-bold font-body text-lg leading-none"><span className="text-foreground">Barbe</span><span className="text-primary">Easy</span></span>
+                                    <p className="text-xs text-muted-foreground">Gestão de Barbearia</p>
+                                </div>
+                            </Link>
+                            <nav className="flex flex-col space-y-4 text-lg font-medium">
+                                <NavContent />
+                            </nav>
+                        </SheetContent>
+                    </Sheet>
+
+                    {/* Desktop Menu */}
+                    <div className="hidden md:flex items-center gap-6">
+                        <Link href={rootLink} className="flex items-center space-x-2">
                             <div>
                                 <span className="font-bold font-body text-lg leading-none"><span className="text-foreground">Barbe</span><span className="text-primary">Easy</span></span>
                                 <p className="text-xs text-muted-foreground">Gestão de Barbearia</p>
                             </div>
                         </Link>
-                        <nav className="flex flex-col space-y-4 text-lg font-medium">
+                        <nav className="flex items-center space-x-6 text-sm font-medium">
                             <NavContent />
                         </nav>
-                    </SheetContent>
-                </Sheet>
-
-                {/* Desktop Menu */}
-                <div className="mr-4 hidden md:flex items-center">
-                    <Link href={rootLink} className="mr-6 flex items-center space-x-2">
-                        <div>
-                            <span className="font-bold font-body text-lg leading-none"><span className="text-foreground">Barbe</span><span className="text-primary">Easy</span></span>
-                            <p className="text-xs text-muted-foreground">Gestão de Barbearia</p>
-                        </div>
-                    </Link>
-                    <nav className="flex items-center space-x-6 text-sm font-medium">
-                        <NavContent />
-                    </nav>
+                    </div>
                 </div>
                 
-                <div className="flex flex-1 items-center justify-end space-x-4">
+                <div className="flex items-center justify-end">
                     {session ? (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
