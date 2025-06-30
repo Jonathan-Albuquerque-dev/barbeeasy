@@ -67,15 +67,25 @@ function ClientSignupPageContent() {
     
     setLoading(true);
     try {
-      await createClientAccount(barbershopId, data);
+      const newClient = await createClientAccount(barbershopId, data);
 
       toast({
         title: 'Conta Criada com Sucesso!',
-        description: `Bem-vindo, ${data.name}! Faça login para continuar.`,
+        description: `Bem-vindo, ${data.name}! Você já está conectado.`,
       });
       
-      const loginUrl = `/portal/login?barbershopId=${barbershopId}`;
-      router.push(loginUrl);
+      const session = {
+          id: newClient.id,
+          name: newClient.name,
+          email: newClient.email,
+          avatarUrl: newClient.avatarUrl,
+          barbershopId: barbershopId,
+      };
+      localStorage.setItem('clientSession', JSON.stringify(session));
+
+      const agendarUrl = `/portal/agendar?barbershopId=${barbershopId}`;
+      router.push(agendarUrl);
+
     } catch (error: any) {
       console.error(error);
       let description = 'Ocorreu um erro. Por favor, tente novamente.';

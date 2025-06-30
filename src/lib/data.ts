@@ -1312,7 +1312,7 @@ export async function updateClientPassword(barbershopId: string, clientId: strin
     }
 }
 
-export async function createClientAccount(barbershopId: string, data: { name: string; email: string; phone: string; password: any; }) {
+export async function createClientAccount(barbershopId: string, data: { name: string; email: string; phone: string; password: any; }): Promise<{ id: string; name: string; email: string; avatarUrl: string; }> {
     try {
         const clientsCol = collection(db, getCollectionPath(barbershopId, 'clients'));
         
@@ -1341,7 +1341,14 @@ export async function createClientAccount(barbershopId: string, data: { name: st
             createdAt: new Date(),
         };
 
-        await addDoc(clientsCol, clientData);
+        const docRef = await addDoc(clientsCol, clientData);
+        
+        return {
+            id: docRef.id,
+            name: clientData.name,
+            email: clientData.email,
+            avatarUrl: clientData.avatarUrl,
+        };
 
     } catch (error: any) {
         console.error("Erro ao criar conta de cliente:", error);
