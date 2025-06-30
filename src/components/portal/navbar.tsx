@@ -94,12 +94,13 @@ export function PortalNavbar() {
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container flex h-14 items-center justify-between px-4">
-                <div className="flex items-center">
+            <div className="container flex h-14 items-center px-4">
+                {/* Left Group: Contains Logo and Nav links */}
+                <div className="flex items-center gap-6">
                     {/* Mobile Menu */}
                     <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                         <SheetTrigger asChild>
-                            <Button variant="ghost" size="icon" className="md:hidden mr-4">
+                            <Button variant="ghost" size="icon" className="md:hidden">
                                 <Menu className="h-5 w-5" />
                                 <span className="sr-only">Abrir menu</span>
                             </Button>
@@ -132,7 +133,8 @@ export function PortalNavbar() {
                     </div>
                 </div>
                 
-                <div className="flex items-center justify-end">
+                {/* Right Group: Pushed to the right with ml-auto */}
+                <div className="flex items-center ml-auto">
                     {session ? (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
