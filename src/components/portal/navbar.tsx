@@ -15,15 +15,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { LayoutDashboard, LogOut, User as UserIcon, Calendar, Star, Menu } from 'lucide-react';
+import { LogOut, User as UserIcon, Calendar, Star, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSubscriptions } from '@/lib/data';
 import { useClientSession } from '@/app/portal/layout';
-import { useAuth } from '@/contexts/auth-context';
 
 export function PortalNavbar() {
     const { session, logout } = useClientSession();
-    const { isBarberOwner } = useAuth(); // For "Go to Dashboard" link
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -116,12 +114,6 @@ export function PortalNavbar() {
                         <UserIcon className="mr-2 h-4 w-4" />
                         <span>Meu Perfil</span>
                     </DropdownMenuItem>
-                    {isBarberOwner && (
-                        <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-                            <LayoutDashboard className="mr-2 h-4 w-4" />
-                            <span>Painel do Gerente</span>
-                        </DropdownMenuItem>
-                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={logout}>
                         <LogOut className="mr-2 h-4 w-4" />
@@ -137,41 +129,35 @@ export function PortalNavbar() {
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="container flex h-14 items-center justify-between px-4">
-                {/* Left Side of Header */}
-                <div className="flex items-center gap-4">
-                    {/* Mobile: Hamburger Menu */}
-                    <div className="md:hidden">
-                        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                            <SheetTrigger asChild>
-                                 <Button variant="ghost" size="icon">
-                                    <Menu className="h-5 w-5" />
-                                    <span className="sr-only">Abrir menu</span>
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent side="left" className="w-64">
-                                 <SheetTitle className="sr-only">Menu Principal</SheetTitle>
-                                <nav className="flex flex-col space-y-4 text-lg font-medium p-4 mt-6">
-                                    <NavContent inSheet={true}/>
-                                </nav>
-                            </SheetContent>
-                        </Sheet>
-                    </div>
+                {/* Left Side of Header - Mobile */}
+                <div className="md:hidden">
+                    <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                        <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                <Menu className="h-5 w-5" />
+                                <span className="sr-only">Abrir menu</span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-64">
+                                <SheetTitle className="sr-only">Menu Principal</SheetTitle>
+                            <nav className="flex flex-col space-y-4 text-lg font-medium p-4 mt-6">
+                                <NavContent inSheet={true}/>
+                            </nav>
+                        </SheetContent>
+                    </Sheet>
+                </div>
 
-                    {/* Desktop: Profile Dropdown + Nav Links */}
-                    <div className="hidden md:flex items-center gap-4">
-                        <ProfileDropdown />
-                         <nav className="flex items-center gap-6">
-                            <NavContent />
-                        </nav>
-                    </div>
+                {/* Left Side of Header - Desktop */}
+                <div className="hidden md:flex items-center gap-4">
+                    <ProfileDropdown />
+                        <nav className="flex items-center gap-6">
+                        <NavContent />
+                    </nav>
                 </div>
                 
                 {/* Right Side of Header */}
-                <div className="flex items-center">
-                    {/* Mobile: Profile Dropdown */}
-                    <div className="md:hidden">
-                        <ProfileDropdown />
-                    </div>
+                <div className="md:hidden ml-auto">
+                    <ProfileDropdown />
                 </div>
             </div>
         </header>
