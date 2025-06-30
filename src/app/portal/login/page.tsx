@@ -5,7 +5,7 @@ import { useState, Suspense, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { clientLogin, getBarbershopSettings } from '@/lib/data';
+import { useClientSession } from '../layout';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
@@ -24,9 +25,9 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 function ClientLoginPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const barbershopId = searchParams.get('barbershopId');
+  const { login } = useClientSession();
   const [barbershopName, setBarbershopName] = useState('');
 
   const { toast } = useToast();
@@ -65,7 +66,6 @@ function ClientLoginPageContent() {
       const clientData = await clientLogin(barbershopId, data.email, data.password);
       
       if (clientData) {
-        // Store session in localStorage
         const session = {
           id: clientData.id,
           name: clientData.name,
@@ -73,10 +73,7 @@ function ClientLoginPageContent() {
           avatarUrl: clientData.avatarUrl,
           barbershopId: barbershopId,
         };
-        localStorage.setItem('clientSession', JSON.stringify(session));
-        
-        const destination = `/portal/agendar?barbershopId=${barbershopId}`;
-        router.push(destination);
+        login(session); // Call login from context. Redirect is handled by layout.
       } else {
         toast({
             variant: 'destructive',

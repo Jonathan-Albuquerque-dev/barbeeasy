@@ -14,12 +14,14 @@ type ClientSession = Omit<Client, 'password' | 'preferences' | 'loyaltyPoints' |
 interface ClientSessionContextType {
   session: ClientSession | null;
   loading: boolean;
+  login: (sessionData: ClientSession) => void;
   logout: () => void;
 }
 
 const ClientSessionContext = createContext<ClientSessionContextType>({
   session: null,
   loading: true,
+  login: () => {},
   logout: () => {},
 });
 
@@ -34,60 +36,72 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const isAuthPage = pathname.includes('/portal/login') || pathname.includes('/portal/signup');
-  const barbershopId = searchParams.get('barbershopId');
+  const barbershopId = session?.barbershopId || searchParams.get('barbershopId');
 
   useEffect(() => {
-    const sessionData = localStorage.getItem('clientSession');
-    if (sessionData) {
+    // This effect runs once to initialize the session from localStorage.
+    try {
+      const sessionData = localStorage.getItem('clientSession');
+      if (sessionData) {
         const parsedSession = JSON.parse(sessionData);
-        // Basic validation
         if (parsedSession.id && parsedSession.barbershopId) {
-            setSession(parsedSession);
+          setSession(parsedSession);
         }
+      }
+    } catch (error) {
+      console.error("Error reading client session from localStorage", error);
+      localStorage.removeItem('clientSession');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
+    // This effect handles navigation logic whenever the session or route changes.
     if (!loading) {
-      if (!session && !isAuthPage) {
-        const loginUrl = barbershopId
-          ? `/portal/login?barbershopId=${barbershopId}`
-          : '/portal/login';
+      if (session && isAuthPage) {
+        // If logged in and on an auth page, redirect to booking.
+        router.replace(`/portal/agendar?barbershopId=${session.barbershopId}`);
+      } else if (!session && !isAuthPage) {
+        // If not logged in and on a protected page, redirect to login.
+        const loginUrl = barbershopId ? `/portal/login?barbershopId=${barbershopId}` : '/portal/login';
         router.replace(loginUrl);
       }
     }
-  }, [session, loading, isAuthPage, router, barbershopId, pathname]);
-
+  }, [session, loading, isAuthPage, pathname, router, barbershopId]);
+  
+  const login = (sessionData: ClientSession) => {
+    setSession(sessionData);
+    localStorage.setItem('clientSession', JSON.stringify(sessionData));
+  };
+  
   const logout = () => {
-    localStorage.removeItem('clientSession');
+    const currentBarbershopId = session?.barbershopId || searchParams.get('barbershopId');
     setSession(null);
-    const loginUrl = barbershopId ? `/portal/login?barbershopId=${barbershopId}` : '/portal/login';
+    localStorage.removeItem('clientSession');
+    const loginUrl = currentBarbershopId ? `/portal/login?barbershopId=${currentBarbershopId}` : '/portal/login';
     router.push(loginUrl);
   };
   
-  const contextValue = { session, loading, logout };
-
-  if (loading || (!session && !isAuthPage)) {
-    return (
-        <div className="flex h-screen items-center justify-center bg-background">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-    );
-  }
-  
-  if (isAuthPage) {
-      return <>{children}</>;
-  }
+  const contextValue = { session, loading, login, logout };
 
   return (
     <ClientSessionContext.Provider value={contextValue}>
+      {loading || (!session && !isAuthPage) ? (
+        // Show a loader while checking auth or before redirecting unauth user
+        <div className="flex h-screen items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      ) : isAuthPage ? (
+        // Render auth pages directly
+        <>{children}</>
+      ) : (
+        // Render protected pages with layout
         <div className="min-h-screen flex flex-col">
             <PortalNavbar />
-            <main className="flex-1">
-                {children}
-            </main>
+            <main className="flex-1">{children}</main>
         </div>
+      )}
     </ClientSessionContext.Provider>
   );
 }

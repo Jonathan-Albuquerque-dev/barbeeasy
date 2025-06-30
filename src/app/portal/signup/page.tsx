@@ -5,7 +5,7 @@ import { useState, Suspense, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { createClientAccount, getBarbershopSettings } from '@/lib/data';
+import { useClientSession } from '../layout';
 
 const signupSchema = z.object({
   name: z.string().min(2, { message: 'O nome é obrigatório.' }),
@@ -30,9 +31,9 @@ const signupSchema = z.object({
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 function ClientSignupPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const barbershopId = searchParams.get('barbershopId');
+  const { login } = useClientSession();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [barbershopName, setBarbershopName] = useState('');
@@ -81,10 +82,7 @@ function ClientSignupPageContent() {
           avatarUrl: newClient.avatarUrl,
           barbershopId: barbershopId,
       };
-      localStorage.setItem('clientSession', JSON.stringify(session));
-
-      const agendarUrl = `/portal/agendar?barbershopId=${barbershopId}`;
-      router.push(agendarUrl);
+      login(session); // Call login from context to set session and trigger redirect
 
     } catch (error: any) {
       console.error(error);
