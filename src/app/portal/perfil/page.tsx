@@ -1,10 +1,22 @@
+
 'use client';
 
 import { Suspense } from 'react';
 import { ClientProfileForm } from '@/components/portal/client-profile-form';
 import { Loader2 } from 'lucide-react';
+import { useClientSession } from '../layout';
 
 function PerfilPageContent() {
+    const { session, loading } = useClientSession();
+
+    if (loading || !session) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="animate-spin h-12 w-12 text-primary" />
+            </div>
+        );
+    }
+    
     return (
          <div className="container mx-auto py-12 px-4">
             <div className="mx-auto max-w-4xl space-y-8">
@@ -14,7 +26,7 @@ function PerfilPageContent() {
                         Gerencie suas informações pessoais e de segurança.
                     </p>
                 </div>
-                <ClientProfileForm />
+                <ClientProfileForm client={session} />
             </div>
         </div>
     )

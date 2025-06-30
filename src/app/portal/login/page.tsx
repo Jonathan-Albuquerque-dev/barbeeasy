@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, Suspense, useEffect } from 'react';
@@ -5,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { app } from '@/lib/firebase';
-import { getBarbershopSettings } from '@/lib/data';
+import { clientLogin, getBarbershopSettings } from '@/lib/data';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
@@ -50,23 +49,47 @@ function ClientLoginPageContent() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
-  
-  const auth = getAuth(app);
 
   const onSubmit = async (data: LoginFormValues) => {
+    if (!barbershopId) {
+        toast({
+            variant: 'destructive',
+            title: 'Erro de Configuração',
+            description: 'ID da barbearia não encontrado. Use o link correto.',
+        });
+        return;
+    }
+
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
-      // The root page will handle redirection. If we have a barbershopId,
-      // we can redirect directly to the booking page for a better UX.
-      const destination = barbershopId ? `/portal/agendar?barbershopId=${barbershopId}` : '/';
-      router.push(destination); 
+      const clientData = await clientLogin(barbershopId, data.email, data.password);
+      
+      if (clientData) {
+        // Store session in localStorage
+        const session = {
+          id: clientData.id,
+          name: clientData.name,
+          email: clientData.email,
+          avatarUrl: clientData.avatarUrl,
+          barbershopId: barbershopId,
+        };
+        localStorage.setItem('clientSession', JSON.stringify(session));
+        
+        const destination = `/portal/agendar?barbershopId=${barbershopId}`;
+        router.push(destination);
+      } else {
+        toast({
+            variant: 'destructive',
+            title: 'Erro de Login',
+            description: 'Email ou senha inválidos. Por favor, tente novamente.',
+        });
+      }
     } catch (error: any) {
       console.error(error);
       toast({
         variant: 'destructive',
         title: 'Erro de Login',
-        description: 'Email ou senha inválidos. Por favor, tente novamente.',
+        description: error.message || 'Ocorreu um erro inesperado.',
       });
     } finally {
       setLoading(false);

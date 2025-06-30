@@ -1,15 +1,13 @@
+
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getClientByAuthId, updateClientProfile } from '@/lib/data';
-import { getAuth, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
-import { app } from '@/lib/firebase';
-import { useSearchParams } from 'next/navigation';
+import { updateClientProfile, updateClientPassword, Client } from '@/lib/data';
+import { useClientSession } from '@/app/portal/layout';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +15,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Skeleton } from '../ui/skeleton';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'O nome é obrigatório.'),
@@ -37,13 +34,13 @@ const passwordSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
-export function ClientProfileForm() {
-  const { user } = useAuth();
+interface ClientProfileFormProps {
+    client: Omit<Client, 'password'>;
+}
+
+export function ClientProfileForm({ client }: ClientProfileFormProps) {
   const { toast } = useToast();
-  const searchParams = useSearchParams();
-  const barbershopId = searchParams.get('barbershopId');
-  const [clientId, setClientId] = useState('');
-  const [loading, setLoading] = useState(true);
+  const { session } = useClientSession();
 
   // Profile Form
   const profileForm = useForm<ProfileFormValues>({
@@ -58,29 +55,25 @@ export function ClientProfileForm() {
   });
 
   useEffect(() => {
-    if (user && barbershopId) {
-      setLoading(true);
-      getClientByAuthId(barbershopId, user.uid).then(clientData => {
-        if (clientData) {
-          profileForm.reset({
-            name: clientData.name,
-            phone: clientData.phone,
-            avatarUrl: clientData.avatarUrl || '',
-          });
-          setClientId(clientData.id);
-        }
-        setLoading(false);
-      });
+    if (client) {
+        profileForm.reset({
+            name: client.name,
+            phone: client.phone,
+            avatarUrl: client.avatarUrl || '',
+        });
     }
-  }, [user, barbershopId, profileForm]);
+  }, [client, profileForm]);
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
-    if (!user || !barbershopId || !clientId) return;
+    if (!session?.barbershopId || !client.id) return;
     
     try {
-      await updateClientProfile(barbershopId, clientId, user, data);
+      await updateClientProfile(session.barbershopId, client.id, data);
       toast({ title: 'Sucesso!', description: 'Seu perfil foi atualizado.' });
       profileForm.reset(data);
+      // Optional: update session storage if name/avatar changes
+      const updatedSession = { ...session, name: data.name, avatarUrl: data.avatarUrl };
+      localStorage.setItem('clientSession', JSON.stringify(updatedSession));
     } catch (error) {
       console.error(error);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o perfil.' });
@@ -88,37 +81,21 @@ export function ClientProfileForm() {
   };
 
   const onPasswordSubmit = async (data: PasswordFormValues) => {
-    if (!user || !user.email) {
-      toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
+    if (!session?.barbershopId || !client.id) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Sessão inválida.' });
       return;
     }
-    const auth = getAuth(app);
-    const credential = EmailAuthProvider.credential(user.email, data.currentPassword);
     
     try {
-        await reauthenticateWithCredential(user, credential);
-        await updatePassword(user, data.newPassword);
+        await updateClientPassword(session.barbershopId, client.id, data.currentPassword, data.newPassword);
         toast({ title: 'Sucesso!', description: 'Sua senha foi alterada.' });
         passwordForm.reset();
     } catch (error: any) {
-      let description = 'Ocorreu um erro ao alterar sua senha.';
-      if (error.code === 'auth/wrong-password') {
-        description = 'A senha atual está incorreta.';
-      }
-      toast({ variant: 'destructive', title: 'Erro de Segurança', description });
+      toast({ variant: 'destructive', title: 'Erro de Segurança', description: error.message });
     }
   };
 
   const watchedAvatarUrl = profileForm.watch('avatarUrl');
-
-  if (loading) {
-      return (
-          <div className='space-y-8'>
-              <Card><CardHeader><Skeleton className="h-8 w-48" /></CardHeader><CardContent><Skeleton className="h-40 w-full" /></CardContent></Card>
-              <Card><CardHeader><Skeleton className="h-8 w-48" /></CardHeader><CardContent><Skeleton className="h-40 w-full" /></CardContent></Card>
-          </div>
-      )
-  }
 
   return (
     <div className="space-y-8">

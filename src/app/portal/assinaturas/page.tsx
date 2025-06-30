@@ -1,9 +1,9 @@
+
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useAuth } from '@/contexts/auth-context';
 import { useSearchParams } from 'next/navigation';
-import { getSubscriptions, getClientByAuthId, Subscription, assignSubscriptionToClient } from '@/lib/data';
+import { getSubscriptions, getClientById, Subscription, assignSubscriptionToClient } from '@/lib/data';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
+import { useClientSession } from '../layout';
 
 
 function AssinaturasPageContent() {
-    const { user } = useAuth();
+    const { session, loading: sessionLoading } = useClientSession();
     const searchParams = useSearchParams();
     const barbershopId = searchParams.get('barbershopId');
 
@@ -29,16 +30,21 @@ function AssinaturasPageContent() {
 
 
     const fetchData = async () => {
-        if (!barbershopId || !user) {
-            setError("Barbearia ou usuário não identificado.");
+        if (!barbershopId) {
+            setError("Barbearia não identificada.");
             setLoading(false);
             return;
         }
+        if (!session?.id) {
+            // Wait for session
+            return;
+        }
+
         try {
             setLoading(true);
             const [subs, client] = await Promise.all([
                 getSubscriptions(barbershopId),
-                getClientByAuthId(barbershopId, user.uid)
+                getClientById(barbershopId, session.id)
             ]);
             setSubscriptions(subs);
             setClientSubscriptionId(client?.subscriptionId);
@@ -50,21 +56,20 @@ function AssinaturasPageContent() {
     }
 
     useEffect(() => {
-        fetchData();
-    }, [user, barbershopId]);
+        if (!sessionLoading) {
+            fetchData();
+        }
+    }, [session, sessionLoading, barbershopId]);
     
     const handleSubscribe = async (subscription: Subscription) => {
-        if (!user || !barbershopId || !selectedPaymentMethod) {
+        if (!session?.id || !barbershopId || !selectedPaymentMethod) {
             toast({ variant: 'destructive', title: 'Erro', description: 'Dados incompletos para realizar assinatura.'});
             return;
         }
         
         setIsSubscribing(true);
         try {
-            const client = await getClientByAuthId(barbershopId, user.uid);
-            if (!client) throw new Error("Perfil do cliente não encontrado.");
-            
-            await assignSubscriptionToClient(barbershopId, client.id, subscription.id, subscription.name, selectedPaymentMethod);
+            await assignSubscriptionToClient(barbershopId, session.id, subscription.id, subscription.name, selectedPaymentMethod);
             
             toast({ title: 'Sucesso!', description: `Você agora é assinante do plano ${subscription.name}!`});
             setClientSubscriptionId(subscription.id);
@@ -78,7 +83,7 @@ function AssinaturasPageContent() {
     }
 
 
-    if (loading) {
+    if (loading || sessionLoading) {
         return <div className="flex h-[50vh] items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
     }
 

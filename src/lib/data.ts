@@ -29,6 +29,7 @@ export type Client = {
   name: string;
   email: string;
   phone: string;
+  password?: string;
   address: string;
   loyaltyStatus: 'Ouro' | 'Prata' | 'Bronze';
   loyaltyPoints: number;
@@ -43,7 +44,6 @@ export type Client = {
   subscriptionName?: string;
   subscriptionPaymentMethod?: string;
   subscriptionStartDate?: any;
-  authUid?: string; // Link to Firebase Auth user
 };
 
 export type Staff = {
@@ -230,22 +230,6 @@ export async function getClientById(userId: string, id: string): Promise<Client 
   }
 }
 
-export async function getClientByAuthId(barbershopId: string, authId: string): Promise<Client | undefined> {
-  try {
-    const clientsCol = collection(db, getCollectionPath(barbershopId, 'clients'));
-    const q = query(clientsCol, where("authUid", "==", authId), limit(1));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-        return getData<Client>(querySnapshot.docs[0]);
-    }
-    return undefined;
-  } catch (error) {
-    console.error(`Erro ao buscar cliente pelo authId ${authId}:`, error);
-    return undefined;
-  }
-}
-
-
 export async function getServiceHistoryForClient(userId: string, clientId: string) {
     try {
         const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
@@ -270,7 +254,7 @@ export async function getServiceHistoryForClient(userId: string, clientId: strin
         const history = appointments.map(app => {
             const serviceInfo = serviceMap.get(app.service);
             const barberInfo = staffMap.get(app.barberId);
-            const dateObject = new Date(`${app.date}T12:00:00Z`); // Assume UTC to avoid timezone shifts
+            const dateObject = new Date(`${app.date}T00:00:00`); 
             const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
             const productsTotal = (app.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
             const totalValue = (serviceInfo?.price || 0) + productsTotal;
@@ -1015,7 +999,7 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
             }
 
             detailedServices.push({
-                date: format(new Date(`${app.date}T12:00:00Z`), 'dd/MM/yyyy', { locale: ptBR }),
+                date: format(new Date(`${app.date}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }),
                 clientName,
                 serviceName: app.service,
                 servicePrice: servicePrice,
@@ -1028,7 +1012,7 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
                     const commission = subtotal * productCommissionRate;
                     totalProductCommission += commission;
                     detailedProducts.push({
-                        date: format(new Date(`${app.date}T12:00:00Z`), 'dd/MM/yyyy', { locale: ptBR }),
+                        date: format(new Date(`${app.date}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }),
                         clientName,
                         productName: p.name,
                         quantity: p.quantity,
@@ -1055,7 +1039,7 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
                 const commission = subtotal * productCommissionRate;
                 totalProductCommission += commission;
                 detailedProducts.push({
-                    date: format(new Date(`${sale.date}T12:00:00Z`), 'dd/MM/yyyy', { locale: ptBR }),
+                    date: format(new Date(`${sale.date}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR }),
                     clientName,
                     productName: p.name,
                     quantity: p.quantity,
@@ -1293,20 +1277,13 @@ export async function createStandaloneSale(userId: string, saleData: {
 
 // --- New Functions for Customer Portal ---
 
-export async function updateClientProfile(barbershopId: string, clientId: string, authUser: User, data: { name: string; phone: string; avatarUrl: string }) {
+export async function updateClientProfile(barbershopId: string, clientId: string, data: { name: string; phone: string; avatarUrl: string }) {
     try {
-        // Update Firestore
         const clientDocRef = doc(db, getCollectionPath(barbershopId, 'clients'), clientId);
         await updateDoc(clientDocRef, {
             name: data.name,
             phone: data.phone,
             avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
-        });
-
-        // Update Auth Profile
-        await updateAuthProfile(authUser, {
-            displayName: data.name,
-            photoURL: data.avatarUrl,
         });
     } catch (error) {
         console.error("Erro ao atualizar perfil do cliente:", error);
@@ -1314,21 +1291,44 @@ export async function updateClientProfile(barbershopId: string, clientId: string
     }
 }
 
-export async function createClientAccount(barbershopId: string, data: { name: string; email: string; phone: string; password: any; }) {
-    const auth = getAuth();
+export async function updateClientPassword(barbershopId: string, clientId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const clientDocRef = doc(db, getCollectionPath(barbershopId, 'clients'), clientId);
     try {
-        // 1. Create user in Firebase Auth
-        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-        const user = userCredential.user;
+        const clientSnap = await getDoc(clientDocRef);
+        if (!clientSnap.exists()) {
+            throw new Error("Cliente não encontrado.");
+        }
+        const clientData = clientSnap.data() as Client;
 
-        // Add display name to auth user
-        await updateAuthProfile(user, { displayName: data.name });
+        if (clientData.password !== currentPassword) {
+            throw new Error("A senha atual está incorreta.");
+        }
 
-        // 2. Create the client document in the barbershop's subcollection
+        await updateDoc(clientDocRef, { password: newPassword });
+    } catch (error: any) {
+        console.error("Erro ao alterar senha do cliente:", error);
+        // Re-throw the original error message if it's specific, otherwise a generic one
+        throw new Error(error.message || "Não foi possível alterar a senha.");
+    }
+}
+
+export async function createClientAccount(barbershopId: string, data: { name: string; email: string; phone: string; password: any; }) {
+    try {
+        const clientsCol = collection(db, getCollectionPath(barbershopId, 'clients'));
+        
+        // Check if email already exists for this barbershop
+        const q = query(clientsCol, where("email", "==", data.email), limit(1));
+        const existingClientSnap = await getDocs(q);
+        if (!existingClientSnap.empty) {
+            throw new Error("Este email já está em uso nesta barbearia. Tente outro ou faça login.");
+        }
+
+        // Create the client document in the barbershop's subcollection
         const clientData = {
             name: data.name,
             email: data.email,
             phone: data.phone,
+            password: data.password, // In a real app, this should be hashed.
             address: '',
             loyaltyStatus: 'Bronze' as const,
             loyaltyPoints: 0,
@@ -1339,34 +1339,39 @@ export async function createClientAccount(barbershopId: string, data: { name: st
                 notes: ''
             },
             createdAt: new Date(),
-            authUid: user.uid // Link to the auth user
         };
 
-        const clientsCol = collection(db, getCollectionPath(barbershopId, 'clients'));
-        // We don't know the ID beforehand, so we use addDoc
         await addDoc(clientsCol, clientData);
 
-        return user;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Erro ao criar conta de cliente:", error);
         throw error;
     }
 }
 
+export async function clientLogin(barbershopId: string, email: string, password: string): Promise<Client | null> {
+    const clientsCol = collection(db, getCollectionPath(barbershopId, 'clients'));
+    const q = query(clientsCol, where("email", "==", email), limit(1));
+    const snapshot = await getDocs(q);
 
-export async function getAllAppointmentsForClient(userId: string, authUid: string) {
+    if (snapshot.empty) {
+        return null; // User not found
+    }
+
+    const client = getData<Client>(snapshot.docs[0]);
+
+    if (client && client.password === password) {
+        // Exclude password from the returned object
+        const { password: _p, ...clientData } = client;
+        return clientData as Client;
+    }
+
+    return null; // Wrong password
+}
+
+
+export async function getAllAppointmentsForClient(userId: string, clientId: string) {
     try {
-        // This function now needs to find the client's document first using the authUid
-        const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
-        const clientQuery = query(clientsCol, where("authUid", "==", authUid), limit(1));
-        const clientSnapshot = await getDocs(clientQuery);
-
-        if (clientSnapshot.empty) {
-            // This can happen if a user is authenticated but hasn't completed client profile setup for this barbershop
-            return [];
-        }
-        const clientId = clientSnapshot.docs[0].id;
-
         const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
         const q = query(appointmentsCol, where('clientId', '==', clientId));
 
@@ -1413,4 +1418,3 @@ export async function getAllAppointmentsForClient(userId: string, authUid: strin
         return [];
     }
 }
-

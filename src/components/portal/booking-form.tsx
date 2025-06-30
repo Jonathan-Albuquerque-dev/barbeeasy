@@ -1,11 +1,11 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAuth } from '@/contexts/auth-context';
-import { addAppointment, getStaff, getServices, getBarbershopSettings, DayHours, getBarberAppointmentsForDate, getClientByAuthId } from '@/lib/data';
+import { addAppointment, getStaff, getServices, getBarbershopSettings, DayHours, getBarberAppointmentsForDate } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Label } from '../ui/label';
+import { useClientSession } from '@/app/portal/layout';
 
 const bookingSchema = z.object({
   barberId: z.string({ required_error: 'Selecione um barbeiro.' }),
@@ -39,7 +40,7 @@ interface BookingFormProps {
 }
 
 export function BookingForm({ barbershopId }: BookingFormProps) {
-  const { user } = useAuth();
+  const { session } = useClientSession();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -160,21 +161,15 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
 
 
   const onSubmit = async (data: BookingFormValues) => {
-    if (!user || !barbershopId) {
-      toast({ variant: 'destructive', title: 'Erro', description: 'Você precisa estar logado.' });
+    if (!session?.id || !barbershopId) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Sua sessão é inválida. Faça login novamente.' });
       return;
     }
 
     setLoading(true);
     try {
-      // Find the client document associated with the auth user
-      const clientProfile = await getClientByAuthId(barbershopId, user.uid);
-      if (!clientProfile) {
-        throw new Error("Seu perfil de cliente não foi encontrado. Contate o suporte.");
-      }
-
       const appointmentData = {
-        clientId: clientProfile.id,
+        clientId: session.id,
         barberId: data.barberId,
         service: data.service,
         date: format(data.date, 'yyyy-MM-dd'),

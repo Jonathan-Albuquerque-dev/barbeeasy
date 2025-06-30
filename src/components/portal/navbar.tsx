@@ -1,11 +1,10 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { getAuth, signOut } from 'firebase/auth';
 
-import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -18,16 +17,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { LayoutDashboard, LogOut, User as UserIcon, Calendar, Star, Menu } from 'lucide-react';
-import { app } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { getSubscriptions } from '@/lib/data';
+import { useClientSession } from '@/app/portal/layout';
+import { useAuth } from '@/contexts/auth-context';
 
 export function PortalNavbar() {
-    const { user, isBarberOwner } = useAuth();
+    const { session, logout } = useClientSession();
+    const { isBarberOwner } = useAuth(); // For "Go to Dashboard" link
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const auth = getAuth(app);
     const barbershopId = searchParams.get('barbershopId');
     
     const [hasSubscriptions, setHasSubscriptions] = useState(false);
@@ -44,12 +44,6 @@ export function PortalNavbar() {
             }).catch(() => setHasSubscriptions(false));
         }
     }, [barbershopId]);
-
-    const handleSignOut = async () => {
-        await signOut(auth);
-        const loginUrl = barbershopId ? `/portal/login?barbershopId=${barbershopId}` : '/portal/login';
-        router.push(loginUrl);
-    };
     
     const getInitials = (name: string | null | undefined) => {
         if (!name) return '..';
@@ -138,21 +132,21 @@ export function PortalNavbar() {
                 </div>
                 
                 <div className="flex flex-1 items-center justify-end space-x-4">
-                    {user ? (
+                    {session ? (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                                     <Avatar className="h-8 w-8">
-                                        <AvatarImage src={user.photoURL || ''} alt={user.displayName || ''} />
-                                        <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                                        <AvatarImage src={session.avatarUrl || ''} alt={session.name || ''} />
+                                        <AvatarFallback>{getInitials(session.name)}</AvatarFallback>
                                     </Avatar>
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-56" align="end" forceMount>
                                 <DropdownMenuLabel className="font-normal">
                                     <div className="flex flex-col space-y-1">
-                                        <p className="text-sm font-medium leading-none">{user.displayName}</p>
-                                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                                        <p className="text-sm font-medium leading-none">{session.name}</p>
+                                        <p className="text-xs leading-none text-muted-foreground">{session.email}</p>
                                     </div>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
@@ -167,7 +161,7 @@ export function PortalNavbar() {
                                     </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={handleSignOut}>
+                                <DropdownMenuItem onClick={logout}>
                                     <LogOut className="mr-2 h-4 w-4" />
                                     <span>Sair</span>
                                 </DropdownMenuItem>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, Suspense, useEffect } from 'react';
@@ -20,6 +21,10 @@ const signupSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
   phone: z.string().min(8, { message: 'Por favor, insira um telefone válido.' }),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
+  confirmPassword: z.string(),
+}).refine(data => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem.',
+    path: ['confirmPassword'],
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
@@ -74,7 +79,7 @@ function ClientSignupPageContent() {
     } catch (error: any) {
       console.error(error);
       let description = 'Ocorreu um erro. Por favor, tente novamente.';
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.message.includes('email já está em uso')) {
         description = 'Este email já está em uso. Tente outro ou faça login.';
       }
       toast({
@@ -124,7 +129,7 @@ function ClientSignupPageContent() {
           <CardDescription>{barbershopName ? `Cadastre-se para agendar seu próximo corte na ${barbershopName}.` : 'Cadastre-se para agendar seu próximo corte.'}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nome Completo</Label>
               <Input
@@ -168,6 +173,17 @@ function ClientSignupPageContent() {
                 className={errors.password ? 'border-destructive' : ''}
               />
               {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Repita a senha"
+                {...register('confirmPassword')}
+                className={errors.confirmPassword ? 'border-destructive' : ''}
+              />
+              {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : 'Criar Conta'}
