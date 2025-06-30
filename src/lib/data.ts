@@ -491,11 +491,24 @@ export async function getBarberAppointmentsForDate(userId: string, barberId: str
 export async function addAppointment(userId: string, appointmentData: Omit<AppointmentDocument, 'id' | 'soldProducts'>) {
     try {
         const appointmentsCol = collection(db, getCollectionPath(userId, 'appointments'));
-        const dateInUTC = new Date(appointmentData.date);
-        const correctedDate = format(dateInUTC, 'yyyy-MM-dd', { timeZone: 'UTC' });
+
+        // Robust date handling to prevent timezone issues.
+        // The input could be a Date object or a 'yyyy-MM-dd' string.
+        const dateObject = new Date(appointmentData.date);
+        
+        // Compensate for the timezone offset when converting to ISO string.
+        // new Date() is in local time. getTimezoneOffset returns the difference in minutes
+        // between UTC and local time. We add this offset back to get the correct date
+        // regardless of the user's timezone.
+        const userTimezoneOffset = dateObject.getTimezoneOffset() * 60000;
+        const correctedDate = new Date(dateObject.getTime() + userTimezoneOffset);
+        
+        // Convert to 'yyyy-MM-dd' format for consistent storage.
+        const dateString = correctedDate.toISOString().split('T')[0];
+
         await addDoc(appointmentsCol, {
           ...appointmentData,
-          date: correctedDate,
+          date: dateString,
           soldProducts: [],
         });
     } catch (error) {
@@ -503,6 +516,7 @@ export async function addAppointment(userId: string, appointmentData: Omit<Appoi
         throw new Error("Não foi possível adicionar o agendamento.");
     }
 }
+
 
 export async function updateAppointmentProducts(userId: string, appointmentId: string, soldProducts: any[]) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
