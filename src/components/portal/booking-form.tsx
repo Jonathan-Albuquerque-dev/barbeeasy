@@ -139,15 +139,14 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
             const slotsRequired = Math.ceil(newServiceDuration / interval);
 
             const availableSlots = allSlots.filter((slot, index) => {
-                // Check if appointment ends after closing time
                 const [slotHour, slotMinute] = slot.split(':').map(Number);
                 const slotStartTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), slotHour, slotMinute);
                 const slotEndTime = new Date(slotStartTime.getTime() + newServiceDuration * 60000);
+                
                 if (slotEndTime > endTime) {
                     return false;
                 }
 
-                // Check for conflicts with booked appointments
                 for (let i = 0; i < slotsRequired; i++) {
                     const currentSlot = allSlots[index + i];
                     if (!currentSlot || blockedSlots.has(currentSlot)) {
@@ -194,7 +193,7 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
         title: 'Agendamento Confirmado!',
         description: `Seu horário para ${format(data.date, 'PPP', { locale: ptBR })} às ${data.time} foi salvo.`,
       });
-      form.reset();
+      window.location.reload();
     } catch (error: any) {
       console.error(error);
       toast({
