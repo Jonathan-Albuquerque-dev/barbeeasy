@@ -182,20 +182,21 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
             const slotsRequired = Math.ceil(newServiceDuration / interval);
 
             const availableSlots = allSlots.filter((slot, index) => {
-                if (blockedSlots.has(slot)) {
+                // Check if appointment ends after closing time
+                const [slotHour, slotMinute] = slot.split(':').map(Number);
+                const slotStartTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), slotHour, slotMinute);
+                const slotEndTime = new Date(slotStartTime.getTime() + newServiceDuration * 60000);
+                if (slotEndTime > endDate) {
                     return false;
                 }
 
-                if (index + slotsRequired > allSlots.length) {
-                    return false;
-                }
-
+                // Check for conflicts with booked appointments
                 for (let i = 0; i < slotsRequired; i++) {
-                    if (blockedSlots.has(allSlots[index + i])) {
+                    const currentSlot = allSlots[index + i];
+                    if (!currentSlot || blockedSlots.has(currentSlot)) {
                         return false;
                     }
                 }
-
                 return true;
             });
             

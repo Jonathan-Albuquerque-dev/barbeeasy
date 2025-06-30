@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -113,7 +112,7 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
         }
 
         if (!selectedBarberId || !selectedService) {
-            setTimeSlots(allSlots); // Show all possible slots initially
+            setTimeSlots(allSlots); 
             form.resetField('time', { defaultValue: '' }); return;
         }
 
@@ -140,8 +139,20 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
             const slotsRequired = Math.ceil(newServiceDuration / interval);
 
             const availableSlots = allSlots.filter((slot, index) => {
+                // Check if appointment ends after closing time
+                const [slotHour, slotMinute] = slot.split(':').map(Number);
+                const slotStartTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), slotHour, slotMinute);
+                const slotEndTime = new Date(slotStartTime.getTime() + newServiceDuration * 60000);
+                if (slotEndTime > endTime) {
+                    return false;
+                }
+
+                // Check for conflicts with booked appointments
                 for (let i = 0; i < slotsRequired; i++) {
-                    if (blockedSlots.has(allSlots[index + i])) return false;
+                    const currentSlot = allSlots[index + i];
+                    if (!currentSlot || blockedSlots.has(currentSlot)) {
+                        return false;
+                    }
                 }
                 return true;
             });
