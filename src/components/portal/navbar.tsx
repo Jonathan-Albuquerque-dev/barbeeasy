@@ -104,7 +104,7 @@ export function PortalNavbar() {
                         </Avatar>
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="start" forceMount>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
                             <p className="text-sm font-medium leading-none">{session.name}</p>
@@ -137,28 +137,41 @@ export function PortalNavbar() {
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="container flex h-14 items-center justify-between px-4">
+                {/* Left Side of Header */}
                 <div className="flex items-center gap-4">
-                    <ProfileDropdown />
-                     <nav className="hidden md:flex items-center gap-6">
-                        <NavContent />
-                    </nav>
+                    {/* Mobile: Hamburger Menu */}
+                    <div className="md:hidden">
+                        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                            <SheetTrigger asChild>
+                                 <Button variant="ghost" size="icon">
+                                    <Menu className="h-5 w-5" />
+                                    <span className="sr-only">Abrir menu</span>
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="left" className="w-64">
+                                 <SheetTitle className="sr-only">Menu Principal</SheetTitle>
+                                <nav className="flex flex-col space-y-4 text-lg font-medium p-4 mt-6">
+                                    <NavContent inSheet={true}/>
+                                </nav>
+                            </SheetContent>
+                        </Sheet>
+                    </div>
+
+                    {/* Desktop: Profile Dropdown + Nav Links */}
+                    <div className="hidden md:flex items-center gap-4">
+                        <ProfileDropdown />
+                         <nav className="flex items-center gap-6">
+                            <NavContent />
+                        </nav>
+                    </div>
                 </div>
                 
-                <div className="md:hidden">
-                    <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                        <SheetTrigger asChild>
-                             <Button variant="ghost" size="icon" className="">
-                                <Menu className="h-5 w-5" />
-                                <span className="sr-only">Abrir menu</span>
-                            </Button>
-                        </SheetTrigger>
-                        <SheetContent side="right" className="w-64">
-                             <SheetTitle className="sr-only">Menu Principal</SheetTitle>
-                            <nav className="flex flex-col space-y-4 text-lg font-medium p-4 mt-6">
-                                <NavContent inSheet={true}/>
-                            </nav>
-                        </SheetContent>
-                    </Sheet>
+                {/* Right Side of Header */}
+                <div className="flex items-center">
+                    {/* Mobile: Profile Dropdown */}
+                    <div className="md:hidden">
+                        <ProfileDropdown />
+                    </div>
                 </div>
             </div>
         </header>
