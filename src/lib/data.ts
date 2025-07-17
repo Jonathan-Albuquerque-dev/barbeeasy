@@ -479,7 +479,7 @@ export async function populateAppointments(userId: string, appointments: Appoint
                 const clientSnap = await getDoc(doc(db, getCollectionPath(userId, 'clients'), app.clientId));
                 const barberSnap = await getDoc(doc(db, getCollectionPath(userId, 'staff'), app.barberId));
 
-                const baseClient = getData<{id: string, name: string, avatarUrl: string, subscriptionId?: string}>(clientSnap) || { id: 'unknown', name: 'Cliente não encontrado', avatarUrl: ''};
+                const baseClient = getData<Client>(clientSnap) || { id: 'unknown', name: 'Cliente não encontrado', avatarUrl: ''};
                 
                 const client = {
                     ...baseClient,
@@ -1206,7 +1206,6 @@ export async function getSubscriptionStats(userId: string): Promise<Subscription
         const now = Timestamp.now();
         const [clientsSnap, subscriptionsSnap] = await Promise.all([
             getDocs(query(clientsCol, 
-                where('subscriptionId', '!=', null),
                 where('subscriptionEndDate', '>=', now)
             )),
             getDocs(subscriptionsCol),
