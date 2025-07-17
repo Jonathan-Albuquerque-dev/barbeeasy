@@ -31,7 +31,6 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 function ClientSignupPageContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const barbershopId = searchParams.get('barbershopId');
   const { setClientSession } = useClientSession();
   const { toast } = useToast();
@@ -82,8 +81,8 @@ function ClientSignupPageContent() {
           avatarUrl: newClient.avatarUrl,
           barbershopId: barbershopId,
       };
-      setClientSession(session); // Call setClientSession from context
-      router.replace(`/portal/agendar?barbershopId=${barbershopId}`); // Explicitly redirect
+      // The layout's useEffect will handle the redirect after this is set.
+      setClientSession(session);
 
     } catch (error: any) {
       console.error(error);

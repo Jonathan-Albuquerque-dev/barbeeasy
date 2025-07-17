@@ -13,7 +13,7 @@ type ClientSession = Omit<Client, 'password' | 'preferences' | 'loyaltyPoints' |
 interface ClientSessionContextType {
   session: ClientSession | null;
   loading: boolean;
-  setClientSession: (sessionData: ClientSession) => void;
+  setClientSession: (sessionData: ClientSession | null) => void;
   logout: () => void;
 }
 
@@ -38,7 +38,6 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
   const barbershopIdFromUrl = searchParams.get('barbershopId');
 
   useEffect(() => {
-    // This effect runs once to initialize the session from localStorage.
     try {
       const sessionData = localStorage.getItem('clientSession');
       if (sessionData) {
@@ -56,44 +55,49 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // This effect handles navigation logic whenever the session or route changes.
-    if (!loading) {
-       if (!session && !isAuthPage) {
-        // If not logged in and on a protected page, redirect to login.
-        // We need to ensure barbershopId is persisted in the URL.
-        const loginUrl = barbershopIdFromUrl ? `/portal/login?barbershopId=${barbershopIdFromUrl}` : '/portal/login';
-        router.replace(loginUrl);
-      }
+    if (loading) return;
+
+    const currentBarbershopId = session?.barbershopId || barbershopIdFromUrl;
+
+    if (session && isAuthPage) {
+      // If logged in and on an auth page, redirect away to booking page.
+      router.replace(`/portal/agendar?barbershopId=${currentBarbershopId}`);
+    } else if (!session && !isAuthPage) {
+      // If not logged in and on a protected page, redirect to login.
+      const loginUrl = currentBarbershopId ? `/portal/login?barbershopId=${currentBarbershopId}` : '/portal/login';
+      router.replace(loginUrl);
     }
   }, [session, loading, isAuthPage, pathname, router, barbershopIdFromUrl]);
   
-  const setClientSession = (sessionData: ClientSession) => {
+  const setClientSession = (sessionData: ClientSession | null) => {
     setSession(sessionData);
-    localStorage.setItem('clientSession', JSON.stringify(sessionData));
+    if (sessionData) {
+      localStorage.setItem('clientSession', JSON.stringify(sessionData));
+    } else {
+      localStorage.removeItem('clientSession');
+    }
   };
   
   const logout = () => {
     const currentBarbershopId = session?.barbershopId || searchParams.get('barbershopId');
-    setSession(null);
-    localStorage.removeItem('clientSession');
+    setClientSession(null);
     const loginUrl = currentBarbershopId ? `/portal/login?barbershopId=${currentBarbershopId}` : '/portal/login';
     router.push(loginUrl);
   };
   
   const contextValue = { session, loading, setClientSession, logout };
 
+  const showLoader = loading || (isAuthPage && session) || (!isAuthPage && !session);
+
   return (
     <ClientSessionContext.Provider value={contextValue}>
-      {loading || (!session && !isAuthPage) ? (
-        // Show a loader while checking auth or before redirecting unauth user
+      {showLoader ? (
         <div className="flex h-screen items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
       ) : isAuthPage ? (
-        // Render auth pages directly
         <>{children}</>
       ) : (
-        // Render protected pages with layout
         <div className="min-h-screen flex flex-col">
             <PortalNavbar />
             <main className="flex-1">{children}</main>
