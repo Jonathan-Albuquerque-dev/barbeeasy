@@ -42,7 +42,7 @@ const menuItems = [
   { href: '/appointments', label: 'Agendamentos', icon: Calendar },
   { href: '/clients', label: 'Clientes', icon: Users },
   { href: '/staff', label: 'Equipe', icon: User },
-  { href: '/professions', label: 'Profissões', icon: Briefcase },
+  { href: '/professions', label: 'Cargos', icon: Briefcase },
   { href: '/services', label: 'Serviços', icon: Tag },
   { href: '/products', label: 'Produtos', icon: Package },
   { href: '/sales', label: 'Vendas', icon: ShoppingCart },

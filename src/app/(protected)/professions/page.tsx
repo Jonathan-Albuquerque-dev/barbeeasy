@@ -56,14 +56,14 @@ export default function ProfessionsPage() {
       await deleteProfession(user.uid, professionId);
       toast({
         title: "Sucesso!",
-        description: "A profissão foi excluída.",
+        description: "O cargo foi excluído.",
       });
       fetchProfessions(); // Refresh the list
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: error.message || "Não foi possível excluir a profissão.",
+        description: error.message || "Não foi possível excluir o cargo.",
       });
     } finally {
       setDeletingId(null);
@@ -83,13 +83,13 @@ export default function ProfessionsPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Cadastro de Profissões</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Cadastro de Cargos/Profissões</h1>
           <p className="text-muted-foreground">Gerencie os cargos e profissões do seu estabelecimento.</p>
         </div>
         <AddProfessionDialog onProfessionAdded={fetchProfessions}>
             <Button>
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar Profissão
+                Adicionar Cargo
             </Button>
         </AddProfessionDialog>
       </div>
@@ -98,7 +98,7 @@ export default function ProfessionsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome da Profissão</TableHead>
+              <TableHead>Nome do Cargo</TableHead>
               <TableHead className="text-right w-32">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -123,8 +123,8 @@ export default function ProfessionsPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Esta ação não pode ser desfeita. Isso excluirá permanentemente a profissão.
-                          Certifique-se de que nenhum funcionário esteja associado a esta profissão antes de excluir.
+                          Esta ação não pode ser desfeita. Isso excluirá permanentemente o cargo.
+                          Certifique-se de que nenhum funcionário esteja associado a este cargo antes de excluir.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -140,7 +140,7 @@ export default function ProfessionsPage() {
             )) : (
                 <TableRow>
                     <TableCell colSpan={2} className="text-center h-24 text-muted-foreground">
-                        Nenhuma profissão cadastrada.
+                        Nenhum cargo cadastrado.
                     </TableCell>
                 </TableRow>
             )}

@@ -16,7 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Loader2 } from 'lucide-react';
 
 const professionSchema = z.object({
-  name: z.string().min(2, { message: 'O nome da profissão é obrigatório.' }),
+  name: z.string().min(2, { message: 'O nome do cargo é obrigatório.' }),
 });
 
 type ProfessionFormValues = z.infer<typeof professionSchema>;
@@ -41,7 +41,7 @@ export function AddProfessionDialog({ onProfessionAdded, children }: AddProfessi
 
   const onSubmit = async (data: ProfessionFormValues) => {
     if (!user) {
-      toast({ variant: 'destructive', title: 'Erro', description: 'Você precisa estar logado para adicionar uma profissão.' });
+      toast({ variant: 'destructive', title: 'Erro', description: 'Você precisa estar logado para adicionar um cargo.' });
       return;
     }
 
@@ -50,7 +50,7 @@ export function AddProfessionDialog({ onProfessionAdded, children }: AddProfessi
       await addProfession(user.uid, data);
       toast({
         title: 'Sucesso!',
-        description: `A profissão "${data.name}" foi adicionada.`,
+        description: `O cargo "${data.name}" foi adicionado.`,
       });
       onProfessionAdded();
       setOpen(false);
@@ -59,7 +59,7 @@ export function AddProfessionDialog({ onProfessionAdded, children }: AddProfessi
       console.error(error);
       toast({
         variant: 'destructive',
-        title: 'Erro ao adicionar profissão',
+        title: 'Erro ao adicionar cargo',
         description: 'Não foi possível salvar os dados. Tente novamente.',
       });
     } finally {
@@ -74,9 +74,9 @@ export function AddProfessionDialog({ onProfessionAdded, children }: AddProfessi
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adicionar Nova Profissão</DialogTitle>
+          <DialogTitle>Adicionar Novo Cargo/Profissão</DialogTitle>
           <DialogDescription>
-            Cadastre um novo cargo ou profissão para sua equipe.
+            Cadastre um novo cargo para sua equipe.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -86,7 +86,7 @@ export function AddProfessionDialog({ onProfessionAdded, children }: AddProfessi
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome da Profissão</FormLabel>
+                  <FormLabel>Nome do Cargo</FormLabel>
                   <FormControl>
                     <Input placeholder="Ex: Cabeleireiro(a)" {...field} />
                   </FormControl>
@@ -99,7 +99,7 @@ export function AddProfessionDialog({ onProfessionAdded, children }: AddProfessi
                 <Button type="button" variant="outline">Cancelar</Button>
               </DialogClose>
               <Button type="submit" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Profissão'}
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Cargo'}
               </Button>
             </DialogFooter>
           </form>
