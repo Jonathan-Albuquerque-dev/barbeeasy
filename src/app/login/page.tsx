@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
 import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import Link from 'next/link';
 
@@ -25,7 +24,6 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
@@ -45,15 +43,16 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
-      router.push('/dashboard');
+      // Recarrega a página para que os provedores de autenticação e layout
+      // gerenciem o redirecionamento com o estado de login correto.
+      window.location.reload();
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Erro de Login',
         description: 'Email ou senha inválidos. Por favor, tente novamente.',
       });
-    } finally {
-      setLoading(false);
+      setLoading(false); // Garante que o botão seja reativado em caso de erro.
     }
   };
   
@@ -89,7 +88,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center">
             <div className="flex justify-center items-center gap-3">
-                <div>
+                <div className="text-center">
                   <h1 className="text-3xl font-bold leading-none font-body">
                     <span className="text-foreground">Estilo</span><span className="text-primary">Gestor</span>
                   </h1>
