@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -15,24 +16,31 @@ export default function ProtectedLayout({
   const router = useRouter();
 
   useEffect(() => {
+    // Only perform redirects once the loading state is false.
     if (!loading) {
-        if (!user) {
-            router.replace('/login');
-        } else if (!isBarberOwner) {
-            // If a logged-in user is not an owner, redirect them away from admin panel
-            router.replace('/portal/agendar');
-        }
+      if (!user) {
+        // If no user, redirect to admin login.
+        router.replace('/login');
+      } else if (!isBarberOwner) {
+        // If user is logged in but is NOT a barber owner (e.g., a client),
+        // redirect them to the client portal.
+        router.replace('/portal/agendar');
+      }
+      // If user is logged in AND is a barber owner, do nothing and let the page render.
     }
   }, [user, loading, isBarberOwner, router]);
 
-  // Show loader while checking auth or if the user is not an owner yet
+  // Show a loader while authentication is in progress OR
+  // if the user is not yet confirmed to be a barber owner.
+  // This prevents a flash of content or incorrect redirects.
   if (loading || !user || !isBarberOwner) {
     return (
-        <div className="flex h-screen items-center justify-center bg-background">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
     );
   }
 
+  // Once all checks pass, render the protected layout with its children.
   return <AppLayout>{children}</AppLayout>;
 }
