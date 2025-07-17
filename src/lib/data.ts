@@ -1,8 +1,8 @@
 
 // src/lib/data.ts
-import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
-import { format, sub } from 'date-fns';
+import { format, sub, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile, User } from 'firebase/auth';
 
@@ -42,8 +42,8 @@ export type Client = {
   createdAt?: any; // Firestore Timestamp
   subscriptionId?: string;
   subscriptionName?: string;
-  subscriptionPaymentMethod?: string;
-  subscriptionStartDate?: any;
+  subscriptionStartDate?: Timestamp;
+  subscriptionEndDate?: Timestamp;
 };
 
 export type Staff = {
@@ -971,7 +971,7 @@ export async function getFinancialOverview(
         const subInfo = subscriptionMap.get(client.subscriptionId!);
         if (!subInfo) return;
 
-        const subStartDate = client.subscriptionStartDate.toDate();
+        const subStartDate = client.subscriptionStartDate!.toDate();
         if (dateRange?.from && dateRange?.to) {
             if (subStartDate < dateRange.from || subStartDate > dateRange.to) {
                 return;
@@ -981,7 +981,7 @@ export async function getFinancialOverview(
         const subValue = subInfo.price;
         subscriptionRevenue += subValue;
         
-        const paymentMethod = client.subscriptionPaymentMethod || 'Não especificado';
+        const paymentMethod = 'Assinatura'; // Hardcoded for subscription payments
         if (!revenueByPaymentMethod[paymentMethod]) {
             revenueByPaymentMethod[paymentMethod] = { revenue: 0, count: 0 };
         }
@@ -1169,12 +1169,29 @@ export async function deleteAppointment(userId: string, appointmentId: string) {
 export async function assignSubscriptionToClient(userId: string, clientId: string, subscriptionId: string, subscriptionName: string, paymentMethod: string) {
     try {
         const clientDocRef = doc(db, getCollectionPath(userId, 'clients'), clientId);
+        const startDate = new Date();
+        const endDate = addDays(startDate, 30);
+
         await updateDoc(clientDocRef, {
             subscriptionId,
             subscriptionName,
-            subscriptionPaymentMethod: paymentMethod,
-            subscriptionStartDate: new Date(),
+            subscriptionStartDate: Timestamp.fromDate(startDate),
+            subscriptionEndDate: Timestamp.fromDate(endDate),
         });
+
+        // Create a transaction record for the subscription purchase
+        const financialTransaction = {
+            id: `sub_${clientId}_${Date.now()}`,
+            date: format(startDate, 'yyyy-MM-dd'),
+            clientName: (await getDoc(clientDocRef)).data()?.name || 'Cliente',
+            service: `Assinatura: ${subscriptionName}`,
+            barberName: 'Sistema',
+            value: (await getDoc(doc(db, getCollectionPath(userId, 'subscriptions'), subscriptionId))).data()?.price || 0,
+            paymentMethod: paymentMethod,
+            soldProducts: [],
+        };
+        // This part is tricky without a dedicated transactions collection.
+        // For now, we'll rely on the financial overview to generate this on the fly.
     } catch (error) {
         console.error(`Erro ao vincular assinatura ao cliente ${clientId}:`, error);
         throw new Error("Não foi possível vincular a assinatura.");
@@ -1186,9 +1203,12 @@ export async function getSubscriptionStats(userId: string): Promise<Subscription
         const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
         const subscriptionsCol = collection(db, getCollectionPath(userId, 'subscriptions'));
         
-        // This query will only find clients that actually have the subscriptionId field.
+        const now = Timestamp.now();
         const [clientsSnap, subscriptionsSnap] = await Promise.all([
-            getDocs(query(clientsCol, where('subscriptionId', '!=', null))),
+            getDocs(query(clientsCol, 
+                where('subscriptionId', '!=', null),
+                where('subscriptionEndDate', '>=', now)
+            )),
             getDocs(subscriptionsCol),
         ]);
 

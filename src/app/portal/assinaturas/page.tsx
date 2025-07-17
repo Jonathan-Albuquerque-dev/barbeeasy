@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getSubscriptions, getClientById, Subscription, assignSubscriptionToClient } from '@/lib/data';
+import { getSubscriptions, getClientById, Subscription, assignSubscriptionToClient, Client } from '@/lib/data';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { useClientSession } from '../layout';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
 
 
 function AssinaturasPageContent() {
@@ -19,7 +22,7 @@ function AssinaturasPageContent() {
     const barbershopId = searchParams.get('barbershopId');
 
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-    const [clientSubscriptionId, setClientSubscriptionId] = useState<string | undefined>(undefined);
+    const [client, setClient] = useState<Client | undefined>(undefined);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +30,12 @@ function AssinaturasPageContent() {
     const [isSubscribing, setIsSubscribing] = useState(false);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
 
+    const isSubscribedAndActive = useMemo(() => {
+        if (!client?.subscriptionId || !client.subscriptionEndDate) {
+            return false;
+        }
+        return client.subscriptionEndDate.toDate() > new Date();
+    }, [client]);
 
     const fetchData = async () => {
         if (!barbershopId) {
@@ -41,12 +50,12 @@ function AssinaturasPageContent() {
 
         try {
             setLoading(true);
-            const [subs, client] = await Promise.all([
+            const [subs, clientData] = await Promise.all([
                 getSubscriptions(barbershopId),
                 getClientById(barbershopId, session.id)
             ]);
             setSubscriptions(subs);
-            setClientSubscriptionId(client?.subscriptionId);
+            setClient(clientData);
         } catch (err: any) {
             setError(err.message || "Erro ao buscar assinaturas.");
         } finally {
@@ -71,7 +80,6 @@ function AssinaturasPageContent() {
             await assignSubscriptionToClient(barbershopId, session.id, subscription.id, subscription.name, selectedPaymentMethod);
             
             toast({ title: 'Sucesso!', description: `Você agora é assinante do plano ${subscription.name}!`});
-            setClientSubscriptionId(subscription.id);
             await fetchData(); // Refresh data
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Erro ao Assinar', description: error.message });
@@ -99,11 +107,40 @@ function AssinaturasPageContent() {
                         Aproveite descontos e vantagens exclusivas.
                     </p>
                 </div>
+                
+                 {isSubscribedAndActive && client?.subscriptionEndDate && (
+                    <Card className="bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800">
+                        <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-300">
+                            <CheckCircle2 />
+                            Você é Assinante!
+                        </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-green-700 dark:text-green-400">
+                                Seu plano <strong>{client.subscriptionName}</strong> está ativo até {format(client.subscriptionEndDate.toDate(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}.
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+                 {!isSubscribedAndActive && client?.subscriptionId && (
+                    <Card className="bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800">
+                        <CardHeader>
+                        <CardTitle className="text-yellow-800 dark:text-yellow-300">Plano Expirado</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <p className="text-yellow-700 dark:text-yellow-400">
+                                Seu plano <strong>{client.subscriptionName}</strong> expirou. Assine novamente para continuar aproveitando os benefícios.
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+
 
                 {subscriptions.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
                         {subscriptions.map(plan => {
-                            const isCurrentPlan = plan.id === clientSubscriptionId;
+                            const isCurrentPlan = plan.id === client?.subscriptionId && isSubscribedAndActive;
                             return (
                                 <Card key={plan.id} className={`flex flex-col h-full ${isCurrentPlan ? 'border-primary ring-2 ring-primary' : ''}`}>
                                     <CardHeader>
@@ -135,7 +172,7 @@ function AssinaturasPageContent() {
                                         ) : (
                                             <Dialog>
                                                 <DialogTrigger asChild>
-                                                    <Button className="w-full" disabled={!!clientSubscriptionId}>Quero este plano</Button>
+                                                    <Button className="w-full" disabled={isSubscribedAndActive}>Quero este plano</Button>
                                                 </DialogTrigger>
                                                 <DialogContent>
                                                     <DialogHeader>

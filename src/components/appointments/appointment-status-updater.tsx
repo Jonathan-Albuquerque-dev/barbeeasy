@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Timestamp } from 'firebase/firestore';
 
 const paymentMethods = ['Dinheiro', 'Cartão de Crédito/Débito', 'Pix', 'Cortesia'] as const;
 const courtesyTypes = ['Pontos Fidelidade', 'Prêmio'] as const;
@@ -17,8 +18,16 @@ const courtesyTypes = ['Pontos Fidelidade', 'Prêmio'] as const;
 type PaymentMethod = (typeof paymentMethods)[number];
 type CourtesyType = typeof courtesyTypes[number];
 
+type AppointmentWithClientSubscription = AppointmentDocument & {
+  client: { 
+      subscriptionId?: string;
+      subscription?: Subscription;
+      subscriptionEndDate?: Timestamp; // Add this field
+  } 
+};
+
 interface AppointmentStatusUpdaterProps {
-  appointment: AppointmentDocument & { client: { subscriptionId?: string; subscription?: Subscription } };
+  appointment: AppointmentWithClientSubscription;
   appointmentId: string;
   currentStatus: AppointmentStatus;
   onStatusChange: (newStatus: AppointmentStatus) => void;
@@ -33,7 +42,16 @@ export function AppointmentStatusUpdater({ appointment, appointmentId, currentSt
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('Dinheiro');
   const [selectedCourtesyType, setSelectedCourtesyType] = useState<CourtesyType | null>(null);
 
-  const serviceIsIncludedInSubscription = !!appointment.client.subscription?.includedServices.some(s => s.serviceName === appointment.service);
+  const isClientSubscribedAndActive = useMemo(() => {
+    if (!appointment.client.subscriptionId || !appointment.client.subscriptionEndDate) {
+        return false;
+    }
+    // Check if subscription end date is in the future
+    return appointment.client.subscriptionEndDate.toDate() > new Date();
+  }, [appointment.client]);
+  
+  const serviceIsIncludedInSubscription = isClientSubscribedAndActive && !!appointment.client.subscription?.includedServices.some(s => s.serviceName === appointment.service);
+
 
   const productsTotal = useMemo(() => {
     return (appointment.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
