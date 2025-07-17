@@ -43,20 +43,16 @@ export function AppointmentCalendar() {
 
   const servicePriceMap = useMemo(() => new Map(services.map(s => [s.name, s.price])), [services]);
 
-  useEffect(() => {
-    if (!user?.uid || !date) return;
-    
+  const fetchAndSetAppointments = async (dateString: string) => {
+    if (!user?.uid) return;
+
     setLoading(true);
-    
-    getServices(user.uid).then(setServices);
-    
-    const dateString = format(date, 'yyyy-MM-dd');
     const appointmentsCol = collection(db, `barbershops/${user.uid}/appointments`);
     const q = query(appointmentsCol, where("date", "==", dateString));
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         const appointmentDocs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AppointmentDocument[];
-
+        
         const subscriptionsSnap = await getDocs(collection(db, `barbershops/${user.uid}/subscriptions`));
         const subscriptions = subscriptionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Subscription[];
 
@@ -70,15 +66,24 @@ export function AppointmentCalendar() {
         setLoading(false);
     });
 
-    return () => unsubscribe();
+    return unsubscribe;
+  };
+
+  useEffect(() => {
+    if (!user?.uid || !date) return;
+    
+    getServices(user.uid).then(setServices);
+    
+    const dateString = format(date, 'yyyy-MM-dd');
+    const unsubscribe = fetchAndSetAppointments(dateString);
+
+    return () => {
+      unsubscribe.then(unsub => unsub());
+    };
   }, [date, user]);
 
   const handleStatusChange = (appointmentId: string, newStatus: AppointmentStatus) => {
-    setAppointments(prevAppointments =>
-      prevAppointments.map(app =>
-        app.id === appointmentId ? { ...app, status: newStatus } : app
-      )
-    );
+     // The onSnapshot listener will handle the UI update automatically.
   };
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
@@ -87,6 +92,13 @@ export function AppointmentCalendar() {
       setPopoverOpen(false); // Close popover on date selection
     }
   }
+  
+  const handleAppointmentAdded = () => {
+    // Re-fetch appointments for the current date
+    const dateString = format(date, 'yyyy-MM-dd');
+    fetchAndSetAppointments(dateString);
+  };
+
 
   const getBadgeVariant = (status: AppointmentStatus) => {
     switch (status) {
@@ -147,7 +159,7 @@ export function AppointmentCalendar() {
              <Button variant="ghost" onClick={() => setDate(new Date())}>Hoje</Button>
           )}
         </div>
-        <AddAppointmentDialog onAppointmentAdded={() => {}} initialDate={date}>
+        <AddAppointmentDialog onAppointmentAdded={handleAppointmentAdded} initialDate={date}>
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
             Novo Agendamento
@@ -195,7 +207,7 @@ export function AppointmentCalendar() {
                         appointment={app}
                         appointmentId={app.id}
                         currentStatus={app.status}
-                        onStatusChange={(newStatus) => handleStatusChange(app.id, newStatus)}
+                        onStatusChange={handleStatusChange}
                         totalValue={totalValue}
                       />
                       <AppointmentDetailsDialog appointment={app} onAppointmentUpdate={() => {}}>

@@ -74,11 +74,8 @@ export default function DashboardPage() {
   }, [user, fetchStats]);
 
   const handleStatusChange = (appointmentId: string, newStatus: AppointmentStatus) => {
-    setAppointments(prevAppointments =>
-      prevAppointments.map(app =>
-        app.id === appointmentId ? { ...app, status: newStatus } : app
-      )
-    );
+    // The onSnapshot listener will handle the UI update automatically.
+    // This function can be kept for optimistic updates if needed, but for now, it's not necessary.
   };
 
   const getBadgeVariant = (status: AppointmentStatus) => {
@@ -194,7 +191,7 @@ export default function DashboardPage() {
                         appointment={appointment}
                         appointmentId={appointment.id}
                         currentStatus={appointment.status}
-                        onStatusChange={(newStatus) => handleStatusChange(appointment.id, newStatus)}
+                        onStatusChange={handleStatusChange}
                         totalValue={totalValue}
                       />
                       <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchStats}>

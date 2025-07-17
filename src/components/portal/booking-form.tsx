@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -14,12 +15,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Loader2, CalendarIcon } from 'lucide-react';
+import { Loader2, CalendarIcon, CheckCircle, PartyPopper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Label } from '../ui/label';
 import { useClientSession } from '@/app/portal/layout';
+import Link from 'next/link';
 
 const bookingSchema = z.object({
   service: z.string().min(1, { message: 'Selecione um serviço.' }),
@@ -29,7 +31,6 @@ const bookingSchema = z.object({
 });
 
 type BookingFormValues = z.infer<typeof bookingSchema>;
-
 type BarbershopSettings = { operatingHours: DayHours; appointmentInterval: 30 | 60 };
 
 interface BookingFormProps {
@@ -41,6 +42,8 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingDetails, setBookingDetails] = useState<any>(null);
 
   const [staff, setStaff] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -202,11 +205,15 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
 
       await addAppointment(barbershopId, appointmentData);
       
-      toast({
-        title: 'Agendamento Confirmado!',
-        description: `Seu horário para ${format(data.date, 'PPP', { locale: ptBR })} às ${data.time} foi salvo.`,
+      const barberName = staff.find(s => s.id === data.barberId)?.name || '';
+      
+      setBookingDetails({
+          ...data,
+          barberName,
+          clientName: session.name
       });
-      window.location.reload();
+      setBookingSuccess(true);
+      
     } catch (error: any) {
       console.error(error);
       toast({
@@ -218,6 +225,39 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
       setLoading(false);
     }
   };
+  
+  if (bookingSuccess) {
+    return (
+        <Card className="mt-8 text-center animate-in fade-in-50">
+            <CardHeader>
+                <div className="mx-auto bg-green-100 dark:bg-green-900 rounded-full h-16 w-16 flex items-center justify-center">
+                    <PartyPopper className="h-10 w-10 text-green-600 dark:text-green-400" />
+                </div>
+                <CardTitle className="mt-4 text-2xl">Agendamento Confirmado!</CardTitle>
+                <CardDescription>
+                    Seu horário foi reservado com sucesso.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="p-4 border rounded-lg text-left space-y-2">
+                    <p><strong>Serviço:</strong> {bookingDetails.service}</p>
+                    <p><strong>Profissional:</strong> {bookingDetails.barberName}</p>
+                    <p><strong>Data:</strong> {format(bookingDetails.date, "PPP", { locale: ptBR })}</p>
+                    <p><strong>Hora:</strong> {bookingDetails.time}</p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                    Mal podemos esperar para te ver!
+                </p>
+            </CardContent>
+            <CardFooter className="flex-col sm:flex-row gap-2 justify-center">
+                 <Button onClick={() => setBookingSuccess(false)}>Fazer novo agendamento</Button>
+                 <Button variant="outline" asChild>
+                    <Link href={`/portal/meus-agendamentos?barbershopId=${barbershopId}`}>Ver meus agendamentos</Link>
+                 </Button>
+            </CardFooter>
+        </Card>
+    )
+  }
 
   return (
     <Card className="mt-8">
