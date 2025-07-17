@@ -199,9 +199,13 @@ export async function getClients(userId: string) {
   try {
     const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
     const clientSnapshot = await getDocs(clientsCol);
-    // Retorna um subconjunto de campos para a lista
+    
     return clientSnapshot.docs.map(doc => {
-        const data = doc.data();
+        const data = doc.data() as Client;
+        
+        // Check if subscription is active
+        const isSubscribedAndActive = data.subscriptionName && data.subscriptionEndDate && data.subscriptionEndDate.toDate() > new Date();
+
         return {
             id: doc.id,
             name: data.name,
@@ -209,7 +213,7 @@ export async function getClients(userId: string) {
             phone: data.phone,
             loyaltyStatus: data.loyaltyStatus,
             avatarUrl: data.avatarUrl,
-            subscriptionName: data.subscriptionName || null,
+            subscriptionName: isSubscribedAndActive ? data.subscriptionName : null,
         };
     });
   } catch (error) {
