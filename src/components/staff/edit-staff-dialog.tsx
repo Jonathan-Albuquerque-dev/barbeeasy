@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/auth-context';
-import { updateStaff, Staff } from '@/lib/data';
+import { updateStaff, Staff, getProfessions } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
@@ -15,9 +15,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+
+type Profession = {
+  id: string;
+  name: string;
+}
 
 const staffSchema = z.object({
   name: z.string().min(2, { message: 'O nome do funcionário é obrigatório.' }),
+  professionId: z.string().min(1, 'A profissão é obrigatória.'),
   specializations: z.string().min(3, { message: 'Informe ao menos uma especialização.' }),
   serviceCommissionRate: z.coerce.number().min(0, { message: 'A comissão não pode ser negativa.' }).max(100, { message: 'A comissão não pode ser maior que 100.' }),
   productCommissionRate: z.coerce.number().min(0, { message: 'A comissão não pode ser negativa.' }).max(100, { message: 'A comissão não pode ser maior que 100.' }),
@@ -38,11 +45,13 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [professions, setProfessions] = useState<Profession[]>([]);
 
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffSchema),
     defaultValues: {
       name: '',
+      professionId: '',
       specializations: '',
       serviceCommissionRate: 0,
       productCommissionRate: 0,
@@ -52,9 +61,16 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
   });
 
   useEffect(() => {
+    if (open && user?.uid) {
+        getProfessions(user.uid).then(setProfessions);
+    }
+  }, [open, user]);
+
+  useEffect(() => {
     if (open) {
       form.reset({
         name: staffMember.name,
+        professionId: staffMember.professionId,
         specializations: staffMember.specializations.join(', '),
         serviceCommissionRate: staffMember.serviceCommissionRate * 100,
         productCommissionRate: staffMember.productCommissionRate * 100,
@@ -72,8 +88,11 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
 
     setLoading(true);
     try {
+      const selectedProfession = professions.find(p => p.id === data.professionId);
       const transformedData = {
         name: data.name,
+        professionId: data.professionId,
+        professionName: selectedProfession?.name || 'Não definida',
         specializations: data.specializations.split(',').map(s => s.trim()).filter(s => s),
         serviceCommissionRate: data.serviceCommissionRate / 100,
         productCommissionRate: data.productCommissionRate / 100,
@@ -124,6 +143,26 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
                   <FormControl>
                     <Input placeholder="Ex: Carlos Silva" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="professionId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Profissão</FormLabel>
+                   <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma profissão" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {professions.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

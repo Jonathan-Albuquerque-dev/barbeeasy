@@ -49,11 +49,18 @@ export type Client = {
 export type Staff = {
   id: string;
   name: string;
+  professionId: string;
+  professionName: string;
   specializations: string[];
   serviceCommissionRate: number;
   productCommissionRate: number;
   avatarUrl: string;
   bio: string;
+};
+
+export type Profession = {
+  id: string;
+  name: string;
 };
 
 export type Service = {
@@ -375,6 +382,29 @@ export async function updateProduct(userId: string, productId: string, productDa
         throw new Error("Não foi possível atualizar os dados do produto.");
     }
 }
+
+// --- Funções de Profissão ---
+export async function getProfessions(userId: string): Promise<Profession[]> {
+  try {
+    const professionsCol = collection(db, getCollectionPath(userId, 'professions'));
+    const professionsSnapshot = await getDocs(professionsCol);
+    return getDatas<Profession>(professionsSnapshot);
+  } catch (error) {
+    console.error("Erro ao buscar profissões:", error);
+    return [];
+  }
+}
+
+export async function addProfession(userId: string, professionData: Omit<Profession, 'id'>) {
+    try {
+        const professionsCol = collection(db, getCollectionPath(userId, 'professions'));
+        await addDoc(professionsCol, professionData);
+    } catch (error) {
+        console.error("Erro ao adicionar profissão:", error);
+        throw new Error("Não foi possível adicionar a profissão.");
+    }
+}
+
 
 // --- Funções de Assinatura ---
 export async function getSubscriptions(userId: string): Promise<Subscription[]> {

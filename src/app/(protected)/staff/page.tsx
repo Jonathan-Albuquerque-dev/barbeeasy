@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getStaff, Staff } from "@/lib/data";
@@ -6,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { PlusCircle, Star, Loader2, Edit } from "lucide-react";
+import { PlusCircle, Star, Loader2, Edit, Briefcase } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState, useCallback } from "react";
 import { AddStaffDialog } from "@/components/staff/add-staff-dialog";
@@ -61,6 +62,7 @@ export default function StaffPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
+              <TableHead>Profissão</TableHead>
               <TableHead>Especializações</TableHead>
               <TableHead><span className="sr-only">Ações</span></TableHead>
             </TableRow>
@@ -76,6 +78,12 @@ export default function StaffPage() {
                     </Avatar>
                     <span className="font-medium">{member.name}</span>
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    <Briefcase className="mr-1 h-3 w-3"/>
+                    {member.professionName || 'Não definida'}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
