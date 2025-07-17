@@ -128,7 +128,7 @@ function ClientSignupPageContent() {
                     <h1 className="text-3xl font-bold leading-none font-body">
                          <span className="text-foreground">Estilo</span><span className="text-primary">Gestor</span>
                     </h1>
-                    <p className="text-sm text-muted-foreground text-left">Gestão de Salão</p>
+                    <p className="text-sm text-muted-foreground">Gestão de Salão</p>
                 </div>
             )}
           </div>
