@@ -1,11 +1,13 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { app } from '@/lib/firebase';
+import { useAuth } from '@/contexts/auth-context';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
@@ -28,6 +31,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
+  
+  const router = useRouter();
+  const { user, loading: authLoading, isBarberOwner } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading) {
+      if (user && isBarberOwner) {
+        router.replace('/dashboard');
+      }
+    }
+  }, [user, authLoading, isBarberOwner, router]);
 
   const {
     register,
@@ -82,6 +96,14 @@ export default function LoginPage() {
       setResetLoading(false);
     }
   };
+
+  if (authLoading || (user && isBarberOwner)) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
