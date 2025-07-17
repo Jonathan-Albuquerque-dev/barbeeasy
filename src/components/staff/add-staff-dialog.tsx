@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -43,8 +42,8 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
     defaultValues: {
       name: '',
       specializations: '',
-      serviceCommissionRate: '' as any,
-      productCommissionRate: '' as any,
+      serviceCommissionRate: 25,
+      productCommissionRate: 10,
       bio: '',
       avatarUrl: '',
     },
@@ -98,7 +97,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adicionar Novo Funcionário</DialogTitle>
+          <DialogTitle>Adicionar Novo Profissional</DialogTitle>
           <DialogDescription>
             Preencha os detalhes do novo membro da equipe.
           </DialogDescription>
@@ -125,7 +124,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
                 <FormItem>
                   <FormLabel>Biografia</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Uma breve descrição sobre o barbeiro..." {...field} />
+                    <Textarea placeholder="Uma breve descrição sobre o profissional..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -138,7 +137,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
                 <FormItem>
                   <FormLabel>Especializações</FormLabel>
                   <FormControl>
-                    <Input placeholder="Corte, Barba, Coloração (separado por vírgula)" {...field} />
+                    <Input placeholder="Corte, Coloração (separado por vírgula)" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -152,7 +151,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
                     <FormItem>
                     <FormLabel>Comissão Serviço (%)</FormLabel>
                     <FormControl>
-                        <Input type="number" min="0" max="100" placeholder="Ex: 25" {...field} />
+                        <Input type="number" min="0" max="100" placeholder="Ex: 25" onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))} value={field.value} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -165,7 +164,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
                     <FormItem>
                     <FormLabel>Comissão Produto (%)</FormLabel>
                     <FormControl>
-                        <Input type="number" min="0" max="100" placeholder="Ex: 10" {...field} />
+                        <Input type="number" min="0" max="100" placeholder="Ex: 10" onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))} value={field.value} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -190,7 +189,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
                 <Button type="button" variant="outline">Cancelar</Button>
               </DialogClose>
               <Button type="submit" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Funcionário'}
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Profissional'}
               </Button>
             </DialogFooter>
           </form>

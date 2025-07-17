@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
@@ -33,7 +32,7 @@ function MeusAgendamentosContent() {
 
             if (!session?.id || !session.barbershopId) {
                 if (!session) setError("Você precisa estar logado para ver seus agendamentos.");
-                if (!session?.barbershopId) setError("Nenhuma barbearia selecionada. Por favor, acesse pelo link correto.");
+                if (!session?.barbershopId) setError("Nenhum salão selecionado. Por favor, acesse pelo link correto.");
                 setLoading(false);
                 return;
             };

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Suspense } from 'react';
@@ -15,10 +14,10 @@ function AgendarPageContent() {
         <div className="container mx-auto py-12 px-4">
             <Card className="mx-auto max-w-4xl text-center">
                 <CardHeader>
-                    <CardTitle className="text-2xl text-destructive">Erro: Barbearia não encontrada</CardTitle>
+                    <CardTitle className="text-2xl text-destructive">Erro: Estabelecimento não encontrado</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground">O link que você acessou é inválido. Por favor, use o link fornecido pela barbearia.</p>
+                    <p className="text-muted-foreground">O link que você acessou é inválido. Por favor, use o link fornecido pelo salão.</p>
                 </CardContent>
             </Card>
       </div>
@@ -30,7 +29,7 @@ function AgendarPageContent() {
       <div className="mx-auto max-w-4xl">
         <h1 className="text-4xl font-bold tracking-tight text-center">Faça seu Agendamento</h1>
         <p className="mt-2 text-lg text-muted-foreground text-center">
-            Escolha o serviço, seu barbeiro preferido e o melhor horário para você.
+            Escolha o serviço, seu profissional preferido e o melhor horário para você.
         </p>
         <BookingForm barbershopId={barbershopId} />
       </div>

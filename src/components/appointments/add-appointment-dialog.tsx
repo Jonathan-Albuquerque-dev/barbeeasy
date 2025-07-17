@@ -25,7 +25,7 @@ const appointmentSchema = z.object({
   clientType: z.enum(['existing', 'new']).default('existing'),
   clientId: z.string().optional(),
   newClientName: z.string().optional(),
-  barberId: z.string({ required_error: 'Selecione um barbeiro.' }),
+  barberId: z.string({ required_error: 'Selecione um profissional.' }),
   service: z.string().min(1, { message: 'Selecione um serviço.' }),
   date: z.date({ required_error: 'A data é obrigatória.' }),
   time: z.string().min(1, { message: 'A hora é obrigatória.' }),
@@ -153,7 +153,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
         }
 
         if (!selectedBarberId || !selectedService) {
-            setTimeSlots([]);
+            setTimeSlots(allSlots);
             form.resetField('time', { defaultValue: '' });
             return;
         }
@@ -203,8 +203,8 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
             setTimeSlots(availableSlots);
 
         } catch (error) {
-            console.error("Failed to fetch barber's schedule", error);
-            toast({ variant: 'destructive', title: 'Erro', description: "Não foi possível carregar os horários do barbeiro." });
+            console.error("Failed to fetch professional's schedule", error);
+            toast({ variant: 'destructive', title: 'Erro', description: "Não foi possível carregar os horários do profissional." });
             setTimeSlots([]);
         } finally {
             setSlotsLoading(false);
@@ -367,11 +367,11 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
               name="barberId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Barbeiro</FormLabel>
+                  <FormLabel>Profissional</FormLabel>
                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione um barbeiro" />
+                        <SelectValue placeholder="Selecione um profissional" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -460,7 +460,7 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
                           <SelectTrigger>
                             <SelectValue placeholder={
                                 slotsLoading ? "Carregando..." : 
-                                !selectedBarberId ? "Selecione um barbeiro" : 
+                                !selectedBarberId ? "Selecione um profissional" : 
                                 !selectedService ? "Selecione um serviço" :
                                 timeSlots.length === 0 ? "Nenhum horário vago" : 
                                 "Selecione um horário"

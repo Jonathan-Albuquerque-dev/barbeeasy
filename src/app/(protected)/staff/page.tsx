@@ -1,4 +1,3 @@
-
 'use client';
 
 import { getStaff, Staff } from "@/lib/data";
@@ -47,12 +46,12 @@ export default function StaffPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Perfis da Equipe</h1>
-          <p className="text-muted-foreground">Gerencie sua talentosa equipe de barbeiros.</p>
+          <p className="text-muted-foreground">Gerencie sua talentosa equipe de profissionais.</p>
         </div>
         <AddStaffDialog onStaffAdded={fetchStaff}>
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Adicionar Funcionário
+            Adicionar Profissional
           </Button>
         </AddStaffDialog>
       </div>

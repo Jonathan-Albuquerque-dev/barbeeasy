@@ -77,7 +77,7 @@ export function ShareableLinksSettings() {
                     <span className="sr-only">Copiar link de cadastro</span>
                 </Button>
             </div>
-             <p className="text-xs text-muted-foreground">Novos clientes devem usar este link para criar uma conta na sua barbearia.</p>
+             <p className="text-xs text-muted-foreground">Novos clientes devem usar este link para criar uma conta no seu estabelecimento.</p>
         </div>
       </CardContent>
     </Card>

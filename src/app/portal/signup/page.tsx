@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, Suspense, useEffect } from 'react';
@@ -61,7 +60,7 @@ function ClientSignupPageContent() {
         toast({
             variant: 'destructive',
             title: 'Erro de Configuração',
-            description: 'Não foi possível identificar a barbearia. Por favor, use o link de cadastro fornecido pela barbearia.',
+            description: 'Não foi possível identificar o estabelecimento. Por favor, use o link de cadastro fornecido.',
         });
         return;
     }
@@ -109,7 +108,7 @@ function ClientSignupPageContent() {
                   <CardHeader className="text-center">
                       <CardTitle className="text-2xl text-destructive">Link de Cadastro Inválido</CardTitle>
                       <CardDescription>
-                          Parece que o link que você está usando está incompleto. Por favor, solicite um novo link de cadastro à sua barbearia.
+                          Parece que o link que você está usando está incompleto. Por favor, solicite um novo link de cadastro ao estabelecimento.
                       </CardDescription>
                   </CardHeader>
               </Card>
@@ -127,14 +126,14 @@ function ClientSignupPageContent() {
             ) : (
                 <div>
                     <h1 className="text-3xl font-bold leading-none font-body">
-                        <span className="text-foreground">Barbe</span><span className="text-primary">Easy</span>
+                         <span className="text-foreground">Estilo</span><span className="text-primary">Gestor</span>
                     </h1>
-                    <p className="text-sm text-muted-foreground text-left">Gestão de Barbearia</p>
+                    <p className="text-sm text-muted-foreground text-left">Gestão de Salão</p>
                 </div>
             )}
           </div>
           <CardTitle className="text-2xl">Crie sua Conta de Cliente</CardTitle>
-          <CardDescription>{barbershopName ? `Cadastre-se para agendar seu próximo corte na ${barbershopName}.` : 'Cadastre-se para agendar seu próximo corte.'}</CardDescription>
+          <CardDescription>{barbershopName ? `Cadastre-se para agendar seu próximo horário em ${barbershopName}.` : 'Cadastre-se para agendar seu próximo horário.'}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

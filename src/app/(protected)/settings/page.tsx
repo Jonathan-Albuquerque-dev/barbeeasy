@@ -15,13 +15,13 @@ export default function SettingsPage() {
             Configurações
         </h1>
         <p className="text-muted-foreground">
-          Gerencie as informações, horários e segurança da sua barbearia.
+          Gerencie as informações, horários e segurança do seu negócio.
         </p>
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="profile">Perfil da Barbearia</TabsTrigger>
+          <TabsTrigger value="profile">Perfil do Salão</TabsTrigger>
           <TabsTrigger value="hours">Horários</TabsTrigger>
           <TabsTrigger value="appearance">Aparência</TabsTrigger>
           <TabsTrigger value="share">Compartilhar</TabsTrigger>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -79,7 +78,7 @@ export default function FinancialPage() {
       const selectedBarber = staff.find(s => s.id === selectedBarberId);
       setCommissionResult({
           ...result,
-          barberName: selectedBarber?.name || 'Barbeiro'
+          barberName: selectedBarber?.name || 'Profissional'
       });
     } catch (error) {
       console.error("Error calculating commission:", error);
@@ -188,7 +187,7 @@ export default function FinancialPage() {
     doc.setFontSize(11);
     doc.setTextColor(100);
     const periodText = `Período: ${format(commissionDateRange.from, 'dd/MM/yyyy')} a ${format(commissionDateRange.to, 'dd/MM/yyyy')}`;
-    doc.text(`Barbeiro: ${commissionResult.barberName}`, 14, 29);
+    doc.text(`Profissional: ${commissionResult.barberName}`, 14, 29);
     doc.text(periodText, 14, 36);
 
     // Summary
@@ -262,7 +261,7 @@ export default function FinancialPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Visão Financeira</h1>
-            <p className="text-muted-foreground">Analise a receita e o desempenho da sua barbearia.</p>
+            <p className="text-muted-foreground">Analise a receita e o desempenho do seu negócio.</p>
         </div>
         <div className="flex items-center gap-2">
             <DateRangePicker date={financialDateRange} onDateChange={setFinancialDateRange} />
@@ -317,15 +316,15 @@ export default function FinancialPage() {
             <Calculator className="h-6 w-6" />
             Calcular Comissão por Período
           </CardTitle>
-          <CardDescription>Selecione um barbeiro e um período para ver a comissão a pagar.</CardDescription>
+          <CardDescription>Selecione um profissional e um período para ver a comissão a pagar.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
              <div className="space-y-2">
-                <Label className="text-sm font-medium">Barbeiro</Label>
+                <Label className="text-sm font-medium">Profissional</Label>
                 <Select value={selectedBarberId} onValueChange={setSelectedBarberId}>
                     <SelectTrigger>
-                        <SelectValue placeholder="Selecione um barbeiro" />
+                        <SelectValue placeholder="Selecione um profissional" />
                     </SelectTrigger>
                     <SelectContent>
                         {staff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
@@ -388,7 +387,7 @@ export default function FinancialPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Barbeiro</TableHead>
+                  <TableHead>Profissional</TableHead>
                   <TableHead className="text-right">Receita Gerada</TableHead>
                   <TableHead className="text-right">Comissão</TableHead>
                 </TableRow>
@@ -447,7 +446,7 @@ export default function FinancialPage() {
                 <TableHead>Data</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Serviço</TableHead>
-                <TableHead>Barbeiro</TableHead>
+                <TableHead>Profissional</TableHead>
                 <TableHead>Forma de Pagto.</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
               </TableRow>

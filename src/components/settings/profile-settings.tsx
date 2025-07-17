@@ -16,7 +16,7 @@ import { Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const profileSchema = z.object({
-  name: z.string().min(2, 'O nome da barbearia é obrigatório.'),
+  name: z.string().min(2, 'O nome do estabelecimento é obrigatório.'),
   avatarUrl: z.string().url('Insira uma URL de imagem válida.').or(z.literal('')),
 });
 
@@ -55,7 +55,7 @@ export function ProfileSettings() {
       await updateBarbershopProfile(user.uid, data);
       toast({
         title: 'Sucesso!',
-        description: 'O perfil da sua barbearia foi atualizado.',
+        description: 'O perfil do seu negócio foi atualizado.',
       });
       reset(data); // Resets the form's dirty state
     } catch (error) {
@@ -73,9 +73,9 @@ export function ProfileSettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Perfil da Barbearia</CardTitle>
+        <CardTitle>Perfil do Estabelecimento</CardTitle>
         <CardDescription>
-          Atualize o nome e a foto de perfil da sua barbearia.
+          Atualize o nome e a foto de perfil do seu negócio.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -91,7 +91,7 @@ export function ProfileSettings() {
                         <AvatarFallback>{form.watch('name')?.charAt(0) || 'B'}</AvatarFallback>
                     </Avatar>
                     <div className='flex-grow space-y-2'>
-                        <FormLabel>URL da Foto</FormLabel>
+                        <FormLabel>URL da Foto/Logo</FormLabel>
                         <FormControl>
                             <Input placeholder="https://exemplo.com/sua-logo.png" {...field} />
                         </FormControl>
@@ -105,9 +105,9 @@ export function ProfileSettings() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome da Barbearia</FormLabel>
+                  <FormLabel>Nome do Estabelecimento</FormLabel>
                   <FormControl>
-                    <Input placeholder="Sua Barbearia" {...field} />
+                    <Input placeholder="Seu Salão" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

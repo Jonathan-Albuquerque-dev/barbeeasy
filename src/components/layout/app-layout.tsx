@@ -73,9 +73,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="group-data-[collapsible=icon]:hidden">
               <div>
                 <h1 className="text-2xl font-bold leading-none font-body">
-                  <span className="text-sidebar-foreground">Barbe</span><span className="text-primary">Easy</span>
+                  <span className="text-sidebar-foreground">Estilo</span><span className="text-primary">Gestor</span>
                 </h1>
-                <p className="text-xs text-sidebar-foreground/80">Gestão de Barbearia</p>
+                <p className="text-xs text-sidebar-foreground/80">Gestão de Salão</p>
               </div>
             </div>
           </div>

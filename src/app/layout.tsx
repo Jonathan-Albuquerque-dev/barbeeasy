@@ -5,8 +5,8 @@ import { AuthProvider } from '@/contexts/auth-context';
 import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'BarberEasy',
-  description: 'Gerenciamento de agendamentos sem esforço para sua barbearia.',
+  title: 'EstiloGestor',
+  description: 'Gerenciamento de agendamentos sem esforço para seu salão.',
 };
 
 export default function RootLayout({

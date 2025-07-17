@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
@@ -31,7 +30,7 @@ function AssinaturasPageContent() {
 
     const fetchData = async () => {
         if (!barbershopId) {
-            setError("Barbearia não identificada.");
+            setError("Estabelecimento não identificado.");
             setLoading(false);
             return;
         }
@@ -178,7 +177,7 @@ function AssinaturasPageContent() {
                         })}
                     </div>
                 ) : (
-                    <p className="text-muted-foreground text-center py-8">Esta barbearia ainda não oferece planos de assinatura.</p>
+                    <p className="text-muted-foreground text-center py-8">Este estabelecimento ainda não oferece planos de assinatura.</p>
                 )}
             </div>
         </div>

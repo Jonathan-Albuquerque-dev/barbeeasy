@@ -191,7 +191,7 @@ export function AppointmentDetailsDialog({ appointment, onAppointmentUpdate, chi
                     <p className="text-muted-foreground">{appointment.client.name}</p>
                 </div>
                 <div>
-                    <p className="font-semibold">Barbeiro</p>
+                    <p className="font-semibold">Profissional</p>
                     <p className="text-muted-foreground">{appointment.barber.name}</p>
                 </div>
                  <div>

@@ -92,9 +92,9 @@ export default function LoginPage() {
             <div className="flex justify-center items-center gap-3">
                 <div>
                   <h1 className="text-3xl font-bold leading-none font-body">
-                    <span className="text-foreground">Barbe</span><span className="text-primary">Easy</span>
+                    <span className="text-foreground">Estilo</span><span className="text-primary">Gestor</span>
                   </h1>
-                  <p className="text-sm text-muted-foreground text-left">Gestão de Barbearia</p>
+                  <p className="text-sm text-muted-foreground text-left">Gestão de Salão</p>
                 </div>
             </div>
         </CardHeader>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, Suspense, useEffect } from 'react';
@@ -56,7 +55,7 @@ function ClientLoginPageContent() {
         toast({
             variant: 'destructive',
             title: 'Erro de Configuração',
-            description: 'ID da barbearia não encontrado. Use o link correto.',
+            description: 'ID do estabelecimento não encontrado. Use o link correto.',
         });
         return;
     }
@@ -105,9 +104,9 @@ function ClientLoginPageContent() {
                 ) : (
                     <div>
                         <h1 className="text-3xl font-bold leading-none font-body">
-                            <span className="text-foreground">Barbe</span><span className="text-primary">Easy</span>
+                           <span className="text-foreground">Estilo</span><span className="text-primary">Gestor</span>
                         </h1>
-                        <p className="text-sm text-muted-foreground text-left">Gestão de Barbearia</p>
+                        <p className="text-sm text-muted-foreground text-left">Gestão de Salão</p>
                     </div>
                 )}
             </div>

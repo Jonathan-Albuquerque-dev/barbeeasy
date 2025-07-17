@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -19,7 +18,7 @@ import { app } from '@/lib/firebase';
 import Link from 'next/link';
 
 const signupSchema = z.object({
-  barbershopName: z.string().min(2, { message: 'O nome da barbearia é obrigatório.' }),
+  barbershopName: z.string().min(2, { message: 'O nome do salão é obrigatório.' }),
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
 });
@@ -107,22 +106,22 @@ export default function SignupPage() {
           <div className="flex justify-center items-center gap-3 mb-4">
             <div>
               <h1 className="text-3xl font-bold leading-none font-body">
-                <span className="text-foreground">Barbe</span><span className="text-primary">Easy</span>
+                <span className="text-foreground">Estilo</span><span className="text-primary">Gestor</span>
               </h1>
-              <p className="text-sm text-muted-foreground text-left">Gestão de Barbearia</p>
+              <p className="text-sm text-muted-foreground text-left">Gestão de Salão</p>
             </div>
           </div>
           <CardTitle className="text-2xl">Crie sua Conta</CardTitle>
-          <CardDescription>Cadastre sua barbearia e comece a gerenciar.</CardDescription>
+          <CardDescription>Cadastre seu salão e comece a gerenciar.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="barbershopName">Nome da Barbearia</Label>
+              <Label htmlFor="barbershopName">Nome do Salão</Label>
               <Input
                 id="barbershopName"
                 type="text"
-                placeholder="Ex: Barbearia do João"
+                placeholder="Ex: Salão da Maria"
                 {...register('barbershopName')}
                 className={errors.barbershopName ? 'border-destructive' : ''}
               />
