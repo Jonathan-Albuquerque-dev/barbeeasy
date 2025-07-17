@@ -4,7 +4,7 @@ import { useState, Suspense, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -31,6 +31,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 function ClientSignupPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const barbershopId = searchParams.get('barbershopId');
   const { setClientSession } = useClientSession();
   const { toast } = useToast();
@@ -81,7 +82,8 @@ function ClientSignupPageContent() {
           avatarUrl: newClient.avatarUrl,
           barbershopId: barbershopId,
       };
-      setClientSession(session); // Call setClientSession from context to set session and trigger redirect
+      setClientSession(session); // Call setClientSession from context
+      router.replace(`/portal/agendar?barbershopId=${barbershopId}`); // Explicitly redirect
 
     } catch (error: any) {
       console.error(error);
