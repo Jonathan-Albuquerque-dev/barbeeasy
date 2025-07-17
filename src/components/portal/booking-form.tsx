@@ -40,7 +40,7 @@ interface BookingFormProps {
 }
 
 export function BookingForm({ barbershopId }: BookingFormProps) {
-  const { session } = useClientSession();
+  const { session, setClientSession, loading: sessionLoading } = useClientSession();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -97,7 +97,7 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
 
         if (!dayHours || !dayHours.open) { setTimeSlots([]); return; }
 
-        let allSlots: string[] = [];
+        const allSlots: string[] = [];
         const interval = settings.appointmentInterval;
         let currentTime = new Date(selectedDate);
         const [startHour, startMinute] = dayHours.start.split(':').map(Number);
@@ -110,24 +110,6 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
         while(currentTime < endTime) {
             allSlots.push(currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
             currentTime.setMinutes(currentTime.getMinutes() + interval);
-        }
-
-        // Filter out lunch break slots if enabled
-        if (dayHours.lunch?.enabled) {
-            const lunchStart = new Date(selectedDate);
-            const [lunchStartHour, lunchStartMinute] = dayHours.lunch.start.split(':').map(Number);
-            lunchStart.setHours(lunchStartHour, lunchStartMinute, 0, 0);
-
-            const lunchEnd = new Date(selectedDate);
-            const [lunchEndHour, lunchEndMinute] = dayHours.lunch.end.split(':').map(Number);
-            lunchEnd.setHours(lunchEndHour, lunchEndMinute, 0, 0);
-            
-            allSlots = allSlots.filter(slot => {
-                const slotTime = new Date(selectedDate);
-                const [slotHour, slotMinute] = slot.split(':').map(Number);
-                slotTime.setHours(slotHour, slotMinute, 0, 0);
-                return slotTime < lunchStart || slotTime >= lunchEnd;
-            });
         }
 
         if (!selectedBarberId || !selectedService) {

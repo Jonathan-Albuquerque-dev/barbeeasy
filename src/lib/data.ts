@@ -128,11 +128,6 @@ type DaySetting = {
     open: boolean;
     start: string;
     end: string;
-    lunch: {
-        enabled: boolean;
-        start: string;
-        end: string;
-    }
 };
 
 export type DayHours = {

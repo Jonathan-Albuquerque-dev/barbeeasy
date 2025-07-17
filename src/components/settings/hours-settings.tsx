@@ -19,17 +19,10 @@ import { Separator } from '../ui/separator';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { cn } from '@/lib/utils';
 
-const lunchSchema = z.object({
-  enabled: z.boolean(),
-  start: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido").or(z.literal("")),
-  end: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido").or(z.literal("")),
-});
-
 const daySchema = z.object({
   open: z.boolean(),
   start: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   end: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  lunch: lunchSchema,
 });
 
 const operatingHoursSchema = z.object({
@@ -54,7 +47,6 @@ export function HoursSettings() {
         open: false, 
         start: '09:00', 
         end: '18:00',
-        lunch: { enabled: false, start: '12:00', end: '13:00' }
       })),
       appointmentInterval: 30,
     },
@@ -75,7 +67,6 @@ export function HoursSettings() {
             open: false, 
             start: '09:00', 
             end: '18:00',
-            lunch: { enabled: false, start: '12:00', end: '13:00' }
           });
           reset({ 
             hours: hoursArray,
@@ -208,59 +199,6 @@ export function HoursSettings() {
                                 <FormLabel className="sr-only">Fim</FormLabel>
                                 <FormControl>
                                     <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
-                                </FormControl>
-                                </FormItem>
-                            )}
-                            />
-                        </div>
-                    </div>
-
-                    <Separator className={cn(!form.watch(`hours.${index}.open`) && 'opacity-50')}/>
-
-                    <div className={cn("flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4", !form.watch(`hours.${index}.open`) && 'opacity-50')}>
-                        <div className="w-full sm:w-1/3">
-                            <h4 className="font-medium text-sm text-muted-foreground">Horário de Almoço</h4>
-                        </div>
-                        <div className="flex items-center gap-4">
-                             <FormField
-                            control={form.control}
-                            name={`hours.${index}.lunch.enabled`}
-                            render={({ field }) => (
-                                <FormItem className="flex items-center gap-2">
-                                    <FormControl>
-                                        <Switch
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                        disabled={!form.watch(`hours.${index}.open`)}
-                                        />
-                                    </FormControl>
-                                    <FormLabel className="!m-0">{field.value ? 'Ativado' : 'Desativado'}</FormLabel>
-                                </FormItem>
-                            )}
-                            />
-                        </div>
-                        <div className={cn("flex items-center gap-4 flex-grow", !form.watch(`hours.${index}.lunch.enabled`) && 'opacity-50')}>
-                            <FormField
-                            control={form.control}
-                            name={`hours.${index}.lunch.start`}
-                            render={({ field }) => (
-                                <FormItem className="flex-1">
-                                <FormLabel className="sr-only">Início do Almoço</FormLabel>
-                                <FormControl>
-                                    <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`) || !form.watch(`hours.${index}.lunch.enabled`)} />
-                                </FormControl>
-                                </FormItem>
-                            )}
-                            />
-                            <span>até</span>
-                            <FormField
-                            control={form.control}
-                            name={`hours.${index}.lunch.end`}
-                            render={({ field }) => (
-                                <FormItem className="flex-1">
-                                <FormLabel className="sr-only">Fim do Almoço</FormLabel>
-                                <FormControl>
-                                    <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`) || !form.watch(`hours.${index}.lunch.enabled`)} />
                                 </FormControl>
                                 </FormItem>
                             )}
