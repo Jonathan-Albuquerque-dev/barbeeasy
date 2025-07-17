@@ -27,20 +27,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const auth = getAuth(app);
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Set user immediately for faster UI response
-        setUser(user);
-        // Check if user is a barbershop owner by checking for a document
-        // in the 'barbershops' collection with the user's UID.
-        const barbershopDocRef = doc(db, 'barbershops', user.uid);
-        const barbershopDoc = await getDoc(barbershopDocRef);
-        
-        setIsBarberOwner(barbershopDoc.exists());
-      } else {
+      try {
+        if (user) {
+          setUser(user);
+          const barbershopDocRef = doc(db, 'barbershops', user.uid);
+          const barbershopDoc = await getDoc(barbershopDocRef);
+          setIsBarberOwner(barbershopDoc.exists());
+        } else {
+          setUser(null);
+          setIsBarberOwner(false);
+        }
+      } catch (error) {
+        console.error("Error during auth state change:", error);
         setUser(null);
         setIsBarberOwner(false);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
