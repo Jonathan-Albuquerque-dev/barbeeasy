@@ -21,8 +21,8 @@ import { cn } from '@/lib/utils';
 
 const lunchSchema = z.object({
   enabled: z.boolean(),
-  start: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  end: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  start: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido").or(z.literal("")),
+  end: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido").or(z.literal("")),
 });
 
 const daySchema = z.object({
