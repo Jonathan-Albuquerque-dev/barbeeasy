@@ -1,23 +1,38 @@
+
 'use client';
 
-import { getServices, getStaff, Staff } from "@/lib/data";
+import { getServices, getStaff, Staff, deleteService } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Clock, DollarSign, Edit, Loader2, PlusCircle, Users } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Clock, DollarSign, Edit, Loader2, PlusCircle, Users, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState, useCallback } from "react";
 import { AddServiceDialog } from "@/components/services/add-service-dialog";
 import { EditServiceDialog } from "@/components/services/edit-service-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 type Service = Awaited<ReturnType<typeof getServices>>[0];
 
 export default function ServicesPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [services, setServices] = useState<Service[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const staffMap = new Map(staff.map(s => [s.id, s]));
 
@@ -39,6 +54,28 @@ export default function ServicesPage() {
         fetchServicesAndStaff();
     }
   }, [user, fetchServicesAndStaff]);
+  
+  const handleDelete = async (serviceId: string) => {
+    if (!user) return;
+    setDeletingId(serviceId);
+    try {
+      await deleteService(user.uid, serviceId);
+      toast({
+        title: "Sucesso!",
+        description: "O serviço foi excluído.",
+      });
+      fetchServicesAndStaff(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Não foi possível excluir o serviço.",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -72,12 +109,36 @@ export default function ServicesPage() {
                         <CardTitle className="text-2xl">{service.name}</CardTitle>
                         <CardDescription className="line-clamp-2">{service.description}</CardDescription>
                     </div>
-                     <EditServiceDialog service={service} staffList={staff} onServiceUpdated={fetchServicesAndStaff}>
-                        <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Editar</span>
-                        </Button>
-                     </EditServiceDialog>
+                     <div className="flex items-center">
+                        <EditServiceDialog service={service} staffList={staff} onServiceUpdated={fetchServicesAndStaff}>
+                            <Button variant="ghost" size="icon">
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Editar</span>
+                            </Button>
+                        </EditServiceDialog>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                               <Button variant="ghost" size="icon" disabled={deletingId === service.id}>
+                                  {deletingId === service.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                  <span className="sr-only">Excluir</span>
+                               </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. Isso excluirá permanentemente o serviço e pode afetar agendamentos existentes.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(service.id)} className={buttonVariants({ variant: "destructive" })}>
+                                Sim, excluir
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                     </div>
                 </div>
             </CardHeader>
             <CardContent className="flex-grow space-y-3">

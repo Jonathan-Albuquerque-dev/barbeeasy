@@ -1,3 +1,4 @@
+
 // src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit } from 'firebase/firestore';
 import { db } from './firebase';
@@ -156,7 +157,7 @@ type BarbershopSettings = {
     name: string;
     avatarUrl: string;
     operatingHours: DayHours;
-    appointmentInterval: 30 | 60;
+    appointmentInterval: number;
     loyaltyProgram: LoyaltyProgramSettings;
 }
 
@@ -331,6 +332,16 @@ export async function updateStaff(userId: string, staffId: string, staffData: Pa
     }
 }
 
+export async function deleteStaff(userId: string, staffId: string) {
+    try {
+        const staffDocRef = doc(db, getCollectionPath(userId, 'staff'), staffId);
+        await deleteDoc(staffDocRef);
+    } catch (error) {
+        console.error("Erro ao excluir funcionário:", error);
+        throw new Error("Não foi possível excluir o funcionário.");
+    }
+}
+
 export async function getServices(userId: string): Promise<Service[]> {
   try {
     const servicesCol = collection(db, getCollectionPath(userId, 'services'));
@@ -359,6 +370,16 @@ export async function updateService(userId: string, serviceId: string, serviceDa
     } catch (error) {
         console.error("Erro ao atualizar serviço:", error);
         throw new Error("Não foi possível atualizar o serviço.");
+    }
+}
+
+export async function deleteService(userId: string, serviceId: string) {
+    try {
+        const serviceDocRef = doc(db, getCollectionPath(userId, 'services'), serviceId);
+        await deleteDoc(serviceDocRef);
+    } catch (error) {
+        console.error("Erro ao excluir serviço:", error);
+        throw new Error("Não foi possível excluir o serviço.");
     }
 }
 
@@ -413,6 +434,16 @@ export async function addProfession(userId: string, professionData: Omit<Profess
     } catch (error) {
         console.error("Erro ao adicionar profissão:", error);
         throw new Error("Não foi possível adicionar a profissão.");
+    }
+}
+
+export async function deleteProfession(userId: string, professionId: string) {
+    try {
+        const professionDocRef = doc(db, getCollectionPath(userId, 'professions'), professionId);
+        await deleteDoc(professionDocRef);
+    } catch (error) {
+        console.error("Erro ao excluir profissão:", error);
+        throw new Error("Não foi possível excluir a profissão. Verifique se ela não está em uso.");
     }
 }
 

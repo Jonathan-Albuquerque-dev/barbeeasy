@@ -1,22 +1,36 @@
 
 'use client';
 
-import { getStaff, Staff } from "@/lib/data";
+import { getStaff, Staff, deleteStaff } from "@/lib/data";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
-import { PlusCircle, Star, Loader2, Edit, Briefcase } from "lucide-react";
+import { PlusCircle, Star, Loader2, Edit, Briefcase, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState, useCallback } from "react";
 import { AddStaffDialog } from "@/components/staff/add-staff-dialog";
 import { EditStaffDialog } from "@/components/staff/edit-staff-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function StaffPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchStaff = useCallback(async () => {
     if (user?.uid) {
@@ -33,6 +47,27 @@ export default function StaffPage() {
         fetchStaff();
     }
   }, [user, fetchStaff]);
+
+  const handleDelete = async (staffId: string) => {
+    if (!user) return;
+    setDeletingId(staffId);
+    try {
+      await deleteStaff(user.uid, staffId);
+      toast({
+        title: "Sucesso!",
+        description: "O funcionário foi excluído.",
+      });
+      fetchStaff(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Não foi possível excluir o funcionário.",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -106,6 +141,28 @@ export default function StaffPage() {
                          <span className="sr-only">Editar {member.name}</span>
                        </Button>
                     </EditStaffDialog>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                         <Button variant="ghost" size="icon" disabled={deletingId === member.id}>
+                          {deletingId === member.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          <span className="sr-only">Excluir {member.name}</span>
+                         </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. Isso excluirá permanentemente o funcionário e pode afetar agendamentos existentes.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(member.id)} className={buttonVariants({ variant: "destructive" })}>
+                            Sim, excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </TableCell>
               </TableRow>

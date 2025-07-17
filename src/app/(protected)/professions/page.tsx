@@ -1,14 +1,26 @@
 
 'use client';
 
-import { getProfessions } from "@/lib/data";
+import { getProfessions, deleteProfession } from "@/lib/data";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Loader2, PlusCircle, Briefcase } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Loader2, PlusCircle, Briefcase, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState, useCallback } from "react";
 import { AddProfessionDialog } from "@/components/professions/add-profession-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 type Profession = {
   id: string;
@@ -17,8 +29,10 @@ type Profession = {
 
 export default function ProfessionsPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [professions, setProfessions] = useState<Profession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchProfessions = useCallback(async () => {
     if (user?.uid) {
@@ -34,6 +48,28 @@ export default function ProfessionsPage() {
         fetchProfessions();
     }
   }, [user, fetchProfessions]);
+
+  const handleDelete = async (professionId: string) => {
+    if (!user) return;
+    setDeletingId(professionId);
+    try {
+      await deleteProfession(user.uid, professionId);
+      toast({
+        title: "Sucesso!",
+        description: "A profissão foi excluída.",
+      });
+      fetchProfessions(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Não foi possível excluir a profissão.",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -63,7 +99,7 @@ export default function ProfessionsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Nome da Profissão</TableHead>
-              <TableHead><span className="sr-only">Ações</span></TableHead>
+              <TableHead className="text-right w-32">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -76,7 +112,29 @@ export default function ProfessionsPage() {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  {/* Action buttons like Edit/Delete can be added here */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                       <Button variant="ghost" size="icon" disabled={deletingId === profession.id}>
+                          {deletingId === profession.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          <span className="sr-only">Excluir</span>
+                       </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta ação não pode ser desfeita. Isso excluirá permanentemente a profissão.
+                          Certifique-se de que nenhum funcionário esteja associado a esta profissão antes de excluir.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(profession.id)} className={buttonVariants({ variant: "destructive" })}>
+                          Sim, excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TableCell>
               </TableRow>
             )) : (
