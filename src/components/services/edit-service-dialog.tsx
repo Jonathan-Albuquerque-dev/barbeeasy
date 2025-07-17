@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/auth-context';
-import { addService, Staff } from '@/lib/data';
+import { updateService, Staff, Service } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
@@ -26,13 +26,14 @@ const serviceSchema = z.object({
 
 type ServiceFormValues = z.infer<typeof serviceSchema>;
 
-interface AddServiceDialogProps {
+interface EditServiceDialogProps {
+  service: Service;
   staffList: Staff[];
-  onServiceAdded: () => void;
+  onServiceUpdated: () => void;
   children: React.ReactNode;
 }
 
-export function AddServiceDialog({ staffList, onServiceAdded, children }: AddServiceDialogProps) {
+export function EditServiceDialog({ service, staffList, onServiceUpdated, children }: EditServiceDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -41,36 +42,47 @@ export function AddServiceDialog({ staffList, onServiceAdded, children }: AddSer
   const form = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceSchema),
     defaultValues: {
-      name: '',
-      description: '',
-      price: '' as any,
-      duration: '' as any,
-      staffIds: [],
+      name: service.name,
+      description: service.description,
+      price: service.price,
+      duration: service.duration,
+      staffIds: service.staffIds || [],
     },
   });
 
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: service.name,
+        description: service.description,
+        price: service.price,
+        duration: service.duration,
+        staffIds: service.staffIds || [],
+      });
+    }
+  }, [open, service, form]);
+
   const onSubmit = async (data: ServiceFormValues) => {
     if (!user) {
-      toast({ variant: 'destructive', title: 'Erro', description: 'Você precisa estar logado para adicionar um serviço.' });
+      toast({ variant: 'destructive', title: 'Erro', description: 'Você precisa estar logado para editar um serviço.' });
       return;
     }
 
     setLoading(true);
     try {
-      await addService(user.uid, data);
+      await updateService(user.uid, service.id, data);
       toast({
         title: 'Sucesso!',
-        description: 'O novo serviço foi adicionado.',
+        description: 'O serviço foi atualizado.',
       });
-      onServiceAdded();
+      onServiceUpdated();
       setOpen(false);
-      form.reset();
     } catch (error) {
       console.error(error);
       toast({
         variant: 'destructive',
-        title: 'Erro ao adicionar serviço',
-        description: 'Não foi possível salvar o serviço. Tente novamente.',
+        title: 'Erro ao editar serviço',
+        description: 'Não foi possível salvar as alterações. Tente novamente.',
       });
     } finally {
       setLoading(false);
@@ -84,9 +96,9 @@ export function AddServiceDialog({ staffList, onServiceAdded, children }: AddSer
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adicionar Novo Serviço</DialogTitle>
+          <DialogTitle>Editar Serviço</DialogTitle>
           <DialogDescription>
-            Preencha os detalhes do novo serviço e quem pode executá-lo.
+            Atualize os detalhes do serviço e quem pode executá-lo.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -125,7 +137,7 @@ export function AddServiceDialog({ staffList, onServiceAdded, children }: AddSer
                     <FormItem>
                     <FormLabel>Preço (R$)</FormLabel>
                     <FormControl>
-                        <Input type="number" step="0.01" placeholder="Ex: 40.00" {...field} value={field.value || ''} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                        <Input type="number" step="0.01" placeholder="Ex: 40.00" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -138,7 +150,7 @@ export function AddServiceDialog({ staffList, onServiceAdded, children }: AddSer
                     <FormItem>
                     <FormLabel>Duração (minutos)</FormLabel>
                     <FormControl>
-                        <Input type="number" step="5" placeholder="Ex: 30" {...field} value={field.value || ''} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                        <Input type="number" step="5" placeholder="Ex: 30" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -200,7 +212,7 @@ export function AddServiceDialog({ staffList, onServiceAdded, children }: AddSer
                 <Button type="button" variant="outline">Cancelar</Button>
               </DialogClose>
               <Button type="submit" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Serviço'}
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Alterações'}
               </Button>
             </DialogFooter>
           </form>

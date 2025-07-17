@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { addAppointment, getStaff, getServices, getBarbershopSettings, DayHours, getBarberAppointmentsForDate } from '@/lib/data';
+import { addAppointment, getStaff, getServices, getBarbershopSettings, DayHours, getBarberAppointmentsForDate, Service, Staff } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -23,16 +22,14 @@ import { Label } from '../ui/label';
 import { useClientSession } from '@/app/portal/layout';
 
 const bookingSchema = z.object({
-  barberId: z.string({ required_error: 'Selecione um barbeiro.' }),
   service: z.string().min(1, { message: 'Selecione um serviço.' }),
+  barberId: z.string({ required_error: 'Selecione um profissional.' }),
   date: z.date({ required_error: 'A data é obrigatória.' }),
   time: z.string().min(1, { message: 'A hora é obrigatória.' }),
 });
 
 type BookingFormValues = z.infer<typeof bookingSchema>;
 
-type Staff = { id: string; name: string };
-type Service = { id: string; name: string; duration: number; }; 
 type BarbershopSettings = { operatingHours: DayHours; appointmentInterval: 30 | 60 };
 
 interface BookingFormProps {
@@ -40,7 +37,7 @@ interface BookingFormProps {
 }
 
 export function BookingForm({ barbershopId }: BookingFormProps) {
-  const { session, setClientSession, loading: sessionLoading } = useClientSession();
+  const { session, loading: sessionLoading } = useClientSession();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -49,12 +46,13 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [settings, setSettings] = useState<BarbershopSettings | null>(null);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
+  const [filteredStaff, setFilteredStaff] = useState<Staff[]>([]);
 
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
-      barberId: '',
       service: '',
+      barberId: '',
       date: new Date(),
       time: '',
     },
@@ -68,7 +66,7 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
           getServices(barbershopId),
           getBarbershopSettings(barbershopId),
         ]);
-        setStaff(fetchedStaff.map(s => ({ id: s.id, name: s.name })));
+        setStaff(fetchedStaff);
         setServices(fetchedServices);
         if (fetchedSettings) {
             setSettings({
@@ -84,6 +82,20 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
   const selectedDate = form.watch('date');
   const selectedBarberId = form.watch('barberId');
   const selectedService = form.watch('service');
+
+  useEffect(() => {
+    const service = services.find(s => s.name === selectedService);
+    if (service && service.staffIds) {
+      const staffForService = staff.filter(s => service.staffIds.includes(s.id));
+      setFilteredStaff(staffForService);
+    } else {
+      setFilteredStaff([]);
+    }
+    // Reset barber and time when service changes
+    form.resetField('barberId', { defaultValue: '' });
+    form.resetField('time', { defaultValue: '' });
+  }, [selectedService, services, staff, form]);
+
 
   useEffect(() => {
     const generateAndFilterTimeSlots = async () => {
@@ -239,11 +251,11 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Profissional</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={!selectedService}>
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Selecione um profissional" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder={!selectedService ? "Escolha um serviço primeiro" : "Selecione um profissional"} /></SelectTrigger>
                         </FormControl>
-                        <SelectContent>{staff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{filteredStaff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>

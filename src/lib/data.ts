@@ -1,4 +1,3 @@
-
 // src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit } from 'firebase/firestore';
 import { db } from './firebase';
@@ -69,6 +68,7 @@ export type Service = {
   duration: number;
   price: number;
   description: string;
+  staffIds: string[];
 };
 
 export type Product = {
@@ -351,6 +351,17 @@ export async function addService(userId: string, serviceData: Omit<Service, 'id'
         throw new Error("Não foi possível adicionar o serviço.");
     }
 }
+
+export async function updateService(userId: string, serviceId: string, serviceData: Partial<Omit<Service, 'id'>>) {
+    try {
+        const serviceDocRef = doc(db, getCollectionPath(userId, 'services'), serviceId);
+        await updateDoc(serviceDocRef, serviceData);
+    } catch (error) {
+        console.error("Erro ao atualizar serviço:", error);
+        throw new Error("Não foi possível atualizar o serviço.");
+    }
+}
+
 
 export async function getProducts(userId: string): Promise<Product[]> {
   try {

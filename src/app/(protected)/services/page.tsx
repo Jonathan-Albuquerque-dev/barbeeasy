@@ -1,25 +1,34 @@
 'use client';
 
-import { getServices } from "@/lib/data";
+import { getServices, getStaff, Staff } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, DollarSign, Tag, Loader2, PlusCircle } from "lucide-react";
+import { Clock, DollarSign, Edit, Loader2, PlusCircle, Users } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState, useCallback } from "react";
 import { AddServiceDialog } from "@/components/services/add-service-dialog";
+import { EditServiceDialog } from "@/components/services/edit-service-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Service = Awaited<ReturnType<typeof getServices>>[0];
 
 export default function ServicesPage() {
   const { user } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchServices = useCallback(async () => {
+  const staffMap = new Map(staff.map(s => [s.id, s]));
+
+  const fetchServicesAndStaff = useCallback(async () => {
     if (user?.uid) {
-      // Don't set loading to true here to avoid full-page loader on re-fetch
-      const fetchedServices = await getServices(user.uid);
+      const [fetchedServices, fetchedStaff] = await Promise.all([
+        getServices(user.uid),
+        getStaff(user.uid)
+      ]);
       setServices(fetchedServices);
+      setStaff(fetchedStaff);
       setLoading(false);
     }
   }, [user]);
@@ -27,9 +36,9 @@ export default function ServicesPage() {
   useEffect(() => {
     if (user?.uid) {
         setLoading(true);
-        fetchServices();
+        fetchServicesAndStaff();
     }
-  }, [user, fetchServices]);
+  }, [user, fetchServicesAndStaff]);
 
   if (loading) {
     return (
@@ -44,9 +53,9 @@ export default function ServicesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Catálogo de Serviços</h1>
-          <p className="text-muted-foreground">Navegue por todos os serviços e tratamentos disponíveis.</p>
+          <p className="text-muted-foreground">Navegue e gerencie os serviços e os profissionais que os executam.</p>
         </div>
-        <AddServiceDialog onServiceAdded={fetchServices}>
+        <AddServiceDialog staffList={staff} onServiceAdded={fetchServicesAndStaff}>
             <Button>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Adicionar Serviço
@@ -58,8 +67,18 @@ export default function ServicesPage() {
         {services.map(service => (
           <Card key={service.id} className="flex flex-col">
             <CardHeader>
-              <CardTitle className="text-2xl">{service.name}</CardTitle>
-              <CardDescription>{service.description}</CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle className="text-2xl">{service.name}</CardTitle>
+                        <CardDescription className="line-clamp-2">{service.description}</CardDescription>
+                    </div>
+                     <EditServiceDialog service={service} staffList={staff} onServiceUpdated={fetchServicesAndStaff}>
+                        <Button variant="ghost" size="icon">
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Editar</span>
+                        </Button>
+                     </EditServiceDialog>
+                </div>
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
               <div className="flex items-center text-sm text-muted-foreground">
@@ -71,11 +90,36 @@ export default function ServicesPage() {
                 <span>{service.duration} minutos</span>
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full">
-                <Tag className="mr-2 h-4 w-4" />
-                Agendar Agora
-              </Button>
+            <CardFooter className="flex-col items-start gap-4">
+                 <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="text-sm font-medium text-muted-foreground">Profissionais</h4>
+                </div>
+                {service.staffIds && service.staffIds.length > 0 ? (
+                     <div className="flex -space-x-2">
+                        <TooltipProvider>
+                        {service.staffIds.map(staffId => {
+                            const member = staffMap.get(staffId);
+                            if (!member) return null;
+                            return (
+                                <Tooltip key={member.id}>
+                                    <TooltipTrigger>
+                                        <Avatar className="h-8 w-8 border-2 border-background">
+                                            <AvatarImage src={member.avatarUrl} alt={member.name} data-ai-hint="person face" />
+                                            <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{member.name}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            )
+                        })}
+                        </TooltipProvider>
+                    </div>
+                ) : (
+                    <p className="text-xs text-muted-foreground pl-6">Nenhum profissional associado.</p>
+                )}
             </CardFooter>
           </Card>
         ))}

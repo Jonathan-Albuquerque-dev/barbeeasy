@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/auth-context';
-import { addAppointment, getClients, getStaff, getServices, getBarbershopSettings, DayHours, getBarberAppointmentsForDate, addClient } from '@/lib/data';
+import { addAppointment, getClients, getStaff, getServices, getBarbershopSettings, DayHours, getBarberAppointmentsForDate, addClient, Service } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -25,8 +25,8 @@ const appointmentSchema = z.object({
   clientType: z.enum(['existing', 'new']).default('existing'),
   clientId: z.string().optional(),
   newClientName: z.string().optional(),
-  barberId: z.string({ required_error: 'Selecione um profissional.' }),
   service: z.string().min(1, { message: 'Selecione um serviço.' }),
+  barberId: z.string({ required_error: 'Selecione um profissional.' }),
   date: z.date({ required_error: 'A data é obrigatória.' }),
   time: z.string().min(1, { message: 'A hora é obrigatória.' }),
   status: z.enum(['Confirmado', 'Pendente', 'Concluído', 'Em atendimento'], { required_error: 'O status é obrigatório.' }),
@@ -51,7 +51,6 @@ type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 
 type Client = { id: string; name: string };
 type Staff = { id: string; name: string };
-type Service = { id: string; name: string; duration: number; }; 
 type BarbershopSettings = { operatingHours: DayHours; appointmentInterval: 30 | 60 };
 
 interface AddAppointmentDialogProps {
@@ -67,12 +66,12 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
   const [loading, setLoading] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
-
   const [clients, setClients] = useState<Client[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [settings, setSettings] = useState<BarbershopSettings | null>(null);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
+  const [filteredStaff, setFilteredStaff] = useState<Staff[]>([]);
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -80,8 +79,8 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
       clientType: 'existing',
       clientId: '',
       newClientName: '',
-      barberId: '',
       service: '',
+      barberId: '',
       date: initialDate || new Date(),
       time: '',
       status: 'Confirmado',
@@ -124,6 +123,17 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
     }
   }, [initialDate, form]);
   
+  useEffect(() => {
+    const service = services.find(s => s.name === selectedService);
+    if (service && service.staffIds) {
+      const staffForService = staff.filter(s => service.staffIds.includes(s.id));
+      setFilteredStaff(staffForService);
+    } else {
+      setFilteredStaff([]);
+    }
+    form.resetField('barberId', { defaultValue: '' });
+  }, [selectedService, services, staff, form]);
+
   useEffect(() => {
     const generateAndFilterTimeSlots = async () => {
         if (!settings || !selectedDate || !user?.uid) {
@@ -364,26 +374,6 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
 
             <FormField
               control={form.control}
-              name="barberId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Profissional</FormLabel>
-                   <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um profissional" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {staff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
               name="service"
               render={({ field }) => (
                 <FormItem>
@@ -396,6 +386,26 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
                     </FormControl>
                     <SelectContent>
                       {services.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="barberId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Profissional</FormLabel>
+                   <Select onValueChange={field.onChange} value={field.value} disabled={!selectedService}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={!selectedService ? "Escolha um serviço primeiro" : "Selecione um profissional"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {filteredStaff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -460,8 +470,8 @@ export function AddAppointmentDialog({ onAppointmentAdded, children, initialDate
                           <SelectTrigger>
                             <SelectValue placeholder={
                                 slotsLoading ? "Carregando..." : 
-                                !selectedBarberId ? "Selecione um profissional" : 
-                                !selectedService ? "Selecione um serviço" :
+                                !selectedService ? "Escolha um serviço" :
+                                !selectedBarberId ? "Escolha um profissional" : 
                                 timeSlots.length === 0 ? "Nenhum horário vago" : 
                                 "Selecione um horário"
                             } />
