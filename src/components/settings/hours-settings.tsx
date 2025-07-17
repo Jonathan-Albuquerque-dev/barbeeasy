@@ -21,14 +21,15 @@ import { cn } from '@/lib/utils';
 
 const daySchema = z.object({
   open: z.boolean(),
-  start: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  end: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  start: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido (HH:mm)."),
+  end: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido (HH:mm)."),
 });
 
 const operatingHoursSchema = z.object({
   hours: z.array(daySchema),
-  appointmentInterval: z.union([z.literal('30'), z.literal('60')]).transform(Number),
+  appointmentInterval: z.number().refine(val => [30, 60].includes(val), { message: "O intervalo deve ser 30 ou 60."}),
 });
+
 
 type OperatingHoursFormValues = z.infer<typeof operatingHoursSchema>;
 
