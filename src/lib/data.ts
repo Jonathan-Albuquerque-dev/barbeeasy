@@ -124,12 +124,19 @@ export type Subscription = {
   includedServices: SubscriptionService[];
 };
 
-export type DayHours = {
-    [key in 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday']: {
-        open: boolean;
+type DaySetting = {
+    open: boolean;
+    start: string;
+    end: string;
+    lunch: {
+        enabled: boolean;
         start: string;
         end: string;
-    };
+    }
+};
+
+export type DayHours = {
+    [key in 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday']: DaySetting;
 };
 
 export type LoyaltyProgramSettings = {
