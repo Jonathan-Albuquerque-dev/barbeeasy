@@ -59,7 +59,7 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
         serviceCommissionRate: staffMember.serviceCommissionRate * 100,
         productCommissionRate: staffMember.productCommissionRate * 100,
         bio: staffMember.bio,
-        avatarUrl: staffMember.avatarUrl,
+        avatarUrl: staffMember.avatarUrl || '',
       });
     }
   }, [open, staffMember, form]);
@@ -189,7 +189,7 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
                 <FormItem>
                   <FormLabel>URL da Foto de Perfil</FormLabel>
                   <FormControl>
-                    <Input type="url" placeholder="https://exemplo.com/foto.png" {...field} />
+                    <Input type="url" placeholder="https://exemplo.com/foto.png" {...field} value={field.value || ''}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

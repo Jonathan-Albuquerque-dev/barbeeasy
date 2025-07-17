@@ -138,7 +138,7 @@ export function EditProductDialog({ product, onProductUpdated, children }: EditP
                 <FormItem>
                   <FormLabel>URL da Imagem</FormLabel>
                   <FormControl>
-                    <Input type="url" placeholder="https://exemplo.com/imagem.png" {...field} />
+                    <Input type="url" placeholder="https://exemplo.com/imagem.png" {...field} value={field.value || ''}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

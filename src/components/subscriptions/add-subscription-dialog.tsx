@@ -178,7 +178,7 @@ export function AddSubscriptionDialog({ onSubscriptionAdded, children }: AddSubs
                                 <FormItem>
                                     <FormLabel>Desconto (%)</FormLabel>
                                     <FormControl>
-                                        <Input type="number" step="1" placeholder="Ex: 100" {...field} className="w-32" />
+                                        <Input type="number" step="1" placeholder="Ex: 100" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
