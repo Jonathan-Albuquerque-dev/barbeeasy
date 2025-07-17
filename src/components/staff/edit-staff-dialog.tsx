@@ -42,12 +42,12 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffSchema),
     defaultValues: {
-      name: staffMember.name,
-      specializations: staffMember.specializations.join(', '),
-      serviceCommissionRate: staffMember.serviceCommissionRate * 100,
-      productCommissionRate: staffMember.productCommissionRate * 100,
-      bio: staffMember.bio,
-      avatarUrl: staffMember.avatarUrl,
+      name: '',
+      specializations: '',
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
+      bio: '',
+      avatarUrl: '',
     },
   });
 

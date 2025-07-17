@@ -41,12 +41,12 @@ export function EditProductDialog({ product, onProductUpdated, children }: EditP
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      name: product.name,
-      description: product.description,
-      imageUrl: product.imageUrl || '',
-      purchasePrice: product.purchasePrice,
-      price: product.price,
-      stock: product.stock,
+      name: '',
+      description: '',
+      imageUrl: '',
+      purchasePrice: 0,
+      price: 0,
+      stock: 0,
     },
   });
   
