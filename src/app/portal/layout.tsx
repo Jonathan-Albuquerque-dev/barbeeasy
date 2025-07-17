@@ -35,7 +35,7 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const isAuthPage = pathname.includes('/portal/login') || pathname.includes('/portal/signup');
-  const barbershopId = session?.barbershopId || searchParams.get('barbershopId');
+  const barbershopIdFromUrl = searchParams.get('barbershopId');
 
   useEffect(() => {
     // This effect runs once to initialize the session from localStorage.
@@ -58,16 +58,14 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // This effect handles navigation logic whenever the session or route changes.
     if (!loading) {
-      if (session && isAuthPage) {
-        // If logged in and on an auth page, redirect to booking.
-        router.replace(`/portal/agendar?barbershopId=${session.barbershopId}`);
-      } else if (!session && !isAuthPage) {
+       if (!session && !isAuthPage) {
         // If not logged in and on a protected page, redirect to login.
-        const loginUrl = barbershopId ? `/portal/login?barbershopId=${barbershopId}` : '/portal/login';
+        // We need to ensure barbershopId is persisted in the URL.
+        const loginUrl = barbershopIdFromUrl ? `/portal/login?barbershopId=${barbershopIdFromUrl}` : '/portal/login';
         router.replace(loginUrl);
       }
     }
-  }, [session, loading, isAuthPage, pathname, router, barbershopId]);
+  }, [session, loading, isAuthPage, pathname, router, barbershopIdFromUrl]);
   
   const setClientSession = (sessionData: ClientSession) => {
     setSession(sessionData);

@@ -4,7 +4,7 @@ import { useState, Suspense, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 function ClientLoginPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const barbershopId = searchParams.get('barbershopId');
   const { setClientSession } = useClientSession();
   const [barbershopName, setBarbershopName] = useState('');
@@ -72,7 +73,9 @@ function ClientLoginPageContent() {
           avatarUrl: clientData.avatarUrl,
           barbershopId: barbershopId,
         };
-        setClientSession(session); // Call setClientSession from context. Redirect is handled by layout.
+        setClientSession(session);
+        // Redirect after session is set
+        router.replace(`/portal/agendar?barbershopId=${barbershopId}`);
       } else {
         toast({
             variant: 'destructive',
