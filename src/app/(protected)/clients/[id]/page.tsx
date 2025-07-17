@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Phone, MapPin, Award, Loader2, Gift, Repeat } from 'lucide-react';
+import { Mail, Phone, MapPin, Award, Loader2, Gift, Repeat, Calendar } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState, useMemo } from 'react';
+import { differenceInDays, isFuture } from 'date-fns';
 
 type Client = Awaited<ReturnType<typeof getClientById>>;
 type ServiceHistoryItem = { date: string; service: string; barber: string; cost: number };
@@ -85,6 +86,13 @@ export default function ClientDetailPage() {
       preferredBarber,
     };
   }, [serviceHistory]);
+  
+  const remainingSubscriptionDays = useMemo(() => {
+    if (client?.subscriptionEndDate && isFuture(client.subscriptionEndDate.toDate())) {
+      return differenceInDays(client.subscriptionEndDate.toDate(), new Date());
+    }
+    return null;
+  }, [client]);
 
   if (loading || !client) {
     return (
@@ -129,6 +137,12 @@ export default function ClientDetailPage() {
                     <Badge variant="outline" className="border-primary/50 text-primary">
                         <Repeat className="mr-2 h-4 w-4" />
                         {client.subscriptionName}
+                    </Badge>
+                )}
+                 {remainingSubscriptionDays !== null && (
+                    <Badge variant="secondary">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {remainingSubscriptionDays} dias restantes
                     </Badge>
                 )}
               </div>
