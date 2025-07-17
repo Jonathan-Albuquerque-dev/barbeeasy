@@ -2,19 +2,14 @@
 
 import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getSubscriptions, getClientById, Subscription, assignSubscriptionToClient, Client } from '@/lib/data';
+import { getSubscriptions, getClientById, Subscription, Client, getBarbershopSettings } from '@/lib/data';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Label } from '@/components/ui/label';
 import { useClientSession } from '../layout';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Badge } from '@/components/ui/badge';
-
 
 function AssinaturasPageContent() {
     const { session, loading: sessionLoading } = useClientSession();
@@ -23,12 +18,11 @@ function AssinaturasPageContent() {
 
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
     const [client, setClient] = useState<Client | undefined>(undefined);
+    const [barbershopSettings, setBarbershopSettings] = useState<{whatsappNumber?: string} | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const { toast } = useToast();
-    const [isSubscribing, setIsSubscribing] = useState(false);
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
 
     const isSubscribedAndActive = useMemo(() => {
         if (!client?.subscriptionId || !client.subscriptionEndDate) {
@@ -43,21 +37,26 @@ function AssinaturasPageContent() {
             setLoading(false);
             return;
         }
-        if (!session?.id) {
-            // Wait for session
-            return;
-        }
 
         try {
             setLoading(true);
-            const [subs, clientData] = await Promise.all([
+            const promises: [Promise<Subscription[]>, Promise<{whatsappNumber?: string} | undefined>, Promise<Client | undefined> | null] = [
                 getSubscriptions(barbershopId),
-                getClientById(barbershopId, session.id)
-            ]);
+                getBarbershopSettings(barbershopId),
+                session?.id ? getClientById(barbershopId, session.id) : null
+            ];
+
+            const [subs, settings, clientData] = await Promise.all(promises);
+            
             setSubscriptions(subs);
-            setClient(clientData);
+            setBarbershopSettings(settings || null);
+            if (clientData) {
+              setClient(clientData);
+            }
+
         } catch (err: any) {
-            setError(err.message || "Erro ao buscar assinaturas.");
+            setError(err.message || "Erro ao buscar dados.");
+            toast({ variant: 'destructive', title: 'Erro', description: err.message });
         } finally {
             setLoading(false);
         }
@@ -69,26 +68,19 @@ function AssinaturasPageContent() {
         }
     }, [session, sessionLoading, barbershopId]);
     
-    const handleSubscribe = async (subscription: Subscription) => {
-        if (!session?.id || !barbershopId || !selectedPaymentMethod) {
-            toast({ variant: 'destructive', title: 'Erro', description: 'Dados incompletos para realizar assinatura.'});
+    const handleSubscriptionClick = (planName: string) => {
+        if (!barbershopSettings?.whatsappNumber) {
+            toast({
+                variant: 'destructive',
+                title: 'Contato não disponível',
+                description: 'O estabelecimento não configurou um número de WhatsApp para contato.'
+            });
             return;
         }
-        
-        setIsSubscribing(true);
-        try {
-            await assignSubscriptionToClient(barbershopId, session.id, subscription.id, subscription.name, selectedPaymentMethod);
-            
-            toast({ title: 'Sucesso!', description: `Você agora é assinante do plano ${subscription.name}!`});
-            await fetchData(); // Refresh data
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Erro ao Assinar', description: error.message });
-        } finally {
-            setIsSubscribing(false);
-            setSelectedPaymentMethod('');
-        }
-    }
-
+        const message = encodeURIComponent(`Olá! Gostaria de assinar o plano ${planName}.`);
+        const whatsappUrl = `https://wa.me/${barbershopSettings.whatsappNumber.replace(/\D/g, '')}?text=${message}`;
+        window.open(whatsappUrl, '_blank');
+    };
 
     if (loading || sessionLoading) {
         return <div className="flex h-[50vh] items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
@@ -123,7 +115,7 @@ function AssinaturasPageContent() {
                         </CardContent>
                     </Card>
                 )}
-                 {!isSubscribedAndActive && client?.subscriptionId && (
+                 {!isSubscribedAndActive && client?.subscriptionId && client?.subscriptionEndDate && (
                     <Card className="bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800">
                         <CardHeader>
                         <CardTitle className="text-yellow-800 dark:text-yellow-300">Plano Expirado</CardTitle>
@@ -135,7 +127,6 @@ function AssinaturasPageContent() {
                         </CardContent>
                     </Card>
                 )}
-
 
                 {subscriptions.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
@@ -170,43 +161,13 @@ function AssinaturasPageContent() {
                                         {isCurrentPlan ? (
                                             <Button disabled className="w-full">Seu Plano Atual</Button>
                                         ) : (
-                                            <Dialog>
-                                                <DialogTrigger asChild>
-                                                    <Button className="w-full" disabled={isSubscribedAndActive}>Quero este plano</Button>
-                                                </DialogTrigger>
-                                                <DialogContent>
-                                                    <DialogHeader>
-                                                        <DialogTitle>Confirmar Assinatura</DialogTitle>
-                                                        <DialogDescription>
-                                                            Você está prestes a assinar o plano "{plan.name}" por R${plan.price.toFixed(2)}/mês.
-                                                        </DialogDescription>
-                                                    </DialogHeader>
-                                                    <div className='py-4 space-y-2'>
-                                                        <Label>Forma de Pagamento para a 1ª cobrança</Label>
-                                                         <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Selecione a forma de pagamento" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                                                                <SelectItem value="Cartão de Crédito/Débito">Cartão de Crédito/Débito</SelectItem>
-                                                                <SelectItem value="Pix">Pix</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <p className='text-xs text-muted-foreground'>O pagamento será realizado no estabelecimento.</p>
-                                                    </div>
-                                                    <DialogFooter>
-                                                        <DialogClose asChild>
-                                                          <Button variant="outline">Cancelar</Button>
-                                                        </DialogClose>
-                                                        <DialogClose asChild>
-                                                            <Button onClick={() => handleSubscribe(plan)} disabled={isSubscribing || !selectedPaymentMethod}>
-                                                                {isSubscribing ? <Loader2 className="animate-spin" /> : "Confirmar"}
-                                                            </Button>
-                                                        </DialogClose>
-                                                    </DialogFooter>
-                                                </DialogContent>
-                                            </Dialog>
+                                            <Button 
+                                                className="w-full" 
+                                                onClick={() => handleSubscriptionClick(plan.name)}
+                                                disabled={!barbershopSettings?.whatsappNumber}
+                                            >
+                                                Quero este plano
+                                            </Button>
                                         )}
                                     </CardFooter>
                                 </Card>

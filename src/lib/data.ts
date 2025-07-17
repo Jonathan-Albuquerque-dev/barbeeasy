@@ -156,6 +156,7 @@ export type LoyaltyProgramSettings = {
 type BarbershopSettings = {
     name: string;
     avatarUrl: string;
+    whatsappNumber?: string;
     operatingHours: DayHours;
     appointmentInterval: number;
     loyaltyProgram: LoyaltyProgramSettings;
@@ -789,7 +790,7 @@ export async function getBarbershopSettings(userId: string): Promise<BarbershopS
     }
 }
 
-export async function updateBarbershopProfile(userId: string, data: { name: string; avatarUrl: string }) {
+export async function updateBarbershopProfile(userId: string, data: { name: string; avatarUrl: string; whatsappNumber?: string; }) {
     try {
         const barbershopDocRef = doc(db, 'barbershops', userId);
         await updateDoc(barbershopDocRef, data);

@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 const profileSchema = z.object({
   name: z.string().min(2, 'O nome do estabelecimento é obrigatório.'),
   avatarUrl: z.string().url('Insira uma URL de imagem válida.').or(z.literal('')),
+  whatsappNumber: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -31,6 +32,7 @@ export function ProfileSettings() {
     defaultValues: {
       name: '',
       avatarUrl: '',
+      whatsappNumber: '',
     },
   });
 
@@ -43,6 +45,7 @@ export function ProfileSettings() {
           reset({
             name: settings.name,
             avatarUrl: settings.avatarUrl || '',
+            whatsappNumber: settings.whatsappNumber || '',
           });
         }
       });
@@ -75,7 +78,7 @@ export function ProfileSettings() {
       <CardHeader>
         <CardTitle>Perfil do Estabelecimento</CardTitle>
         <CardDescription>
-          Atualize o nome e a foto de perfil do seu negócio.
+          Atualize o nome e as informações de contato do seu negócio.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -108,6 +111,19 @@ export function ProfileSettings() {
                   <FormLabel>Nome do Estabelecimento</FormLabel>
                   <FormControl>
                     <Input placeholder="Seu Salão" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="whatsappNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Número do WhatsApp</FormLabel>
+                  <FormControl>
+                    <Input type="tel" placeholder="5511999998888" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

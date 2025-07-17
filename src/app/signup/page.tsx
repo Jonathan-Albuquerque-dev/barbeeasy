@@ -60,6 +60,7 @@ export default function SignupPage() {
         ownerId: user.uid,
         createdAt: new Date(),
         avatarUrl: `https://placehold.co/400x400.png`,
+        whatsappNumber: '',
         operatingHours: {
             monday: { open: true, start: '09:00', end: '18:00' },
             tuesday: { open: true, start: '09:00', end: '18:00' },
