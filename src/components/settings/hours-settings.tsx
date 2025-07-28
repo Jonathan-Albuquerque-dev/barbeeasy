@@ -19,14 +19,29 @@ import { Separator } from '../ui/separator';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { cn } from '@/lib/utils';
 
+const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+const timeErrorMessage = "Formato inválido (HH:mm).";
+
 const daySchema = z.object({
   open: z.boolean(),
-  start: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (HH:mm)."),
-  end: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (HH:mm)."),
+  start: z.string().regex(timeRegex, timeErrorMessage),
+  end: z.string().regex(timeRegex, timeErrorMessage),
   hasBreak: z.boolean(),
-  breakStart: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (HH:mm)."),
-  breakEnd: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (HH:mm)."),
+  breakStart: z.string(),
+  breakEnd: z.string(),
+}).refine(data => {
+    // If hasBreak is true, then breakStart and breakEnd must be valid times.
+    if (data.hasBreak) {
+        return timeRegex.test(data.breakStart) && timeRegex.test(data.breakEnd);
+    }
+    // If hasBreak is false, we don't care about breakStart and breakEnd.
+    return true;
+}, {
+    message: timeErrorMessage,
+    // We can't specify a single path, so this message might appear more globally.
+    // In the UI, individual field errors from regex will be more specific.
 });
+
 
 const operatingHoursSchema = z.object({
   hours: z.array(daySchema),
