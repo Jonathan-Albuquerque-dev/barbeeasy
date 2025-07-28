@@ -79,7 +79,7 @@ export default function StaffPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Perfis da Equipe</h1>
           <p className="text-muted-foreground">Gerencie sua talentosa equipe de profissionais.</p>
@@ -92,13 +92,13 @@ export default function StaffPage() {
         </AddStaffDialog>
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>Profissão</TableHead>
-              <TableHead>Especializações</TableHead>
+              <TableHead className="hidden md:table-cell">Profissão</TableHead>
+              <TableHead className="hidden lg:table-cell">Especializações</TableHead>
               <TableHead><span className="sr-only">Ações</span></TableHead>
             </TableRow>
           </TableHeader>
@@ -114,14 +114,14 @@ export default function StaffPage() {
                     <span className="font-medium">{member.name}</span>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">
                   <Badge variant="outline">
                     <Briefcase className="mr-1 h-3 w-3"/>
                     {member.professionName || 'Não definida'}
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
+                <TableCell className="hidden lg:table-cell">
+                  <div className="flex flex-wrap gap-1 max-w-xs">
                     {member.specializations.map(spec => (
                       <Badge key={spec} variant="secondary">
                         <Star className="mr-1 h-3 w-3 text-accent"/>

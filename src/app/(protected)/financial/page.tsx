@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -263,7 +264,7 @@ export default function FinancialPage() {
             <h1 className="text-3xl font-bold tracking-tight">Visão Financeira</h1>
             <p className="text-muted-foreground">Analise a receita e o desempenho do seu negócio.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <DateRangePicker date={financialDateRange} onDateChange={setFinancialDateRange} />
             {filterIsActive && (
                 <Button variant="ghost" size="icon" onClick={() => setFinancialDateRange(undefined)} aria-label="Limpar filtro">
@@ -272,7 +273,8 @@ export default function FinancialPage() {
             )}
              <Button onClick={handleGenerateReport} disabled={!filterIsActive || isGeneratingReport}>
                 {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                Gerar Relatório
+                <span className="hidden sm:inline">Gerar Relatório</span>
+                <span className="sm:hidden">Relatório</span>
             </Button>
         </div>
       </div>
@@ -341,7 +343,7 @@ export default function FinancialPage() {
           </div>
           {commissionResult && (
              <div className="mt-6 p-4 bg-accent/50 rounded-lg space-y-4">
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
                         <p className="text-lg font-semibold">
                             Comissão a pagar para {commissionResult.barberName}: 
@@ -383,7 +385,7 @@ export default function FinancialPage() {
           <CardHeader>
             <CardTitle>Desempenho da Equipe</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -395,9 +397,9 @@ export default function FinancialPage() {
               <TableBody>
                 {data.revenueByBarber.map(barber => (
                   <TableRow key={barber.barberName}>
-                    <TableCell className="font-medium">{barber.barberName}</TableCell>
-                    <TableCell className="text-right">R${barber.revenue.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">R${barber.commission.toFixed(2)}</TableCell>
+                    <TableCell className="font-medium whitespace-nowrap">{barber.barberName}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">R${barber.revenue.toFixed(2)}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">R${barber.commission.toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -412,7 +414,7 @@ export default function FinancialPage() {
                 Receita por Forma de Pagamento
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -424,9 +426,9 @@ export default function FinancialPage() {
               <TableBody>
                 {data.revenueByPaymentMethod.map(item => (
                   <TableRow key={item.method}>
-                    <TableCell className="font-medium">{item.method}</TableCell>
-                    <TableCell>{item.count}</TableCell>
-                    <TableCell className="text-right">R${item.revenue.toFixed(2)}</TableCell>
+                    <TableCell className="font-medium whitespace-nowrap">{item.method}</TableCell>
+                    <TableCell className="whitespace-nowrap">{item.count}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">R${item.revenue.toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -439,27 +441,27 @@ export default function FinancialPage() {
         <CardHeader>
           <CardTitle>Transações Recentes</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Serviço</TableHead>
-                <TableHead>Profissional</TableHead>
-                <TableHead>Forma de Pagto.</TableHead>
+                <TableHead className="hidden sm:table-cell">Profissional</TableHead>
+                <TableHead className="hidden md:table-cell">Forma de Pagto.</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.transactions.slice(0, 10).map(tx => (
                 <TableRow key={tx.id}>
-                  <TableCell>{new Date(`${tx.date}T00:00:00`).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</TableCell>
-                  <TableCell className="font-medium">{tx.clientName}</TableCell>
-                  <TableCell>{tx.service}</TableCell>
-                  <TableCell>{tx.barberName}</TableCell>
-                  <TableCell>{tx.paymentMethod || 'N/A'}</TableCell>
-                  <TableCell className="text-right">R${tx.value.toFixed(2)}</TableCell>
+                  <TableCell className="whitespace-nowrap">{new Date(`${tx.date}T00:00:00`).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</TableCell>
+                  <TableCell className="font-medium whitespace-nowrap">{tx.clientName}</TableCell>
+                  <TableCell className="whitespace-nowrap">{tx.service}</TableCell>
+                  <TableCell className="hidden sm:table-cell whitespace-nowrap">{tx.barberName}</TableCell>
+                  <TableCell className="hidden md:table-cell whitespace-nowrap">{tx.paymentMethod || 'N/A'}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">R${tx.value.toFixed(2)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

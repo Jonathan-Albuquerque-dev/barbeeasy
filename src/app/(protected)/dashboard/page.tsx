@@ -167,14 +167,28 @@ export default function DashboardPage() {
                 const totalValue = servicePrice + productsTotal;
 
                 return (
-                  <div key={appointment.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors">
-                    <div className="text-center w-24 shrink-0">
-                      <p className="font-bold text-lg">{appointment.time}</p>
-                       <Badge variant={getBadgeVariant(appointment.status)} className="mt-1">
-                        {appointment.status}
-                      </Badge>
+                  <div key={appointment.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 px-4 sm:px-6 py-4 hover:bg-muted/50 transition-colors">
+                    <div className="flex w-full sm:w-auto items-center justify-between">
+                        <div className="text-left sm:text-center w-24 shrink-0">
+                            <p className="font-bold text-lg">{appointment.time}</p>
+                            <Badge variant={getBadgeVariant(appointment.status)} className="mt-1">
+                                {appointment.status}
+                            </Badge>
+                        </div>
+                        <div className="sm:hidden flex items-center gap-2">
+                           <AppointmentStatusUpdater
+                            appointment={appointment}
+                            appointmentId={appointment.id}
+                            currentStatus={appointment.status}
+                            onStatusChange={handleStatusChange}
+                            totalValue={totalValue}
+                          />
+                          <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchStats}>
+                            <Button variant="outline" size="sm">Detalhes</Button>
+                          </AppointmentDetailsDialog>
+                        </div>
                     </div>
-                    <div className="flex-grow flex items-center gap-4">
+                    <div className="flex-grow flex items-center gap-4 w-full">
                       <Avatar className="h-12 w-12 border">
                         <AvatarImage src={appointment.client.avatarUrl} data-ai-hint="person face" />
                         <AvatarFallback>{appointment.client.name.charAt(0)}</AvatarFallback>
@@ -186,7 +200,7 @@ export default function DashboardPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="hidden sm:flex items-center justify-end gap-2">
                       <AppointmentStatusUpdater
                         appointment={appointment}
                         appointmentId={appointment.id}

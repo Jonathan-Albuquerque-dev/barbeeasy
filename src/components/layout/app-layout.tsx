@@ -118,7 +118,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-16 items-center gap-4 border-b bg-background/50 backdrop-blur-sm px-6 sticky top-0 z-10">
+        <header className="flex h-16 items-center gap-4 border-b bg-background/50 backdrop-blur-sm px-4 sm:px-6 sticky top-0 z-10">
           <SidebarTrigger className="md:hidden" />
           <div className="w-full flex-1">
             {/* Can add breadcrumbs or page title here */}

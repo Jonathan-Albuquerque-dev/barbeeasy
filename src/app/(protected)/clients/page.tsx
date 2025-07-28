@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getClients } from "@/lib/data";
@@ -51,7 +52,7 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Cadastro de Clientes</h1>
           <p className="text-muted-foreground">Veja e gerencie todos os seus clientes.</p>
@@ -64,14 +65,14 @@ export default function ClientsPage() {
         </AddClientDialog>
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Status de Fidelidade</TableHead>
+              <TableHead className="hidden md:table-cell">E-mail</TableHead>
+              <TableHead className="hidden lg:table-cell">Telefone</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead><span className="sr-only">Ações</span></TableHead>
             </TableRow>
           </TableHeader>
@@ -87,10 +88,10 @@ export default function ClientsPage() {
                     <span className="font-medium">{client.name}</span>
                   </div>
                 </TableCell>
-                <TableCell>{client.email}</TableCell>
-                <TableCell>{client.phone}</TableCell>
+                <TableCell className="hidden md:table-cell">{client.email}</TableCell>
+                <TableCell className="hidden lg:table-cell">{client.phone}</TableCell>
                 <TableCell>
-                   <div className="flex flex-wrap gap-2">
+                   <div className="flex flex-col sm:flex-row flex-wrap items-start gap-2">
                      <Badge variant={client.loyaltyStatus === 'Ouro' ? 'default' : 'secondary'} className={client.loyaltyStatus === 'Ouro' ? 'bg-accent text-accent-foreground' : ''}>
                       <Award className="mr-2 h-4 w-4" />
                       {client.loyaltyStatus}
