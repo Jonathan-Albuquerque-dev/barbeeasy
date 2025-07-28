@@ -87,7 +87,7 @@ export default function ServicesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Catálogo de Serviços</h1>
           <p className="text-muted-foreground">Navegue e gerencie os serviços e os profissionais que os executam.</p>
