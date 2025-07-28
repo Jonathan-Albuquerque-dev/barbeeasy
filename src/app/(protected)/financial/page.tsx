@@ -265,13 +265,15 @@ export default function FinancialPage() {
             <p className="text-muted-foreground">Analise a receita e o desempenho do seu negócio.</p>
         </div>
         <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <DateRangePicker date={financialDateRange} onDateChange={setFinancialDateRange} />
-            {filterIsActive && (
-                <Button variant="ghost" size="icon" onClick={() => setFinancialDateRange(undefined)} aria-label="Limpar filtro">
-                    <X className="h-4 w-4" />
-                </Button>
-            )}
-             <Button onClick={handleGenerateReport} disabled={!filterIsActive || isGeneratingReport}>
+            <div className="flex items-center w-full sm:w-auto">
+                <DateRangePicker date={financialDateRange} onDateChange={setFinancialDateRange} />
+                {filterIsActive && (
+                    <Button variant="ghost" size="icon" onClick={() => setFinancialDateRange(undefined)} aria-label="Limpar filtro">
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
+            </div>
+             <Button className="w-full sm:w-auto" onClick={handleGenerateReport} disabled={!filterIsActive || isGeneratingReport}>
                 {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                 <span className="hidden sm:inline">Gerar Relatório</span>
                 <span className="sm:hidden">Relatório</span>
