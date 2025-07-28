@@ -183,15 +183,24 @@ export function AppointmentCalendar() {
                 const totalValue = servicePrice + productsTotal;
                 
                 return (
-                  <div key={app.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors">
-                    <div className="text-center w-24 shrink-0">
-                      <p className="font-bold text-lg">{app.time}</p>
-                      <Badge variant={getBadgeVariant(app.status)} className="mt-1">
-                        {app.status}
-                      </Badge>
+                  <div key={app.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 px-4 py-4 sm:px-6 hover:bg-muted/50 transition-colors">
+                    <div className="flex w-full sm:w-auto items-center justify-between sm:justify-center">
+                        <div className="text-left sm:text-center w-24 shrink-0">
+                            <p className="font-bold text-lg">{app.time}</p>
+                            <Badge variant={getBadgeVariant(app.status)} className="mt-1">
+                                {app.status}
+                            </Badge>
+                        </div>
+                        <div className="sm:hidden">
+                            <Avatar className="h-12 w-12 border">
+                                <AvatarImage src={app.client.avatarUrl} data-ai-hint="person face" />
+                                <AvatarFallback>{app.client.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                        </div>
                     </div>
-                    <div className="flex-grow flex items-center gap-4">
-                      <Avatar className="h-12 w-12 border">
+
+                    <div className="flex-grow flex items-center gap-4 w-full">
+                      <Avatar className="hidden sm:flex h-12 w-12 border">
                         <AvatarImage src={app.client.avatarUrl} data-ai-hint="person face" />
                         <AvatarFallback>{app.client.name.charAt(0)}</AvatarFallback>
                       </Avatar>
@@ -202,7 +211,8 @@ export function AppointmentCalendar() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+
+                    <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
                       <AppointmentStatusUpdater
                         appointment={app}
                         appointmentId={app.id}
