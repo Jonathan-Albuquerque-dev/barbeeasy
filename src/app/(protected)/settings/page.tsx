@@ -5,7 +5,6 @@ import { SecuritySettings } from "@/components/settings/security-settings";
 import { Settings as SettingsIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/settings/theme-toggle";
 import { ShareableLinksSettings } from "@/components/settings/shareable-links-settings";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 export default function SettingsPage() {
   return (
@@ -21,16 +20,13 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <ScrollArea className="w-full whitespace-nowrap rounded-md">
-            <TabsList>
-            <TabsTrigger value="profile">Perfil</TabsTrigger>
-            <TabsTrigger value="hours">Horários</TabsTrigger>
-            <TabsTrigger value="appearance">Aparência</TabsTrigger>
-            <TabsTrigger value="share">Compartilhar</TabsTrigger>
-            <TabsTrigger value="security">Segurança</TabsTrigger>
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 h-auto">
+          <TabsTrigger value="profile">Perfil</TabsTrigger>
+          <TabsTrigger value="hours">Horários</TabsTrigger>
+          <TabsTrigger value="appearance">Aparência</TabsTrigger>
+          <TabsTrigger value="share">Compartilhar</TabsTrigger>
+          <TabsTrigger value="security">Segurança</TabsTrigger>
+        </TabsList>
         <TabsContent value="profile" className="mt-6">
           <ProfileSettings />
         </TabsContent>
