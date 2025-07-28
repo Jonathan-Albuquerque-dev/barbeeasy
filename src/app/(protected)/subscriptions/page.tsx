@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getSubscriptions, Subscription, getSubscriptionStats, SubscriptionStats } from "@/lib/data";
@@ -37,12 +38,12 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="text-center sm:text-left">
           <h1 className="text-3xl font-bold tracking-tight">Planos de Assinatura</h1>
           <p className="text-muted-foreground">Crie e gerencie seus planos de assinatura exclusivos.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <AddSubscriberDialog onSubscriberAdded={fetchSubscriptions}>
                 <Button variant="outline">
                     <UserPlus className="mr-2 h-4 w-4" />
