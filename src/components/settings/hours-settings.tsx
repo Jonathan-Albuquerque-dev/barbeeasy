@@ -31,12 +31,13 @@ const daySchema = z.object({
   breakEnd: z.string().optional(),
 }).refine(data => {
     if (data.hasBreak) {
+        // Only require break times if the break switch is on
         return timeRegex.test(data.breakStart || '') && timeRegex.test(data.breakEnd || '');
     }
-    return true;
+    return true; // If no break, validation passes
 }, {
-    message: "Os horários de início e fim da pausa são obrigatórios.",
-    path: ["breakStart"], // Attach error to a specific field for better UX
+    message: "Os horários de início e fim da pausa são obrigatórios quando a pausa está ativada.",
+    path: ["breakStart"], 
 });
 
 
@@ -82,13 +83,16 @@ export function HoursSettings() {
     if (user) {
       getBarbershopSettings(user.uid).then(settings => {
         if (settings?.operatingHours) {
-          const hoursArray = dayKeys.map(key => settings.operatingHours[key] || { 
-            open: false, 
-            start: '09:00', 
-            end: '18:00',
-            hasBreak: false,
-            breakStart: '12:00',
-            breakEnd: '13:00',
+          const hoursArray = dayKeys.map(key => {
+            const daySetting = settings.operatingHours[key];
+            return {
+              open: daySetting?.open || false, 
+              start: daySetting?.start || '09:00', 
+              end: daySetting?.end || '18:00',
+              hasBreak: daySetting?.hasBreak || false,
+              breakStart: daySetting?.breakStart || '12:00',
+              breakEnd: daySetting?.breakEnd || '13:00',
+            };
           });
           reset({ 
             hours: hoursArray,
@@ -259,7 +263,7 @@ export function HoursSettings() {
                                     <FormItem className="flex-1">
                                     <FormLabel>Início da Pausa</FormLabel>
                                     <FormControl>
-                                        <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
+                                        <Input type="time" {...field} value={field.value || ''} disabled={!form.watch(`hours.${index}.open`)} />
                                     </FormControl>
                                     <FormMessage />
                                     </FormItem>
@@ -273,7 +277,7 @@ export function HoursSettings() {
                                     <FormItem className="flex-1">
                                     <FormLabel>Fim da Pausa</FormLabel>
                                     <FormControl>
-                                        <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
+                                        <Input type="time" {...field} value={field.value || ''} disabled={!form.watch(`hours.${index}.open`)} />
                                     </FormControl>
                                     <FormMessage />
                                     </FormItem>
