@@ -21,8 +21,11 @@ import { cn } from '@/lib/utils';
 
 const daySchema = z.object({
   open: z.boolean(),
-  start: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido (HH:mm)."),
-  end: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido (HH:mm)."),
+  start: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (HH:mm)."),
+  end: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (HH:mm)."),
+  hasBreak: z.boolean(),
+  breakStart: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (HH:mm)."),
+  breakEnd: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato inválido (HH:mm)."),
 });
 
 const operatingHoursSchema = z.object({
@@ -48,6 +51,9 @@ export function HoursSettings() {
         open: false, 
         start: '09:00', 
         end: '18:00',
+        hasBreak: false,
+        breakStart: '12:00',
+        breakEnd: '13:00',
       })),
       appointmentInterval: 30,
     },
@@ -68,6 +74,9 @@ export function HoursSettings() {
             open: false, 
             start: '09:00', 
             end: '18:00',
+            hasBreak: false,
+            breakStart: '12:00',
+            breakEnd: '13:00',
           });
           reset({ 
             hours: hoursArray,
@@ -111,7 +120,7 @@ export function HoursSettings() {
       <CardHeader>
         <CardTitle>Horários e Agendamentos</CardTitle>
         <CardDescription>
-          Defina os horários de funcionamento e o intervalo entre os agendamentos.
+          Defina os horários de funcionamento, pausas e o intervalo entre os agendamentos.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -205,6 +214,55 @@ export function HoursSettings() {
                             )}
                             />
                         </div>
+                    </div>
+                    <div className={cn("space-y-4 pl-6 border-l-2 ml-3", !form.watch(`hours.${index}.open`) && 'opacity-50')}>
+                         <FormField
+                            control={form.control}
+                            name={`hours.${index}.hasBreak`}
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Pausa para almoço</FormLabel>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            disabled={!form.watch(`hours.${index}.open`)}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                        {form.watch(`hours.${index}.hasBreak`) && (
+                             <div className="flex items-center gap-4">
+                                <FormField
+                                control={form.control}
+                                name={`hours.${index}.breakStart`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                    <FormLabel>Início da Pausa</FormLabel>
+                                    <FormControl>
+                                        <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
+                                    </FormControl>
+                                    </FormItem>
+                                )}
+                                />
+                                <span>até</span>
+                                <FormField
+                                control={form.control}
+                                name={`hours.${index}.breakEnd`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                    <FormLabel>Fim da Pausa</FormLabel>
+                                    <FormControl>
+                                        <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
+                                    </FormControl>
+                                    </FormItem>
+                                )}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
                 ))}

@@ -136,6 +136,9 @@ type DaySetting = {
     open: boolean;
     start: string;
     end: string;
+    hasBreak: boolean;
+    breakStart: string;
+    breakEnd: string;
 };
 
 export type DayHours = {

@@ -157,6 +157,22 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
             const availableSlots = allSlots.filter((slot, index) => {
                 const [slotHour, slotMinute] = slot.split(':').map(Number);
                 const slotStartTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), slotHour, slotMinute);
+                
+                // Check for lunch break
+                if (dayHours.hasBreak) {
+                    const [breakStartHour, breakStartMinute] = dayHours.breakStart.split(':').map(Number);
+                    const breakStartTime = new Date(selectedDate);
+                    breakStartTime.setHours(breakStartHour, breakStartMinute, 0, 0);
+                    
+                    const [breakEndHour, breakEndMinute] = dayHours.breakEnd.split(':').map(Number);
+                    const breakEndTime = new Date(selectedDate);
+                    breakEndTime.setHours(breakEndHour, breakEndMinute, 0, 0);
+
+                    if (slotStartTime >= breakStartTime && slotStartTime < breakEndTime) {
+                        return false;
+                    }
+                }
+
                 const slotEndTime = new Date(slotStartTime.getTime() + newServiceDuration * 60000);
                 
                 if (slotEndTime > endTime) {
