@@ -81,7 +81,7 @@ export default function ProfessionsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Cadastro de Cargos/Profissões</h1>
           <p className="text-muted-foreground">Gerencie os cargos e profissões do seu estabelecimento.</p>
