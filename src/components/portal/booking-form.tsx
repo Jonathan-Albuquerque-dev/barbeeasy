@@ -128,7 +128,7 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
         }
 
         if (!selectedBarberId || !selectedService) {
-            setTimeSlots(allSlots); 
+            setTimeSlots([]); // Clear slots if not all selections are made
             form.resetField('time', { defaultValue: '' }); return;
         }
 
@@ -341,36 +341,39 @@ export function BookingForm({ barbershopId }: BookingFormProps) {
                   )}
                 />
             </div>
-            <div className="space-y-2">
-                <FormLabel>Horário Disponível</FormLabel>
-                {slotsLoading ? (
-                    <div className="flex items-center justify-center h-full"><Loader2 className="animate-spin" /></div>
-                ) : (
-                    <FormField
-                      control={form.control}
-                      name="time"
-                      render={({ field }) => (
-                        <FormItem>
-                            <FormControl>
-                               <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-3 gap-2">
-                                  {timeSlots.length > 0 ? timeSlots.map(slot => (
-                                      <FormItem key={slot}>
-                                        <FormControl>
-                                            <RadioGroupItem value={slot} id={slot} className="sr-only peer" />
-                                        </FormControl>
-                                        <Label htmlFor={slot} className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                                            {slot}
-                                        </Label>
-                                      </FormItem>
-                                  )) : <p className="text-muted-foreground col-span-3 text-center pt-8">Nenhum horário disponível para esta combinação.</p>}
-                                </RadioGroup>
-                            </FormControl>
-                            <FormMessage className="pt-2" />
-                        </FormItem>
-                      )}
-                    />
-                )}
-            </div>
+            
+            {selectedService && selectedBarberId && selectedDate && (
+                <div className="space-y-2">
+                    <FormLabel>Horário Disponível</FormLabel>
+                    {slotsLoading ? (
+                        <div className="flex items-center justify-center h-full"><Loader2 className="animate-spin" /></div>
+                    ) : (
+                        <FormField
+                        control={form.control}
+                        name="time"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormControl>
+                                <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-3 gap-2">
+                                    {timeSlots.length > 0 ? timeSlots.map(slot => (
+                                        <FormItem key={slot}>
+                                            <FormControl>
+                                                <RadioGroupItem value={slot} id={slot} className="sr-only peer" />
+                                            </FormControl>
+                                            <Label htmlFor={slot} className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                                {slot}
+                                            </Label>
+                                        </FormItem>
+                                    )) : <p className="text-muted-foreground col-span-3 text-center pt-8">Nenhum horário disponível para esta combinação.</p>}
+                                    </RadioGroup>
+                                </FormControl>
+                                <FormMessage className="pt-2" />
+                            </FormItem>
+                        )}
+                        />
+                    )}
+                </div>
+            )}
         </CardContent>
         <CardFooter>
           <Button type="submit" disabled={loading} className="w-full md:w-auto ml-auto">
