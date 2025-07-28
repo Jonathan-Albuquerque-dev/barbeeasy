@@ -188,7 +188,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
                     <FormItem>
                     <FormLabel>Comissão Serviço (%)</FormLabel>
                     <FormControl>
-                        <Input type="number" min="0" max="100" placeholder="Ex: 25" onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))} value={field.value} />
+                        <Input type="number" min="0" max="100" placeholder="Ex: 25" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -201,7 +201,7 @@ export function AddStaffDialog({ onStaffAdded, children }: AddStaffDialogProps) 
                     <FormItem>
                     <FormLabel>Comissão Produto (%)</FormLabel>
                     <FormControl>
-                        <Input type="number" min="0" max="100" placeholder="Ex: 10" onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))} value={field.value} />
+                        <Input type="number" min="0" max="100" placeholder="Ex: 10" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>

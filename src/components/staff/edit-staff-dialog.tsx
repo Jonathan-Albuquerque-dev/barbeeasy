@@ -201,7 +201,7 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
                     <FormItem>
                     <FormLabel>Comissão Serviço (%)</FormLabel>
                     <FormControl>
-                        <Input type="number" min="0" max="100" {...field} />
+                        <Input type="number" min="0" max="100" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -214,7 +214,7 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
                     <FormItem>
                     <FormLabel>Comissão Produto (%)</FormLabel>
                     <FormControl>
-                        <Input type="number" min="0" max="100" {...field} />
+                        <Input type="number" min="0" max="100" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
