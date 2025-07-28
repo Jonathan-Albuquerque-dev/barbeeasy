@@ -27,19 +27,16 @@ const daySchema = z.object({
   start: z.string().regex(timeRegex, timeErrorMessage),
   end: z.string().regex(timeRegex, timeErrorMessage),
   hasBreak: z.boolean(),
-  breakStart: z.string(),
-  breakEnd: z.string(),
+  breakStart: z.string().optional(),
+  breakEnd: z.string().optional(),
 }).refine(data => {
-    // If hasBreak is true, then breakStart and breakEnd must be valid times.
     if (data.hasBreak) {
-        return timeRegex.test(data.breakStart) && timeRegex.test(data.breakEnd);
+        return timeRegex.test(data.breakStart || '') && timeRegex.test(data.breakEnd || '');
     }
-    // If hasBreak is false, we don't care about breakStart and breakEnd.
     return true;
 }, {
-    message: timeErrorMessage,
-    // We can't specify a single path, so this message might appear more globally.
-    // In the UI, individual field errors from regex will be more specific.
+    message: "Os horários de início e fim da pausa são obrigatórios.",
+    path: ["breakStart"], // Attach error to a specific field for better UX
 });
 
 
@@ -106,7 +103,11 @@ export function HoursSettings() {
     if (!user) return;
 
     const hoursObject = data.hours.reduce((acc, day, index) => {
-        acc[dayKeys[index]] = day;
+        acc[dayKeys[index]] = {
+          ...day,
+          breakStart: day.breakStart || '12:00', // Provide default if empty
+          breakEnd: day.breakEnd || '13:00',
+        };
         return acc;
     }, {} as DayHours);
     
@@ -260,6 +261,7 @@ export function HoursSettings() {
                                     <FormControl>
                                         <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
                                     </FormControl>
+                                    <FormMessage />
                                     </FormItem>
                                 )}
                                 />
@@ -273,6 +275,7 @@ export function HoursSettings() {
                                     <FormControl>
                                         <Input type="time" {...field} disabled={!form.watch(`hours.${index}.open`)} />
                                     </FormControl>
+                                    <FormMessage />
                                     </FormItem>
                                 )}
                                 />
