@@ -259,12 +259,12 @@ export default function FinancialPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Visão Financeira</h1>
             <p className="text-muted-foreground">Analise a receita e o desempenho do seu negócio.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
             <DateRangePicker date={financialDateRange} onDateChange={setFinancialDateRange} />
             {filterIsActive && (
                 <Button variant="ghost" size="icon" onClick={() => setFinancialDateRange(undefined)} aria-label="Limpar filtro">
@@ -472,3 +472,5 @@ export default function FinancialPage() {
     </div>
   );
 }
+
+    
