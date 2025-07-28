@@ -31,12 +31,11 @@ const daySchema = z.object({
   breakEnd: z.string().optional(),
 }).refine(data => {
     if (data.hasBreak) {
-        // Only require break times if the break switch is on
         return timeRegex.test(data.breakStart || '') && timeRegex.test(data.breakEnd || '');
     }
-    return true; // If no break, validation passes
+    return true;
 }, {
-    message: "Os horários de início e fim da pausa são obrigatórios quando a pausa está ativada.",
+    message: "Os horários de início e fim da pausa são obrigatórios.",
     path: ["breakStart"], 
 });
 
@@ -65,8 +64,8 @@ export function HoursSettings() {
         start: '09:00', 
         end: '18:00',
         hasBreak: false,
-        breakStart: '12:00',
-        breakEnd: '13:00',
+        breakStart: '',
+        breakEnd: '',
       })),
       appointmentInterval: 30,
     },
@@ -90,8 +89,8 @@ export function HoursSettings() {
               start: daySetting?.start || '09:00', 
               end: daySetting?.end || '18:00',
               hasBreak: daySetting?.hasBreak || false,
-              breakStart: daySetting?.breakStart || '12:00',
-              breakEnd: daySetting?.breakEnd || '13:00',
+              breakStart: daySetting?.breakStart || '',
+              breakEnd: daySetting?.breakEnd || '',
             };
           });
           reset({ 
