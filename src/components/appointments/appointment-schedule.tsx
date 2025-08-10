@@ -66,6 +66,8 @@ export function AppointmentSchedule() {
   // Drag and Drop state
   const [draggedAppointment, setDraggedAppointment] = useState<PopulatedAppointment | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [dropTarget, setDropTarget] = useState<{ barberId: string; time: string } | null>(null);
+
 
   const serviceDurationMap = useMemo(() => new Map(services.map(s => [s.name, s.duration])), [services]);
 
@@ -184,34 +186,45 @@ export function AppointmentSchedule() {
     setDraggedAppointment(appointment);
     setIsDragging(true);
     e.dataTransfer.effectAllowed = 'move';
-    // Make the ghost image of the dragged element transparent
-    e.dataTransfer.setDragImage(e.currentTarget, e.currentTarget.clientWidth / 2, e.currentTarget.clientHeight / 2);
+    e.dataTransfer.setDragImage(new Image(), 0, 0);
   };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, targetBarberId: string) => {
     e.preventDefault();
+    if (!draggedAppointment) return;
+
     e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = async (e: DragEvent<HTMLDivElement>, targetBarberId: string) => {
-    e.preventDefault();
-    if (!draggedAppointment || !user || !settings) return;
 
     const target = e.currentTarget;
     const rect = target.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
 
-    // Calculate new time
     const slotIndex = Math.floor(offsetY / SLOT_HEIGHT_PX);
     const newTime = timeSlots[slotIndex];
-    if (!newTime) return;
+
+    if (newTime) {
+        setDropTarget({ barberId: targetBarberId, time: newTime });
+    } else {
+        setDropTarget(null);
+    }
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDropTarget(null);
+  };
+
+  const handleDrop = async (e: DragEvent<HTMLDivElement>, targetBarberId: string) => {
+    e.preventDefault();
+    if (!draggedAppointment || !user || !settings || !dropTarget) return;
+
+    const { time: newTime } = dropTarget;
 
     // --- Validation ---
     const newAppointmentEndTime = parse(newTime, 'HH:mm', new Date());
     const duration = serviceDurationMap.get(draggedAppointment.service) || settings.appointmentInterval;
     newAppointmentEndTime.setMinutes(newAppointmentEndTime.getMinutes() + duration);
     
-    // Check if appointment ends after calendar hours
     const dayKeys: (keyof DayHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayOfWeek = date.getDay();
     const dayKey = dayKeys[dayOfWeek];
@@ -222,7 +235,6 @@ export function AppointmentSchedule() {
         return;
     }
 
-    // Check for collision with other appointments for the target barber
     const targetBarberAppointments = appointments.filter(app => app.barberId === targetBarberId && app.id !== draggedAppointment.id);
 
     const collision = targetBarberAppointments.some(app => {
@@ -233,7 +245,6 @@ export function AppointmentSchedule() {
         const newAppStart = parse(newTime, 'HH:mm', new Date());
         const newAppEnd = new Date(newAppStart.getTime() + duration * 60000);
 
-        // Check for overlap: (StartA < EndB) and (EndA > StartB)
         return newAppStart < existingAppEnd && newAppEnd > existingAppStart;
     });
 
@@ -249,7 +260,6 @@ export function AppointmentSchedule() {
             barberId: targetBarberId,
         });
         toast({ title: 'Sucesso!', description: 'Agendamento reagendado.' });
-        // The onSnapshot listener will handle the UI update automatically
     } catch (error) {
         console.error("Error updating appointment", error);
         toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível reagendar.' });
@@ -259,6 +269,7 @@ export function AppointmentSchedule() {
   const handleDragEnd = () => {
     setDraggedAppointment(null);
     setIsDragging(false);
+    setDropTarget(null);
   };
 
 
@@ -318,15 +329,26 @@ export function AppointmentSchedule() {
                     <div 
                         key={member.id} 
                         className="flex flex-col border-r"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, member.id)}
                     >
                         <div className="h-10 border-b flex items-center justify-center p-2">
                             <h3 className="font-semibold text-sm truncate">{member.name}</h3>
                         </div>
-                        <div className="relative flex-grow bg-muted/20">
-                           {/* Grid lines */}
-                           {timeSlots.map(time => <div key={time} style={{ height: `${SLOT_HEIGHT_PX}px` }} className="border-t"></div>)}
+                        <div 
+                           className="relative flex-grow bg-muted/20"
+                           onDragOver={(e) => handleDragOver(e, member.id)}
+                           onDragLeave={handleDragLeave}
+                           onDrop={(e) => handleDrop(e, member.id)}
+                        >
+                           {/* Grid lines and Drop Target Highlight */}
+                           {timeSlots.map(time => (
+                             <div 
+                                key={time} 
+                                style={{ height: `${SLOT_HEIGHT_PX}px` }} 
+                                className={cn("border-t transition-colors", 
+                                    dropTarget?.barberId === member.id && dropTarget.time === time && 'bg-primary/20'
+                                )}>
+                             </div>
+                            ))}
                            
                            {/* Appointments */}
                            {appointments
@@ -342,7 +364,7 @@ export function AppointmentSchedule() {
                                         onDragEnd={handleDragEnd}
                                         style={{ top: `${top + 1}px`, height: `${height}px` }}
                                         className={cn(
-                                            "absolute w-[95%] left-1/2 -translate-x-1/2 p-2 transition-all duration-200 shadow-md rounded-lg",
+                                            "absolute w-[95%] left-1/2 -translate-x-1/2 p-2 transition-all duration-200 shadow-md rounded-lg z-20",
                                             "cursor-grab active:cursor-grabbing",
                                             getStatusClasses(app.status),
                                             isBeingDragged && 'opacity-30'
