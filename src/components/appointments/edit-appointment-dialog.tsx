@@ -388,23 +388,33 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
             
             <DialogFooter className="sm:justify-between">
               {isEditing ? (
-                 <>
-                  <AlertDialog>
-                      <AlertDialogTrigger asChild><Button type="button" variant="destructive"><Trash2 className="mr-2 h-4 w-4" />Excluir</Button></AlertDialogTrigger>
-                      <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Você tem certeza?</AlertDialogTitle><AlertDialogDescription>Esta ação não pode ser desfeita e excluirá permanentemente o agendamento.</AlertDialogDescription></AlertDialogHeader>
-                          <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={handleDelete} disabled={deleteLoading} className={buttonVariants({ variant: "destructive" })}>{deleteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sim, excluir'}</AlertDialogAction>
-                          </AlertDialogFooter>
-                      </AlertDialogContent>
-                  </AlertDialog>
-                  <div className='flex gap-2'>
-                      <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
-                      <Button type="submit" disabled={loading || !form.formState.isDirty}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar'}</Button>
-                  </div>
-                </>
+                 <div className="flex w-full justify-between">
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button type="button" variant="destructive" className={buttonVariants({ variant: "destructive" })}>
+                                <Trash2 className="mr-2 h-4 w-4" />Excluir
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                                <AlertDialogDescription>Esta ação não pode ser desfeita e excluirá permanentemente o agendamento.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} disabled={deleteLoading} className={buttonVariants({ variant: "destructive" })}>
+                                    {deleteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sim, excluir'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    <div className='flex gap-2'>
+                        <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                        <Button type="submit" disabled={loading || !form.formState.isDirty}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar'}</Button>
+                    </div>
+                </div>
               ) : (
-                <>
+                <div className="flex w-full justify-between items-center">
                   <Button type="button" variant="ghost" onClick={() => setIsEditing(true)} disabled={appointment.status === 'Concluído' || appointment.status === 'Em atendimento'}><Edit className='mr-2 h-4 w-4'/>Editar</Button>
                   <div className='flex gap-2'>
                     {appointment.status !== 'Concluído' && (
@@ -415,7 +425,7 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
                     : appointment.status === 'Em atendimento' ? <Button size="sm" onClick={handleOpenPaymentDialog}>Finalizar Atendimento</Button>
                     : <Button variant="outline" size="sm" onClick={() => handleStatusChange('Em atendimento')}>Iniciar Atendimento</Button>}
                   </div>
-                </>
+                </div>
               )}
             </DialogFooter>
           </form>
