@@ -127,7 +127,7 @@ export function AppointmentSchedule() {
     fetchAppointments(dateString)();
   };
   
-  const SLOT_HEIGHT_PX = 60; // A altura de cada slot de tempo em pixels
+  const SLOT_HEIGHT_PX = 80; // A altura de cada slot de tempo em pixels
 
   const timeSlots = useMemo(() => {
     if (!settings) return [];
