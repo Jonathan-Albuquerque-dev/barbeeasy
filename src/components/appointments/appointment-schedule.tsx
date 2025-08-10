@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { 
@@ -14,7 +14,8 @@ import {
     getStaff,
     getBarbershopSettings,
     DayHours,
-    AppointmentStatus
+    AppointmentStatus,
+    updateAppointmentDetails
 } from '@/lib/data';
 import { useAuth } from '@/contexts/auth-context';
 import { AddAppointmentDialog } from './add-appointment-dialog';
@@ -27,6 +28,7 @@ import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestor
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 
 type PopulatedAppointment = AppointmentDocument & {
   client: { id: string; name: string; avatarUrl: string; subscriptionId?: string };
@@ -52,6 +54,7 @@ const getStatusClasses = (status: AppointmentStatus) => {
 
 export function AppointmentSchedule() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [date, setDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<PopulatedAppointment[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -60,6 +63,10 @@ export function AppointmentSchedule() {
   const [loading, setLoading] = useState(true);
   const [popoverOpen, setPopoverOpen] = useState(false);
   
+  // Drag and Drop state
+  const [draggedAppointment, setDraggedAppointment] = useState<PopulatedAppointment | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   const serviceDurationMap = useMemo(() => new Map(services.map(s => [s.name, s.duration])), [services]);
 
   const fetchAppointments = useCallback((dateString: string) => {
@@ -127,7 +134,7 @@ export function AppointmentSchedule() {
     fetchAppointments(dateString)();
   };
   
-  const SLOT_HEIGHT_PX = 80; // A altura de cada slot de tempo em pixels
+  const SLOT_HEIGHT_PX = 80;
 
   const timeSlots = useMemo(() => {
     if (!settings) return [];
@@ -167,10 +174,93 @@ export function AppointmentSchedule() {
     const top = (diffInMinutes / settings.appointmentInterval) * SLOT_HEIGHT_PX;
 
     const duration = serviceDurationMap.get(appointment.service) || settings.appointmentInterval;
-    const height = (duration / settings.appointmentInterval) * SLOT_HEIGHT_PX - 2; // -2 para um pequeno espaçamento
+    const height = (duration / settings.appointmentInterval) * SLOT_HEIGHT_PX - 2;
 
     return { top, height };
   };
+
+  // --- Drag and Drop Handlers ---
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, appointment: PopulatedAppointment) => {
+    setDraggedAppointment(appointment);
+    setIsDragging(true);
+    e.dataTransfer.effectAllowed = 'move';
+    // Make the ghost image of the dragged element transparent
+    e.dataTransfer.setDragImage(e.currentTarget, e.currentTarget.clientWidth / 2, e.currentTarget.clientHeight / 2);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e: DragEvent<HTMLDivElement>, targetBarberId: string) => {
+    e.preventDefault();
+    if (!draggedAppointment || !user || !settings) return;
+
+    const target = e.currentTarget;
+    const rect = target.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+
+    // Calculate new time
+    const slotIndex = Math.floor(offsetY / SLOT_HEIGHT_PX);
+    const newTime = timeSlots[slotIndex];
+    if (!newTime) return;
+
+    // --- Validation ---
+    const newAppointmentEndTime = parse(newTime, 'HH:mm', new Date());
+    const duration = serviceDurationMap.get(draggedAppointment.service) || settings.appointmentInterval;
+    newAppointmentEndTime.setMinutes(newAppointmentEndTime.getMinutes() + duration);
+    
+    // Check if appointment ends after calendar hours
+    const dayKeys: (keyof DayHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayOfWeek = date.getDay();
+    const dayKey = dayKeys[dayOfWeek];
+    const calendarEndTime = parse(settings.operatingHours[dayKey].end, 'HH:mm', new Date());
+
+    if (newAppointmentEndTime > calendarEndTime) {
+        toast({ variant: 'destructive', title: 'Horário Inválido', description: 'O agendamento ultrapassa o horário de funcionamento.' });
+        return;
+    }
+
+    // Check for collision with other appointments for the target barber
+    const targetBarberAppointments = appointments.filter(app => app.barberId === targetBarberId && app.id !== draggedAppointment.id);
+
+    const collision = targetBarberAppointments.some(app => {
+        const existingAppStart = parse(app.time, 'HH:mm', new Date());
+        const existingAppDuration = serviceDurationMap.get(app.service) || settings.appointmentInterval;
+        const existingAppEnd = new Date(existingAppStart.getTime() + existingAppDuration * 60000);
+        
+        const newAppStart = parse(newTime, 'HH:mm', new Date());
+        const newAppEnd = new Date(newAppStart.getTime() + duration * 60000);
+
+        // Check for overlap: (StartA < EndB) and (EndA > StartB)
+        return newAppStart < existingAppEnd && newAppEnd > existingAppStart;
+    });
+
+    if (collision) {
+        toast({ variant: 'destructive', title: 'Conflito de Horário', description: 'O horário selecionado já está ocupado.' });
+        return;
+    }
+    
+    // --- Update Firestore ---
+    try {
+        await updateAppointmentDetails(user.uid, draggedAppointment.id, {
+            time: newTime,
+            barberId: targetBarberId,
+        });
+        toast({ title: 'Sucesso!', description: 'Agendamento reagendado.' });
+        // The onSnapshot listener will handle the UI update automatically
+    } catch (error) {
+        console.error("Error updating appointment", error);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível reagendar.' });
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedAppointment(null);
+    setIsDragging(false);
+  };
+
 
   if (!settings && !loading) {
       return <div>Por favor, configure seus horários de funcionamento primeiro.</div>
@@ -210,10 +300,7 @@ export function AppointmentSchedule() {
       </div>
       
         <ScrollArea className="flex-grow w-full border-t border-b mt-4">
-            <div 
-                className="grid min-w-max h-full" 
-                style={{ gridTemplateColumns: `auto repeat(${staff.length}, minmax(0, 1fr))` }}
-            >
+            <div className="grid min-w-max h-full" style={{ gridTemplateColumns: `auto repeat(${staff.length}, minmax(150px, 1fr))` }}>
                 {/* Time Gutter */}
                 <div className="w-16 flex flex-col sticky left-0 bg-background z-10 border-r">
                     <div className="h-10 border-b">&nbsp;</div>
@@ -228,7 +315,12 @@ export function AppointmentSchedule() {
 
                 {/* Staff Columns */}
                 {staff.map(member => (
-                    <div key={member.id} className="flex flex-col border-r">
+                    <div 
+                        key={member.id} 
+                        className="flex flex-col border-r"
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, member.id)}
+                    >
                         <div className="h-10 border-b flex items-center justify-center p-2">
                             <h3 className="font-semibold text-sm truncate">{member.name}</h3>
                         </div>
@@ -241,20 +333,29 @@ export function AppointmentSchedule() {
                                .filter(app => app.barberId === member.id)
                                .map(app => {
                                    const {top, height} = getAppointmentPositionAndHeight(app);
+                                   const isBeingDragged = isDragging && draggedAppointment?.id === app.id;
                                    return (
-                                     <AppointmentDetailsDialog key={app.id} appointment={app} onAppointmentUpdate={handleAppointmentChange}>
-                                        <div 
-                                            className={cn(
-                                                "absolute w-[95%] left-1/2 -translate-x-1/2 p-2 cursor-pointer transition-all duration-200 shadow-md rounded-lg",
-                                                getStatusClasses(app.status)
-                                            )}
-                                            style={{ top: `${top + 1}px`, height: `${height}px` }}
-                                        >
-                                            <p className="text-xs font-bold truncate">{app.service}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{app.client.name}</p>
-                                            <p className="text-[10px] text-muted-foreground/80 absolute bottom-1">{app.time}</p>
-                                        </div>
-                                     </AppointmentDetailsDialog>
+                                     <div 
+                                        key={app.id}
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, app)}
+                                        onDragEnd={handleDragEnd}
+                                        style={{ top: `${top + 1}px`, height: `${height}px` }}
+                                        className={cn(
+                                            "absolute w-[95%] left-1/2 -translate-x-1/2 p-2 transition-all duration-200 shadow-md rounded-lg",
+                                            "cursor-grab active:cursor-grabbing",
+                                            getStatusClasses(app.status),
+                                            isBeingDragged && 'opacity-30'
+                                        )}
+                                      >
+                                        <AppointmentDetailsDialog appointment={app} onAppointmentUpdate={handleAppointmentChange}>
+                                            <div className="w-full h-full">
+                                                <p className="text-xs font-bold truncate">{app.service}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{app.client.name}</p>
+                                                <p className="text-[10px] text-muted-foreground/80 absolute bottom-1">{app.time}</p>
+                                            </div>
+                                        </AppointmentDetailsDialog>
+                                      </div>
                                    );
                                })
                            }

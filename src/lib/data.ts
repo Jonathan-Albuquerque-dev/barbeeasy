@@ -599,6 +599,16 @@ export async function addAppointment(userId: string, appointmentData: Omit<Appoi
     }
 }
 
+export async function updateAppointmentDetails(userId: string, appointmentId: string, data: { time: string; barberId: string; }) {
+    const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
+    try {
+        await updateDoc(appointmentDocRef, data);
+    } catch (error) {
+        console.error(`Erro ao reagendar o agendamento ${appointmentId}:`, error);
+        throw new Error("Não foi possível reagendar.");
+    }
+}
+
 
 export async function updateAppointmentProducts(userId: string, appointmentId: string, soldProducts: any[]) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
