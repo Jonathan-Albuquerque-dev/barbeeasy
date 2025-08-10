@@ -228,7 +228,7 @@ export function AppointmentSchedule() {
 
                 {/* Staff Columns */}
                 {staff.map(member => (
-                    <div key={member.id} className="w-56 flex flex-col border-r">
+                    <div key={member.id} className="flex flex-col border-r">
                         <div className="h-10 border-b flex items-center justify-center p-2">
                             <h3 className="font-semibold text-sm truncate">{member.name}</h3>
                         </div>
