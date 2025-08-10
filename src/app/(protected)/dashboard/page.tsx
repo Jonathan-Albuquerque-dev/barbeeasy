@@ -27,56 +27,56 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [appointments, setAppointments] = useState<PopulatedAppointment[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const servicePriceMap = useMemo(() => new Map(services.map(s => [s.name, s.price])), [services]);
+  const fetchStatsAndAppointments = useCallback(async () => {
+    if (!user?.uid) return;
 
-  const fetchStats = useCallback(() => {
-    if (user?.uid) {
-      getDashboardStats(user.uid).then(setStats);
-    }
+    setLoading(true);
+    const todayString = format(new Date(), 'yyyy-MM-dd');
+
+    // Fetch stats and appointments in parallel
+    const [fetchedStats, appointmentsSnapshot] = await Promise.all([
+      getDashboardStats(user.uid),
+      getDocs(query(collection(db, `barbershops/${user.uid}/appointments`), where("date", "==", todayString)))
+    ]);
+
+    setStats(fetchedStats);
+
+    const appointmentDocs = appointmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AppointmentDocument[];
+    
+    // Dependencies for populating appointments
+    const subscriptionsSnap = await getDocs(collection(db, `barbershops/${user.uid}/subscriptions`));
+    const subscriptions = subscriptionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Subscription[];
+    
+    const populated = await populateAppointments(user.uid, appointmentDocs, subscriptions);
+    populated.sort((a, b) => a.time.localeCompare(b.time));
+    setAppointments(populated as PopulatedAppointment[]);
+    
+    setLoading(false);
   }, [user]);
 
   useEffect(() => {
     if (!user?.uid) return;
 
-    // Fetch static data once
-    getServices(user.uid).then(setServices);
-    fetchStats(); // Fetch initial stats
+    fetchStatsAndAppointments(); // Initial fetch
 
+    // Set up real-time listener for appointments
     const todayString = format(new Date(), 'yyyy-MM-dd');
-    const appointmentsCol = collection(db, `barbershops/${user.uid}/appointments`);
-    const q = query(appointmentsCol, where("date", "==", todayString));
+    const q = query(collection(db, `barbershops/${user.uid}/appointments`), where("date", "==", todayString));
 
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-        setLoading(true);
-        const appointmentDocs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AppointmentDocument[];
-        
-        const subscriptionsSnap = await getDocs(collection(db, `barbershops/${user.uid}/subscriptions`));
-        const subscriptions = subscriptionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Subscription[];
-
-        const populated = await populateAppointments(user.uid, appointmentDocs, subscriptions);
-        
-        populated.sort((a, b) => a.time.localeCompare(b.time));
-        setAppointments(populated as PopulatedAppointment[]);
-        
-        // Update stats whenever appointments change
-        fetchStats();
-        
-        setLoading(false);
+    const unsubscribe = onSnapshot(q, async () => {
+      // When appointments change, refetch everything to ensure consistency
+      // This is simpler than trying to merge real-time data and prevents stale stats
+      await fetchStatsAndAppointments();
     }, (error) => {
-        console.error("Error fetching real-time appointments: ", error);
-        setLoading(false);
+      console.error("Error fetching real-time appointments: ", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user, fetchStats]);
+  }, [user, fetchStatsAndAppointments]);
 
-  const handleStatusChange = (appointmentId: string, newStatus: AppointmentStatus) => {
-    // The onSnapshot listener will handle the UI update automatically.
-    // This function can be kept for optimistic updates if needed, but for now, it's not necessary.
-  };
 
   const getBadgeVariant = (status: AppointmentStatus) => {
     switch (status) {
@@ -162,10 +162,6 @@ export default function DashboardPage() {
           {appointments.length > 0 ? (
             <div className="divide-y divide-border">
               {appointments.map((appointment) => {
-                const servicePrice = servicePriceMap.get(appointment.service) || 0;
-                const productsTotal = (appointment.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
-                const totalValue = servicePrice + productsTotal;
-
                 return (
                   <div key={appointment.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 px-4 sm:px-6 py-4 hover:bg-muted/50 transition-colors">
                     <div className="flex w-full sm:w-auto items-center justify-between">
@@ -180,10 +176,9 @@ export default function DashboardPage() {
                             appointment={appointment}
                             appointmentId={appointment.id}
                             currentStatus={appointment.status}
-                            onStatusChange={handleStatusChange}
-                            totalValue={totalValue}
+                            onStatusChange={fetchStatsAndAppointments}
                           />
-                          <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchStats}>
+                          <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchStatsAndAppointments}>
                             <Button variant="outline" size="sm">Detalhes</Button>
                           </AppointmentDetailsDialog>
                         </div>
@@ -205,10 +200,9 @@ export default function DashboardPage() {
                         appointment={appointment}
                         appointmentId={appointment.id}
                         currentStatus={appointment.status}
-                        onStatusChange={handleStatusChange}
-                        totalValue={totalValue}
+                        onStatusChange={fetchStatsAndAppointments}
                       />
-                      <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchStats}>
+                      <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchStatsAndAppointments}>
                         <Button variant="outline" size="sm">Detalhes</Button>
                       </AppointmentDetailsDialog>
                     </div>

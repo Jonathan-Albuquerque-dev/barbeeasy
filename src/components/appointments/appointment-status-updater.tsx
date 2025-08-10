@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { updateAppointmentStatus, AppointmentStatus, AppointmentDocument, Subscription } from '@/lib/data';
+import { updateAppointmentStatus, AppointmentStatus, AppointmentDocument, Subscription, getServices } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -31,16 +31,16 @@ interface AppointmentStatusUpdaterProps {
   appointmentId: string;
   currentStatus: AppointmentStatus;
   onStatusChange: (newStatus: AppointmentStatus) => void;
-  totalValue?: number;
 }
 
-export function AppointmentStatusUpdater({ appointment, appointmentId, currentStatus, onStatusChange, totalValue = 0 }: AppointmentStatusUpdaterProps) {
+export function AppointmentStatusUpdater({ appointment, appointmentId, currentStatus, onStatusChange }: AppointmentStatusUpdaterProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('Dinheiro');
   const [selectedCourtesyType, setSelectedCourtesyType] = useState<CourtesyType | null>(null);
+  const [totalValue, setTotalValue] = useState(0);
 
   const isClientSubscribedAndActive = useMemo(() => {
     if (!appointment.client.subscriptionId || !appointment.client.subscriptionEndDate) {
@@ -67,6 +67,20 @@ export function AppointmentStatusUpdater({ appointment, appointmentId, currentSt
     return totalValue;
   }, [selectedPaymentMethod, totalValue, productsTotal]);
 
+  const handleOpenDialog = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+        const services = await getServices(user.uid);
+        const servicePrice = services.find(s => s.name === appointment.service)?.price || 0;
+        setTotalValue(servicePrice + productsTotal);
+        setDialogOpen(true);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível buscar o preço do serviço.'});
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const handleStatusChange = async (newStatus: AppointmentStatus, paymentMethod?: string) => {
     if (!user || newStatus === currentStatus) return;
@@ -103,14 +117,14 @@ export function AppointmentStatusUpdater({ appointment, appointmentId, currentSt
   }
 
   if (currentStatus === 'Concluído') {
-    return <Badge variant="success">Concluído</Badge>;
+    return <Button size="sm" variant="success" disabled>Concluído</Button>;
   }
 
   if (currentStatus === 'Em atendimento') {
     return (
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild>
-          <Button size="sm">Finalizar Atendimento</Button>
+          <Button size="sm" onClick={handleOpenDialog}>Finalizar Atendimento</Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>

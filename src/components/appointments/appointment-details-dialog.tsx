@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
+import { AppointmentStatusUpdater } from './appointment-status-updater';
 
 type SoldProduct = {
   productId: string;
@@ -131,7 +132,7 @@ export function AppointmentDetailsDialog({ appointment, onAppointmentUpdate, chi
         description: 'Venda de produtos atualizada.',
       });
       onAppointmentUpdate();
-      setOpen(false);
+      // Don't close the dialog on purpose, so user can proceed to update status
     } catch (error) {
       console.error(error);
       toast({
@@ -306,9 +307,18 @@ export function AppointmentDetailsDialog({ appointment, onAppointmentUpdate, chi
                 <DialogClose asChild>
                     <Button type="button" variant="outline">Fechar</Button>
                 </DialogClose>
-                <Button onClick={handleSave} disabled={loading}>
+                <Button onClick={handleSave} variant="secondary" disabled={loading}>
                     {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Venda'}
                 </Button>
+                <AppointmentStatusUpdater 
+                    appointment={appointment}
+                    appointmentId={appointment.id}
+                    currentStatus={appointment.status}
+                    onStatusChange={() => {
+                        onAppointmentUpdate();
+                        setOpen(false); // Close dialog on status change
+                    }}
+                />
             </div>
         </DialogFooter>
       </DialogContent>
