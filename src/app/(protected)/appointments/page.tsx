@@ -1,13 +1,13 @@
-import { AppointmentCalendar } from "@/components/appointments/appointment-calendar";
+import { AppointmentSchedule } from "@/components/appointments/appointment-schedule";
 
 export default function AppointmentsPage() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 h-full flex flex-col">
       <div className="text-center sm:text-left">
-        <h1 className="text-3xl font-bold tracking-tight">Agendamentos</h1>
-        <p className="text-muted-foreground">Gerencie sua agenda, marque novos horários e veja os próximos eventos.</p>
+        <h1 className="text-3xl font-bold tracking-tight">Agenda do Dia</h1>
+        <p className="text-muted-foreground">Visualize e gerencie os horários por profissional.</p>
       </div>
-      <AppointmentCalendar />
+      <AppointmentSchedule />
     </div>
   );
 }
