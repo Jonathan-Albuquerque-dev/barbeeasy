@@ -1,4 +1,5 @@
 
+
 // src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
@@ -599,7 +600,7 @@ export async function addAppointment(userId: string, appointmentData: Omit<Appoi
     }
 }
 
-export async function updateAppointmentDetails(userId: string, appointmentId: string, data: { time: string; barberId: string; }) {
+export async function updateAppointmentDetails(userId: string, appointmentId: string, data: Partial<{ time: string; barberId: string; date: string; service: string }>) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
     try {
         await updateDoc(appointmentDocRef, data);
