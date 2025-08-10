@@ -10,7 +10,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import type { AppointmentStatus, AppointmentDocument, Service } from "@/lib/data";
 import { AppointmentStatusUpdater } from "@/components/appointments/appointment-status-updater";
 import { Button } from "@/components/ui/button";
-import { AppointmentDetailsDialog } from "@/components/appointments/appointment-details-dialog";
+import { EditAppointmentDialog } from "@/components/appointments/edit-appointment-dialog";
 import { Badge } from "@/components/ui/badge";
 
 import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
@@ -178,9 +178,9 @@ export default function DashboardPage() {
                             currentStatus={appointment.status}
                             onStatusChange={fetchStatsAndAppointments}
                           />
-                          <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchStatsAndAppointments}>
+                          <EditAppointmentDialog appointment={appointment} onAppointmentUpdate={fetchStatsAndAppointments}>
                             <Button variant="outline" size="sm">Detalhes</Button>
-                          </AppointmentDetailsDialog>
+                          </EditAppointmentDialog>
                         </div>
                     </div>
                     <div className="flex-grow flex items-center gap-4 w-full">
@@ -202,9 +202,9 @@ export default function DashboardPage() {
                         currentStatus={appointment.status}
                         onStatusChange={fetchStatsAndAppointments}
                       />
-                      <AppointmentDetailsDialog appointment={appointment} onAppointmentUpdate={fetchStatsAndAppointments}>
+                      <EditAppointmentDialog appointment={appointment} onAppointmentUpdate={fetchStatsAndAppointments}>
                         <Button variant="outline" size="sm">Detalhes</Button>
-                      </AppointmentDetailsDialog>
+                      </EditAppointmentDialog>
                     </div>
                   </div>
                 )
