@@ -1,8 +1,9 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { 
     AppointmentDocument, 
     getServices, 
@@ -12,7 +13,8 @@ import {
     Staff, 
     getStaff,
     getBarbershopSettings,
-    DayHours
+    DayHours,
+    AppointmentStatus
 } from '@/lib/data';
 import { useAuth } from '@/contexts/auth-context';
 import { AddAppointmentDialog } from './add-appointment-dialog';
@@ -21,11 +23,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format, addDays, subDays, isToday, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Skeleton } from '@/components/ui/skeleton';
 import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
-import { Card, CardContent } from '../ui/card';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 
 type PopulatedAppointment = AppointmentDocument & {
@@ -34,6 +34,21 @@ type PopulatedAppointment = AppointmentDocument & {
 };
 
 type BarbershopSettings = { operatingHours: DayHours; appointmentInterval: number };
+
+const getStatusClasses = (status: AppointmentStatus) => {
+    switch (status) {
+        case 'Concluído':
+            return 'border-l-4 border-success bg-success/10 hover:bg-success/20';
+        case 'Em atendimento':
+            return 'border-l-4 border-primary bg-primary/10 hover:bg-primary/20';
+        case 'Confirmado':
+            return 'border-l-4 border-secondary-foreground bg-secondary/80 hover:bg-secondary';
+        case 'Pendente':
+            return 'border-l-4 border-muted-foreground bg-muted/50 hover:bg-muted';
+        default:
+            return 'border-l-4 border-border';
+    }
+};
 
 export function AppointmentSchedule() {
   const { user } = useAuth();
@@ -111,6 +126,8 @@ export function AppointmentSchedule() {
     const dateString = format(date, 'yyyy-MM-dd');
     fetchAppointments(dateString)();
   };
+  
+  const SLOT_HEIGHT_PX = 50; // A altura de cada slot de tempo em pixels
 
   const timeSlots = useMemo(() => {
     if (!settings) return [];
@@ -140,15 +157,17 @@ export function AppointmentSchedule() {
     const dayOfWeek = date.getDay();
     const dayKey = dayKeys[dayOfWeek];
     const dayHours = settings.operatingHours[dayKey];
+    
+    if(!dayHours?.start) return { top: 0, height: 0 };
 
     const calendarStart = parse(dayHours.start, 'HH:mm', new Date());
     const appointmentStart = parse(appointment.time, 'HH:mm', new Date());
 
     const diffInMinutes = (appointmentStart.getTime() - calendarStart.getTime()) / 60000;
-    const top = (diffInMinutes / settings.appointmentInterval) * 60; // 60px per slot (50px height + 10px gap)
+    const top = (diffInMinutes / settings.appointmentInterval) * SLOT_HEIGHT_PX;
 
     const duration = serviceDurationMap.get(appointment.service) || settings.appointmentInterval;
-    const height = (duration / settings.appointmentInterval) * 60 - 10; // Subtract gap
+    const height = (duration / settings.appointmentInterval) * SLOT_HEIGHT_PX - 2; // -2 para um pequeno espaçamento
 
     return { top, height };
   };
@@ -197,7 +216,7 @@ export function AppointmentSchedule() {
                     <div className="h-10 border-b">&nbsp;</div>
                     <div className="relative flex-grow">
                         {timeSlots.map(time => (
-                            <div key={time} className="h-[60px] text-xs text-muted-foreground text-center pt-1 border-r border-t">
+                            <div key={time} style={{ height: `${SLOT_HEIGHT_PX}px` }} className="text-xs text-muted-foreground text-center pt-1 border-r border-t">
                                 {time}
                             </div>
                         ))}
@@ -212,7 +231,7 @@ export function AppointmentSchedule() {
                         </div>
                         <div className="relative flex-grow bg-muted/20">
                            {/* Grid lines */}
-                           {timeSlots.map(time => <div key={time} className="h-[60px] border-t"></div>)}
+                           {timeSlots.map(time => <div key={time} style={{ height: `${SLOT_HEIGHT_PX}px` }} className="border-t"></div>)}
                            
                            {/* Appointments */}
                            {appointments
@@ -221,14 +240,17 @@ export function AppointmentSchedule() {
                                    const {top, height} = getAppointmentPositionAndHeight(app);
                                    return (
                                      <AppointmentDetailsDialog key={app.id} appointment={app} onAppointmentUpdate={handleAppointmentChange}>
-                                        <Card 
-                                            className="absolute w-[95%] left-1/2 -translate-x-1/2 p-2 cursor-pointer hover:bg-card/90 transition-all duration-200 shadow-lg"
-                                            style={{ top: `${top}px`, height: `${height}px` }}
+                                        <div 
+                                            className={cn(
+                                                "absolute w-[95%] left-1/2 -translate-x-1/2 p-2 cursor-pointer transition-all duration-200 shadow-md rounded-lg",
+                                                getStatusClasses(app.status)
+                                            )}
+                                            style={{ top: `${top + 1}px`, height: `${height}px` }}
                                         >
                                             <p className="text-xs font-bold truncate">{app.service}</p>
                                             <p className="text-xs text-muted-foreground truncate">{app.client.name}</p>
                                             <p className="text-[10px] text-muted-foreground/80 absolute bottom-1">{app.time}</p>
-                                        </Card>
+                                        </div>
                                      </AppointmentDetailsDialog>
                                    );
                                })
