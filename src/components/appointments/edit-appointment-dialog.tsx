@@ -19,7 +19,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { Loader2, CalendarIcon, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { Separator } from '../ui/separator';
 
 type PopulatedAppointment = AppointmentDocument & {
   client: { id: string; name: string; avatarUrl: string; subscriptionId?: string };
@@ -269,119 +268,120 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-             <FormField
-              control={form.control}
-              name="service"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Serviço</FormLabel>
-                   <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um serviço" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {services.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="barberId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Profissional</FormLabel>
-                   <Select onValueChange={field.onChange} value={field.value} disabled={!selectedService}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={!selectedService ? "Escolha um serviço primeiro" : "Selecione um profissional"} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {filteredStaff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Data</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn("pl-3 text-left font-normal",!field.value && "text-muted-foreground")}
-                          >
-                            {field.value ? (format(field.value, "PPP", { locale: ptBR })) : (<span>Escolha uma data</span>)}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                          initialFocus
-                          locale={ptBR}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="space-y-4 py-4">
+                 <FormField
                   control={form.control}
-                  name="time"
+                  name="service"
                   render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Hora</FormLabel>
-                        <Select 
-                            onValueChange={field.onChange} 
-                            value={field.value} 
-                            disabled={slotsLoading || !selectedBarberId || !selectedService || timeSlots.length === 0}
-                        >
+                    <FormItem>
+                      <FormLabel>Serviço</FormLabel>
+                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={
-                                slotsLoading ? "Carregando..." : 
-                                !selectedService ? "Escolha um serviço" :
-                                !selectedBarberId ? "Escolha um profissional" : 
-                                timeSlots.length === 0 ? "Nenhum horário vago" : 
-                                "Selecione um horário"
-                            } />
+                            <SelectValue placeholder="Selecione um serviço" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {timeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
+                          {services.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <FormMessage />
-                      </FormItem>
+                    </FormItem>
                   )}
-              />
+                />
+                 <FormField
+                  control={form.control}
+                  name="barberId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Profissional</FormLabel>
+                       <Select onValueChange={field.onChange} value={field.value} disabled={!selectedService}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={!selectedService ? "Escolha um serviço primeiro" : "Selecione um profissional"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {filteredStaff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn("pl-3 text-left font-normal",!field.value && "text-muted-foreground")}
+                              >
+                                {field.value ? (format(field.value, "PPP", { locale: ptBR })) : (<span>Escolha uma data</span>)}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                              initialFocus
+                              locale={ptBR}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                      control={form.control}
+                      name="time"
+                      render={({ field }) => (
+                          <FormItem>
+                          <FormLabel>Hora</FormLabel>
+                            <Select 
+                                onValueChange={field.onChange} 
+                                value={field.value} 
+                                disabled={slotsLoading || !selectedBarberId || !selectedService || timeSlots.length === 0}
+                            >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={
+                                    slotsLoading ? "Carregando..." : 
+                                    !selectedService ? "Escolha um serviço" :
+                                    !selectedBarberId ? "Escolha um profissional" : 
+                                    timeSlots.length === 0 ? "Nenhum horário vago" : 
+                                    "Selecione um horário"
+                                } />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {timeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                </div>
             </div>
-            <Separator className="my-6" />
-            <div className="flex justify-between items-center">
+            <DialogFooter>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button type="button" variant="destructive">
+                        <Button type="button" variant="destructive" className="mr-auto">
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir Agendamento
+                            Excluir
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -399,13 +399,11 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-                <div className='flex gap-2'>
-                     <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                     <Button type="submit" disabled={loading || !form.formState.isDirty}>
-                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Alterações'}
-                     </Button>
-                </div>
-            </div>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={loading || !form.formState.isDirty}>
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Alterações'}
+                </Button>
+            </DialogFooter>
           </form>
         </Form>
       </DialogContent>
