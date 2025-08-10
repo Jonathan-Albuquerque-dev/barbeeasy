@@ -127,7 +127,7 @@ export function AppointmentSchedule() {
     fetchAppointments(dateString)();
   };
   
-  const SLOT_HEIGHT_PX = 50; // A altura de cada slot de tempo em pixels
+  const SLOT_HEIGHT_PX = 60; // A altura de cada slot de tempo em pixels
 
   const timeSlots = useMemo(() => {
     if (!settings) return [];
@@ -219,7 +219,7 @@ export function AppointmentSchedule() {
                     <div className="h-10 border-b">&nbsp;</div>
                     <div className="relative flex-grow">
                         {timeSlots.map(time => (
-                            <div key={time} style={{ height: `${SLOT_HEIGHT_PX}px` }} className="text-xs text-muted-foreground text-center pt-1 border-t">
+                            <div key={time} style={{ height: `${SLOT_HEIGHT_PX}px` }} className="flex items-center justify-center text-xs text-muted-foreground text-center border-t">
                                 {time}
                             </div>
                         ))}
