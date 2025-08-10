@@ -2,96 +2,36 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getDashboardStats, getServices, populateAppointments, Subscription } from "@/lib/data";
+import { getDashboardStats } from "@/lib/data";
 import { Users, Calendar, DollarSign, Clock, Loader2 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/auth-context";
-import { useEffect, useState, useMemo, useCallback } from "react";
-import type { AppointmentStatus, AppointmentDocument, Service } from "@/lib/data";
-import { AppointmentStatusUpdater } from "@/components/appointments/appointment-status-updater";
-import { Button } from "@/components/ui/button";
-import { EditAppointmentDialog } from "@/components/appointments/edit-appointment-dialog";
-import { Badge } from "@/components/ui/badge";
-
-import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useEffect, useState, useCallback } from "react";
+import { AppointmentSchedule } from "@/components/appointments/appointment-schedule";
 import { format } from 'date-fns';
 
-type PopulatedAppointment = AppointmentDocument & {
-  client: { id: string; name: string; avatarUrl: string; subscriptionId?: string };
-  barber: { id: string; name: string; };
-};
 type Stats = Awaited<ReturnType<typeof getDashboardStats>>;
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
-  const [appointments, setAppointments] = useState<PopulatedAppointment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchStatsAndAppointments = useCallback(async () => {
+  const fetchStats = useCallback(async () => {
     if (!user?.uid) return;
 
-    setLoading(true);
-    const todayString = format(new Date(), 'yyyy-MM-dd');
-
-    // Fetch stats and appointments in parallel
-    const [fetchedStats, appointmentsSnapshot] = await Promise.all([
-      getDashboardStats(user.uid),
-      getDocs(query(collection(db, `barbershops/${user.uid}/appointments`), where("date", "==", todayString)))
-    ]);
-
+    // Only fetch stats, the schedule component will fetch its own data
+    const fetchedStats = await getDashboardStats(user.uid);
     setStats(fetchedStats);
-
-    const appointmentDocs = appointmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AppointmentDocument[];
-    
-    // Dependencies for populating appointments
-    const subscriptionsSnap = await getDocs(collection(db, `barbershops/${user.uid}/subscriptions`));
-    const subscriptions = subscriptionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Subscription[];
-    
-    const populated = await populateAppointments(user.uid, appointmentDocs, subscriptions);
-    populated.sort((a, b) => a.time.localeCompare(b.time));
-    setAppointments(populated as PopulatedAppointment[]);
-    
     setLoading(false);
   }, [user]);
 
   useEffect(() => {
-    if (!user?.uid) return;
-
-    fetchStatsAndAppointments(); // Initial fetch
-
-    // Set up real-time listener for appointments
-    const todayString = format(new Date(), 'yyyy-MM-dd');
-    const q = query(collection(db, `barbershops/${user.uid}/appointments`), where("date", "==", todayString));
-
-    const unsubscribe = onSnapshot(q, async () => {
-      // When appointments change, refetch everything to ensure consistency
-      // This is simpler than trying to merge real-time data and prevents stale stats
-      await fetchStatsAndAppointments();
-    }, (error) => {
-      console.error("Error fetching real-time appointments: ", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [user, fetchStatsAndAppointments]);
-
-
-  const getBadgeVariant = (status: AppointmentStatus) => {
-    switch (status) {
-      case 'Concluído':
-        return 'success';
-      case 'Em atendimento':
-        return 'default';
-      case 'Confirmado':
-        return 'secondary';
-      case 'Pendente':
-        return 'outline';
-      default:
-        return 'secondary';
+    if (user?.uid) {
+      setLoading(true);
+      fetchStats();
     }
-  };
+  }, [user, fetchStats]);
+
 
   if (loading || !stats) {
     return (
@@ -102,7 +42,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 h-full flex flex-col">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Painel do Administrador</h1>
         <p className="text-muted-foreground">Bem-vindo(a) de volta, aqui está um resumo do seu dia.</p>
@@ -154,71 +94,10 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Reservas de Hoje</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {appointments.length > 0 ? (
-            <div className="divide-y divide-border">
-              {appointments.map((appointment) => {
-                return (
-                  <div key={appointment.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 px-4 sm:px-6 py-4 hover:bg-muted/50 transition-colors">
-                    <div className="flex w-full sm:w-auto items-center justify-between">
-                        <div className="text-left sm:text-center w-24 shrink-0">
-                            <p className="font-bold text-lg">{appointment.time}</p>
-                            <Badge variant={getBadgeVariant(appointment.status)} className="mt-1">
-                                {appointment.status}
-                            </Badge>
-                        </div>
-                        <div className="sm:hidden flex items-center gap-2">
-                           <AppointmentStatusUpdater
-                            appointment={appointment}
-                            appointmentId={appointment.id}
-                            currentStatus={appointment.status}
-                            onStatusChange={fetchStatsAndAppointments}
-                          />
-                          <EditAppointmentDialog appointment={appointment} onAppointmentUpdate={fetchStatsAndAppointments}>
-                            <Button variant="outline" size="sm">Detalhes</Button>
-                          </EditAppointmentDialog>
-                        </div>
-                    </div>
-                    <div className="flex-grow flex items-center gap-4 w-full">
-                      <Avatar className="h-12 w-12 border">
-                        <AvatarImage src={appointment.client.avatarUrl} data-ai-hint="person face" />
-                        <AvatarFallback>{appointment.client.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="font-semibold text-base">{appointment.service}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {appointment.client.name} com {appointment.barber.name}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="hidden sm:flex items-center justify-end gap-2">
-                      <AppointmentStatusUpdater
-                        appointment={appointment}
-                        appointmentId={appointment.id}
-                        currentStatus={appointment.status}
-                        onStatusChange={fetchStatsAndAppointments}
-                      />
-                      <EditAppointmentDialog appointment={appointment} onAppointmentUpdate={fetchStatsAndAppointments}>
-                        <Button variant="outline" size="sm">Detalhes</Button>
-                      </EditAppointmentDialog>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="h-64 flex flex-col items-center justify-center text-center p-6">
-              <Calendar className="h-16 w-16 text-muted-foreground/50" />
-              <h3 className="mt-6 text-xl font-semibold">Nenhuma reserva para hoje</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Aproveite o dia tranquilo ou adicione um novo agendamento.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex-grow flex flex-col">
+        <h2 className="text-2xl font-bold tracking-tight mb-4">Reservas de Hoje</h2>
+        <AppointmentSchedule />
+      </div>
     </div>
   )
 }
