@@ -209,14 +209,17 @@ export function AppointmentSchedule() {
         </AddAppointmentDialog>
       </div>
       
-        <ScrollArea className="flex-grow w-full">
-            <div className="grid grid-flow-col auto-cols-fr min-w-max h-full">
+        <ScrollArea className="flex-grow w-full border-t border-b mt-4">
+            <div 
+                className="grid min-w-max h-full" 
+                style={{ gridTemplateColumns: `auto repeat(${staff.length}, minmax(0, 1fr))` }}
+            >
                 {/* Time Gutter */}
-                <div className="w-16 flex flex-col sticky left-0 bg-background z-10">
-                    <div className="h-10 border-b border-r">&nbsp;</div>
+                <div className="w-16 flex flex-col sticky left-0 bg-background z-10 border-r">
+                    <div className="h-10 border-b">&nbsp;</div>
                     <div className="relative flex-grow">
                         {timeSlots.map(time => (
-                            <div key={time} style={{ height: `${SLOT_HEIGHT_PX}px` }} className="text-xs text-muted-foreground text-center pt-1 border-r border-t">
+                            <div key={time} style={{ height: `${SLOT_HEIGHT_PX}px` }} className="text-xs text-muted-foreground text-center pt-1 border-t">
                                 {time}
                             </div>
                         ))}
