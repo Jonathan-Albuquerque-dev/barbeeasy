@@ -286,13 +286,12 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{isEditing ? 'Editar Agendamento' : 'Detalhes do Agendamento'}</DialogTitle>
+            <DialogDescription>{appointment.client.name} - {appointment.service}</DialogDescription>
+          </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-              <DialogHeader>
-                <DialogTitle>{isEditing ? 'Editar Agendamento' : 'Detalhes do Agendamento'}</DialogTitle>
-                <DialogDescription>{appointment.client.name} - {appointment.service}</DialogDescription>
-              </DialogHeader>
-
               <div className="py-4">
                 {isEditing ? (
                   <div className="space-y-4">
