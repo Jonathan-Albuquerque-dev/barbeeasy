@@ -383,6 +383,7 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
                   </div>
                 )}
               </div>
+
               <DialogFooter className="sm:justify-between">
                 {isEditing ? (
                   <div className="flex w-full justify-between items-center">
