@@ -140,57 +140,56 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
   }, [selectedService, services, staff, form]);
 
   useEffect(() => {
-    // This effect handles time slot generation
     const generateAndFilterTimeSlots = async () => {
-        if (!settings || !selectedDate || !user?.uid) { setTimeSlots([]); return; }
-        const dayKeys: (keyof DayHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const dayOfWeek = selectedDate.getDay();
-        const dayKey = dayKeys[dayOfWeek];
-        const dayHours = settings.operatingHours[dayKey];
-        if (!dayHours || !dayHours.open) { setTimeSlots([]); return; }
-        const allSlots: string[] = [];
-        const interval = settings.appointmentInterval;
-        const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), parseInt(dayHours.start.split(':')[0]), parseInt(dayHours.start.split(':')[1]));
-        const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), parseInt(dayHours.end.split(':')[0]), parseInt(dayHours.end.split(':')[1]));
-        let currentTime = new Date(startDate);
-        while(currentTime < endDate) {
-            allSlots.push(currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
-            currentTime.setMinutes(currentTime.getMinutes() + interval);
-        }
-        if (!selectedBarberId || !selectedService) { setTimeSlots(allSlots); return; }
+      if (!settings || !selectedDate || !user?.uid) { setTimeSlots([]); return; }
+      const dayKeys: (keyof DayHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayOfWeek = selectedDate.getDay();
+      const dayKey = dayKeys[dayOfWeek];
+      const dayHours = settings.operatingHours[dayKey];
+      if (!dayHours || !dayHours.open) { setTimeSlots([]); return; }
+      const allSlots: string[] = [];
+      const interval = settings.appointmentInterval;
+      const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), parseInt(dayHours.start.split(':')[0]), parseInt(dayHours.start.split(':')[1]));
+      const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), parseInt(dayHours.end.split(':')[0]), parseInt(dayHours.end.split(':')[1]));
+      let currentTime = new Date(startDate);
+      while(currentTime < endDate) {
+          allSlots.push(currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+          currentTime.setMinutes(currentTime.getMinutes() + interval);
+      }
+      if (!selectedBarberId || !selectedService) { setTimeSlots(allSlots); return; }
 
-        setSlotsLoading(true);
-        try {
-            const bookedAppointments = (await getBarberAppointmentsForDate(user.uid, selectedBarberId, selectedDate)).filter(a => a.id !== appointment.id);
-            const serviceDurationMap = new Map(services.map(s => [s.name, s.duration]));
-            const blockedSlots = new Set<string>();
-            bookedAppointments.forEach(app => {
-                const duration = serviceDurationMap.get(app.service) || interval;
-                const slotsToBlock = Math.ceil(duration / interval);
-                const timeParts = app.time.split(':').map(Number);
-                const startTime = new Date(selectedDate);
-                startTime.setHours(timeParts[0], timeParts[1], 0, 0);
-                for (let i = 0; i < slotsToBlock; i++) {
-                    const slotTime = new Date(startTime.getTime() + i * interval * 60000);
-                    blockedSlots.add(slotTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
-                }
-            });
-            const newServiceDuration = serviceDurationMap.get(selectedService) || interval;
-            const slotsRequired = Math.ceil(newServiceDuration / interval);
-            const availableSlots = allSlots.filter((slot, index) => {
-                const [slotHour, slotMinute] = slot.split(':').map(Number);
-                const slotStartTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), slotHour, slotMinute);
-                const slotEndTime = new Date(slotStartTime.getTime() + newServiceDuration * 60000);
-                if (slotEndTime > endDate) return false;
-                for (let i = 0; i < slotsRequired; i++) {
-                    const currentSlot = allSlots[index + i];
-                    if (!currentSlot || blockedSlots.has(currentSlot)) return false;
-                }
-                return true;
-            });
-            setTimeSlots(availableSlots);
-        } catch (error) { console.error("Failed to fetch schedule", error); setTimeSlots([]); }
-        finally { setSlotsLoading(false); }
+      setSlotsLoading(true);
+      try {
+          const bookedAppointments = (await getBarberAppointmentsForDate(user.uid, selectedBarberId, selectedDate)).filter(a => a.id !== appointment.id);
+          const serviceDurationMap = new Map(services.map(s => [s.name, s.duration]));
+          const blockedSlots = new Set<string>();
+          bookedAppointments.forEach(app => {
+              const duration = serviceDurationMap.get(app.service) || interval;
+              const slotsToBlock = Math.ceil(duration / interval);
+              const timeParts = app.time.split(':').map(Number);
+              const startTime = new Date(selectedDate);
+              startTime.setHours(timeParts[0], timeParts[1], 0, 0);
+              for (let i = 0; i < slotsToBlock; i++) {
+                  const slotTime = new Date(startTime.getTime() + i * interval * 60000);
+                  blockedSlots.add(slotTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+              }
+          });
+          const newServiceDuration = serviceDurationMap.get(selectedService) || interval;
+          const slotsRequired = Math.ceil(newServiceDuration / interval);
+          const availableSlots = allSlots.filter((slot, index) => {
+              const [slotHour, slotMinute] = slot.split(':').map(Number);
+              const slotStartTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), slotHour, slotMinute);
+              const slotEndTime = new Date(slotStartTime.getTime() + newServiceDuration * 60000);
+              if (slotEndTime > endDate) return false;
+              for (let i = 0; i < slotsRequired; i++) {
+                  const currentSlot = allSlots[index + i];
+                  if (!currentSlot || blockedSlots.has(currentSlot)) return false;
+              }
+              return true;
+          });
+          setTimeSlots(availableSlots);
+      } catch (error) { console.error("Failed to fetch schedule", error); setTimeSlots([]); }
+      finally { setSlotsLoading(false); }
     };
     if (isEditing) {
       generateAndFilterTimeSlots();
@@ -388,10 +387,10 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
             
             <DialogFooter className="sm:justify-between">
               {isEditing ? (
-                 <div className="flex w-full justify-between">
+                 <div className="flex w-full justify-end gap-2">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button type="button" variant="destructive" className={buttonVariants({ variant: "destructive" })}>
+                            <Button type="button" variant="destructive" className={cn(buttonVariants({ variant: "destructive" }), 'mr-auto')}>
                                 <Trash2 className="mr-2 h-4 w-4" />Excluir
                             </Button>
                         </AlertDialogTrigger>
@@ -408,10 +407,8 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
-                    <div className='flex gap-2'>
-                        <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
-                        <Button type="submit" disabled={loading || !form.formState.isDirty}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar'}</Button>
-                    </div>
+                    <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                    <Button type="submit" disabled={loading || !form.formState.isDirty}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar'}</Button>
                 </div>
               ) : (
                 <div className="flex w-full justify-between items-center">
