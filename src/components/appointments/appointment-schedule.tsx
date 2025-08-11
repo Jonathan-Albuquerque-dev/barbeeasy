@@ -40,15 +40,15 @@ type BarbershopSettings = { operatingHours: DayHours; appointmentInterval: numbe
 const getStatusClasses = (status: AppointmentStatus) => {
     switch (status) {
         case 'Concluído':
-            return 'border-l-4 border-success bg-success/10 hover:bg-success/20';
+            return 'bg-green-100 border-green-400 text-green-800 hover:bg-green-200/80 dark:bg-green-900/40 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-900/60';
         case 'Em atendimento':
-            return 'border-l-4 border-primary bg-primary/10 hover:bg-primary/20';
+            return 'bg-yellow-100 border-yellow-400 text-yellow-800 hover:bg-yellow-200/80 dark:bg-yellow-900/40 dark:border-yellow-700 dark:text-yellow-300 dark:hover:bg-yellow-900/60';
         case 'Confirmado':
-            return 'border-l-4 border-secondary-foreground bg-secondary/80 hover:bg-secondary';
+            return 'bg-blue-100 border-blue-400 text-blue-800 hover:bg-blue-200/80 dark:bg-blue-900/40 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/60';
         case 'Pendente':
-            return 'border-l-4 border-muted-foreground bg-muted/50 hover:bg-muted';
+            return 'bg-muted/80 border-border text-muted-foreground hover:bg-muted';
         default:
-            return 'border-l-4 border-border';
+            return 'bg-secondary border-border hover:bg-secondary/90';
     }
 };
 
@@ -364,17 +364,17 @@ export function AppointmentSchedule() {
                                         onDragEnd={handleDragEnd}
                                         style={{ top: `${top + 1}px`, height: `${height}px` }}
                                         className={cn(
-                                            "absolute w-[95%] left-1/2 -translate-x-1/2 p-2 transition-all duration-200 shadow-md rounded-lg z-20",
+                                            "absolute w-[95%] left-1/2 -translate-x-1/2 p-2 transition-all duration-200 shadow-sm rounded-lg z-20 border",
                                             "cursor-grab active:cursor-grabbing",
                                             getStatusClasses(app.status),
                                             isBeingDragged && 'opacity-30'
                                         )}
                                       >
                                         <AppointmentDetailsDialog appointment={app} onAppointmentUpdate={handleAppointmentChange}>
-                                            <div className="w-full h-full">
+                                             <div className="w-full h-full flex flex-col justify-center">
                                                 <p className="text-xs font-bold truncate">{app.service}</p>
-                                                <p className="text-xs text-muted-foreground truncate">{app.client.name}</p>
-                                                <p className="text-[10px] text-muted-foreground/80 absolute bottom-1">{app.time}</p>
+                                                <p className="text-xs truncate opacity-80">{app.client.name}</p>
+                                                <p className="text-[10px] opacity-70 absolute bottom-1">{app.time}</p>
                                             </div>
                                         </AppointmentDetailsDialog>
                                       </div>
