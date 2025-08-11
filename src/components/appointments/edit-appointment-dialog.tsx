@@ -140,7 +140,7 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
   }, [selectedService, services, staff, form]);
 
   useEffect(() => {
-    const generateAndFilterTimeSlots = async () => {
+    async function generateAndFilterTimeSlots() {
       if (!settings || !selectedDate || !user?.uid) { setTimeSlots([]); return; }
       const dayKeys: (keyof DayHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const dayOfWeek = selectedDate.getDay();
@@ -190,7 +190,7 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
           setTimeSlots(availableSlots);
       } catch (error) { console.error("Failed to fetch schedule", error); setTimeSlots([]); }
       finally { setSlotsLoading(false); }
-    };
+    }
     if (isEditing) {
       generateAndFilterTimeSlots();
     }
@@ -387,10 +387,10 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
             
             <DialogFooter className="sm:justify-between">
               {isEditing ? (
-                 <div className="flex w-full justify-end gap-2">
+                 <div className="flex w-full justify-between items-center">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button type="button" variant="destructive" className={cn(buttonVariants({ variant: "destructive" }), 'mr-auto')}>
+                            <Button type="button" variant="destructive" className={cn(buttonVariants({ variant: "destructive" }))}>
                                 <Trash2 className="mr-2 h-4 w-4" />Excluir
                             </Button>
                         </AlertDialogTrigger>
@@ -407,8 +407,10 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
-                    <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
-                    <Button type="submit" disabled={loading || !form.formState.isDirty}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar'}</Button>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                      <Button type="submit" disabled={loading || !form.formState.isDirty}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar'}</Button>
+                    </div>
                 </div>
               ) : (
                 <div className="flex w-full justify-between items-center">
