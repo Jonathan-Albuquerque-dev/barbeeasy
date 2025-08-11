@@ -4,11 +4,11 @@
 
 @layer base {
   :root {
-    --background: 35, 73%, 95%;
+    --background: 0, 0%, 100%;
     --foreground: 0, 0%, 9%;
-    --card: 35, 73%, 95%;
+    --card: 0, 0%, 100%;
     --card-foreground: 0, 0%, 9%;
-    --popover: 35, 73%, 95%;
+    --popover: 0, 0%, 100%;
     --popover-foreground: 0, 0%, 9%;
     --primary: 0, 100%, 25%;
     --primary-foreground: 0, 0%, 98%;
@@ -26,7 +26,7 @@
     --input: 0, 0%, 89%;
     --ring: 0, 100%, 25%;
     --radius: 0.5rem;
-    --sidebar-background: 35, 73%, 95%;
+    --sidebar-background: 0, 0%, 100%;
     --sidebar-foreground: 0, 0%, 9%;
     --sidebar-primary: 0, 100%, 25%;
     --sidebar-primary-foreground: 0, 0%, 98%;
