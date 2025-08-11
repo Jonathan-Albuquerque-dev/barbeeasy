@@ -599,7 +599,7 @@ export async function addAppointment(userId: string, appointmentData: Omit<Appoi
     }
 }
 
-export async function updateAppointmentDetails(userId: string, appointmentId: string, data: Partial<{ time: string; barberId: string; date: string; service: string }>) {
+export async function updateAppointmentDetails(userId: string, appointmentId: string, data: { time: string; barberId: string; }) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
     try {
         await updateDoc(appointmentDocRef, data);

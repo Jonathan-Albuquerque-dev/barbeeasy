@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, DragEvent } from 'react';
@@ -20,7 +19,7 @@ import {
 } from '@/lib/data';
 import { useAuth } from '@/contexts/auth-context';
 import { AddAppointmentDialog } from './add-appointment-dialog';
-import { EditAppointmentDialog } from './edit-appointment-dialog';
+import { AppointmentDetailsDialog } from './appointment-details-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, addDays, subDays, isToday, parse } from 'date-fns';
@@ -358,30 +357,27 @@ export function AppointmentSchedule() {
                                    const {top, height} = getAppointmentPositionAndHeight(app);
                                    const isBeingDragged = isDragging && draggedAppointment?.id === app.id;
                                    return (
-                                     <EditAppointmentDialog 
-                                        key={app.id} 
-                                        appointment={app} 
-                                        onAppointmentUpdate={handleAppointmentChange}
-                                     >
-                                        <div 
-                                            draggable
-                                            onDragStart={(e) => handleDragStart(e, app)}
-                                            onDragEnd={handleDragEnd}
-                                            style={{ top: `${top + 1}px`, height: `${height}px` }}
-                                            className={cn(
-                                                "absolute w-[95%] left-1/2 -translate-x-1/2 p-2 transition-all duration-200 shadow-md rounded-lg z-20",
-                                                "cursor-grab active:cursor-grabbing",
-                                                getStatusClasses(app.status),
-                                                isBeingDragged && 'opacity-30'
-                                            )}
-                                        >
+                                     <div 
+                                        key={app.id}
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, app)}
+                                        onDragEnd={handleDragEnd}
+                                        style={{ top: `${top + 1}px`, height: `${height}px` }}
+                                        className={cn(
+                                            "absolute w-[95%] left-1/2 -translate-x-1/2 p-2 transition-all duration-200 shadow-md rounded-lg z-20",
+                                            "cursor-grab active:cursor-grabbing",
+                                            getStatusClasses(app.status),
+                                            isBeingDragged && 'opacity-30'
+                                        )}
+                                      >
+                                        <AppointmentDetailsDialog appointment={app} onAppointmentUpdate={handleAppointmentChange}>
                                             <div className="w-full h-full">
                                                 <p className="text-xs font-bold truncate">{app.service}</p>
                                                 <p className="text-xs text-muted-foreground truncate">{app.client.name}</p>
                                                 <p className="text-[10px] text-muted-foreground/80 absolute bottom-1">{app.time}</p>
                                             </div>
-                                        </div>
-                                      </EditAppointmentDialog>
+                                        </AppointmentDetailsDialog>
+                                      </div>
                                    );
                                })
                            }
