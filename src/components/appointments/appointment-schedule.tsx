@@ -371,10 +371,10 @@ export function AppointmentSchedule() {
                                         )}
                                       >
                                         <AppointmentDetailsDialog appointment={app} onAppointmentUpdate={handleAppointmentChange}>
-                                             <div className="w-full h-full flex flex-col justify-center">
-                                                <p className="text-xs font-bold truncate">{app.service}</p>
+                                             <div className="w-full h-full flex flex-col">
+                                                <p className="text-sm font-bold truncate">{app.service}</p>
                                                 <p className="text-xs truncate opacity-80">{app.client.name}</p>
-                                                <p className="text-[10px] opacity-70 absolute bottom-1">{app.time}</p>
+                                                <p className="text-xs opacity-70 absolute bottom-1">{app.time}</p>
                                             </div>
                                         </AppointmentDetailsDialog>
                                       </div>
