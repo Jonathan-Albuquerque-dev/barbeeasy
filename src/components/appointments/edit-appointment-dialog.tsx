@@ -299,6 +299,7 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
                 <DialogTitle>{isEditing ? 'Editar Agendamento' : 'Detalhes do Agendamento'}</DialogTitle>
                 <DialogDescription>{appointment.client.name} - {appointment.service}</DialogDescription>
               </DialogHeader>
+
               <div className="py-4">
                 {isEditing ? (
                   <div className="space-y-4">
