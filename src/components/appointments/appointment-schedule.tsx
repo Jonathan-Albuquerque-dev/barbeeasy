@@ -70,6 +70,14 @@ export function AppointmentSchedule() {
 
 
   const serviceDurationMap = useMemo(() => new Map(services.map(s => [s.name, s.duration])), [services]);
+  
+  const serviceToStaffMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    services.forEach(service => {
+        map.set(service.name, service.staffIds);
+    });
+    return map;
+  }, [services]);
 
   const fetchAppointments = useCallback((dateString: string) => {
     if (!user?.uid) return () => {};
@@ -193,6 +201,13 @@ export function AppointmentSchedule() {
     e.preventDefault();
     if (!draggedAppointment) return;
 
+    const qualifiedStaff = serviceToStaffMap.get(draggedAppointment.service);
+    if (!qualifiedStaff || !qualifiedStaff.includes(targetBarberId)) {
+        e.dataTransfer.dropEffect = 'none';
+        setDropTarget(null);
+        return;
+    }
+    
     e.dataTransfer.dropEffect = 'move';
 
     const target = e.currentTarget;
@@ -217,6 +232,17 @@ export function AppointmentSchedule() {
   const handleDrop = async (e: DragEvent<HTMLDivElement>, targetBarberId: string) => {
     e.preventDefault();
     if (!draggedAppointment || !user || !settings || !dropTarget) return;
+
+    // Final validation check on drop
+    const qualifiedStaff = serviceToStaffMap.get(draggedAppointment.service);
+    if (!qualifiedStaff || !qualifiedStaff.includes(targetBarberId)) {
+        toast({
+            variant: 'destructive',
+            title: 'Movimento Inválido',
+            description: `Este profissional não realiza o serviço de "${draggedAppointment.service}".`,
+        });
+        return;
+    }
 
     const { time: newTime } = dropTarget;
 
@@ -371,10 +397,10 @@ export function AppointmentSchedule() {
                                         )}
                                       >
                                         <AppointmentDetailsDialog appointment={app} onAppointmentUpdate={handleAppointmentChange}>
-                                             <div className="w-full h-full flex flex-col">
+                                             <div className="w-full h-full flex flex-col justify-start items-start text-left">
                                                 <p className="text-sm font-bold truncate">{app.service}</p>
                                                 <p className="text-xs truncate opacity-80">{app.client.name}</p>
-                                                <p className="text-xs opacity-70 absolute bottom-1">{app.time}</p>
+                                                <p className="text-xs opacity-70 mt-auto">{app.time}</p>
                                             </div>
                                         </AppointmentDetailsDialog>
                                       </div>
