@@ -138,6 +138,8 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
   }, [selectedService, services, staff, form]);
 
   useEffect(() => {
+    if (!isEditing) return;
+    
     const generateAndFilterTimeSlots = async () => {
       if (!settings || !selectedDate || !user?.uid) { setTimeSlots([]); return; }
       const dayKeys: (keyof DayHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -189,9 +191,9 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
       } catch (error) { console.error("Failed to fetch schedule", error); setTimeSlots([]); }
       finally { setSlotsLoading(false); }
     };
-    if (isEditing) {
-      generateAndFilterTimeSlots();
-    }
+    
+    generateAndFilterTimeSlots();
+    
   }, [settings, selectedDate, selectedBarberId, selectedService, user, form, services, appointment.id, isEditing]);
 
   const onSubmit = async (data: EditAppointmentFormValues) => {
@@ -297,9 +299,10 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-              {isEditing ? (
-                <div className="space-y-4 py-4">
-                   <FormField control={form.control} name="service" render={({ field }) => (
+              <div className="py-4">
+                {isEditing ? (
+                  <div className="space-y-4">
+                    <FormField control={form.control} name="service" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Serviço</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
@@ -308,9 +311,8 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
                         </Select>
                         <FormMessage />
                       </FormItem>
-                    )}
-                  />
-                   <FormField control={form.control} name="barberId" render={({ field }) => (
+                    )} />
+                    <FormField control={form.control} name="barberId" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Profissional</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value} disabled={!selectedService}>
@@ -319,106 +321,105 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
                         </Select>
                         <FormMessage />
                       </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="date" render={({ field }) => (
+                    )} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="date" render={({ field }) => (
                         <FormItem className="flex flex-col">
                           <FormLabel>Data</FormLabel>
                           <Popover>
-                            <PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal",!field.value && "text-muted-foreground")}><>{field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Escolha</span>} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus locale={ptBR}/></PopoverContent>
+                            <PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}><>{field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Escolha</span>} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))} initialFocus locale={ptBR} /></PopoverContent>
                           </Popover><FormMessage />
                         </FormItem>
-                      )}
-                    />
-                     <FormField control={form.control} name="time" render={({ field }) => (
+                      )} />
+                      <FormField control={form.control} name="time" render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Hora</FormLabel>
+                          <FormLabel>Hora</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value} disabled={slotsLoading || !selectedBarberId || !selectedService || timeSlots.length === 0}>
-                          <FormControl><SelectTrigger><SelectValue placeholder={slotsLoading ? "Carregando..." : !selectedService ? "Escolha serviço" : !selectedBarberId ? "Escolha prof." : timeSlots.length === 0 ? "Sem horários" : "Selecione"} /></SelectTrigger></FormControl>
-                          <SelectContent>{timeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
-                        </Select><FormMessage />
+                            <FormControl><SelectTrigger><SelectValue placeholder={slotsLoading ? "Carregando..." : !selectedService ? "Escolha serviço" : !selectedBarberId ? "Escolha prof." : timeSlots.length === 0 ? "Sem horários" : "Selecione"} /></SelectTrigger></FormControl>
+                            <SelectContent>{timeSlots.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
+                          </Select><FormMessage />
                         </FormItem>
-                    )}/>
+                      )} />
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-4 py-4">
-                  <div className="text-sm space-y-2">
-                    <p><strong>Cliente:</strong> {appointment.client.name}</p>
-                    <p><strong>Serviço:</strong> {appointment.service}</p>
-                    <p><strong>Profissional:</strong> {appointment.barber.name}</p>
-                    <p><strong>Data:</strong> {format(new Date(appointment.date.replace(/-/g, '/')), 'PPP', { locale: ptBR })} às {appointment.time}</p>
-                    <p><strong>Status:</strong> {appointment.status}</p>
-                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="text-sm space-y-2">
+                      <p><strong>Cliente:</strong> {appointment.client.name}</p>
+                      <p><strong>Serviço:</strong> {appointment.service}</p>
+                      <p><strong>Profissional:</strong> {appointment.barber.name}</p>
+                      <p><strong>Data:</strong> {format(new Date(appointment.date.replace(/-/g, '/')), 'PPP', { locale: ptBR })} às {appointment.time}</p>
+                      <p><strong>Status:</strong> {appointment.status}</p>
+                    </div>
 
-                  {appointment.status === 'Em atendimento' && (
-                    <>
-                      <Separator />
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Produtos Vendidos</h4>
-                        <div className="flex gap-2">
+                    {appointment.status === 'Em atendimento' && (
+                      <>
+                        <Separator />
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">Produtos Vendidos</h4>
+                          <div className="flex gap-2">
                             <Select value={selectedProductId} onValueChange={setSelectedProductId}>
                               <SelectTrigger><SelectValue placeholder="Selecione um produto..." /></SelectTrigger>
                               <SelectContent>{products.map(p => <SelectItem key={p.id} value={p.id} disabled={p.stock <= 0}>{p.name} ({p.stock})</SelectItem>)}</SelectContent>
                             </Select>
                             <Button type="button" size="icon" onClick={handleAddProduct} disabled={!selectedProductId}><PlusCircle className="h-4 w-4" /></Button>
-                        </div>
-                        <div className="space-y-1 pt-2">
-                          {(appointment.soldProducts || []).map(p => (
-                            <div key={p.productId} className="flex justify-between items-center text-xs">
-                              <span>{p.name} (x{p.quantity})</span>
-                              <div className='flex items-center gap-2'>
-                                <span>R$ {(p.price * p.quantity).toFixed(2)}</span>
-                                <Button type='button' variant='ghost' size='icon' className='h-5 w-5' onClick={() => handleRemoveProduct(p.productId)}><X className='h-3 w-3'/></Button>
+                          </div>
+                          <div className="space-y-1 pt-2">
+                            {(appointment.soldProducts || []).map(p => (
+                              <div key={p.productId} className="flex justify-between items-center text-xs">
+                                <span>{p.name} (x{p.quantity})</span>
+                                <div className='flex items-center gap-2'>
+                                  <span>R$ {(p.price * p.quantity).toFixed(2)}</span>
+                                  <Button type='button' variant='ghost' size='icon' className='h-5 w-5' onClick={() => handleRemoveProduct(p.productId)}><X className='h-3 w-3' /></Button>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
               
               <DialogFooter className="sm:justify-between">
                 {isEditing ? (
                   <div className="flex w-full justify-between items-center">
-                      <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                              <Button type="button" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                                  <Trash2 className="mr-2 h-4 w-4" />Excluir
-                              </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                              <AlertDialogHeader>
-                                  <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                                  <AlertDialogDescription>Esta ação não pode ser desfeita e excluirá permanentemente o agendamento.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={handleDelete} disabled={deleteLoading} className={buttonVariants({ variant: "destructive" })}>
-                                      {deleteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sim, excluir'}
-                                  </AlertDialogAction>
-                              </AlertDialogFooter>
-                          </AlertDialogContent>
-                      </AlertDialog>
-                      <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
-                        <Button type="submit" disabled={loading || !form.formState.isDirty}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar'}</Button>
-                      </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button type="button" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                          <Trash2 className="mr-2 h-4 w-4" />Excluir
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                          <AlertDialogDescription>Esta ação não pode ser desfeita e excluirá permanentemente o agendamento.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDelete} disabled={deleteLoading} className={buttonVariants({ variant: "destructive" })}>
+                            {deleteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sim, excluir'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                      <Button type="submit" disabled={loading || !form.formState.isDirty}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar'}</Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex w-full justify-between items-center">
-                    <Button type="button" variant="ghost" onClick={() => setIsEditing(true)} disabled={appointment.status === 'Concluído' || appointment.status === 'Em atendimento'}><Edit className='mr-2 h-4 w-4'/>Editar</Button>
+                    <Button type="button" variant="ghost" onClick={() => setIsEditing(true)} disabled={appointment.status === 'Concluído' || appointment.status === 'Em atendimento'}><Edit className='mr-2 h-4 w-4' />Editar</Button>
                     <div className='flex gap-2'>
                       {appointment.status !== 'Concluído' && (
-                          <DialogClose asChild><Button type="button" variant="outline">Fechar</Button></DialogClose>
+                        <DialogClose asChild><Button type="button" variant="outline">Fechar</Button></DialogClose>
                       )}
                       {appointment.status === 'Concluído' ? <Button size="sm" className="bg-success text-success-foreground hover:bg-success/90" disabled>Concluído</Button>
-                      : appointment.status === 'Em atendimento' ? <Button size="sm" onClick={handleOpenPaymentDialog}>Finalizar Atendimento</Button>
-                      : <Button variant="outline" size="sm" onClick={() => handleStatusChange('Em atendimento')}>Iniciar Atendimento</Button>}
+                        : appointment.status === 'Em atendimento' ? <Button size="sm" onClick={handleOpenPaymentDialog}>Finalizar Atendimento</Button>
+                          : <Button variant="outline" size="sm" onClick={() => handleStatusChange('Em atendimento')}>Iniciar Atendimento</Button>}
                     </div>
                   </div>
                 )}
@@ -442,16 +443,16 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
             <div>
               <Label className="font-semibold">Forma de Pagamento</Label>
               <RadioGroup value={selectedPaymentMethod} onValueChange={(v) => { setSelectedPaymentMethod(v); if (v !== 'Cortesia') setSelectedCourtesyType(null); }} className="gap-4 mt-2">
-                {paymentMethods.map(m => (<div key={m} className="flex items-center space-x-2"><RadioGroupItem value={m} id={`p-${m}`}/><Label htmlFor={`p-${m}`} className="font-normal">{m}</Label></div>))}
+                {paymentMethods.map(m => (<div key={m} className="flex items-center space-x-2"><RadioGroupItem value={m} id={`p-${m}`} /><Label htmlFor={`p-${m}`} className="font-normal">{m}</Label></div>))}
                 {serviceIsIncludedInSubscription && <div className="flex items-center space-x-2"><RadioGroupItem value="Assinante" id="p-sub" /><Label htmlFor="p-sub" className="font-normal">Assinante</Label></div>}
               </RadioGroup>
               {selectedPaymentMethod === 'Cortesia' && (
-              <div className="pl-6 pt-4 border-l-2 ml-2 mt-2 space-y-4">
-                <Label className="font-semibold">Tipo de Cortesia</Label>
-                <RadioGroup value={selectedCourtesyType || ''} onValueChange={(v) => setSelectedCourtesyType(v as CourtesyType)} className="gap-4 mt-2">
-                {courtesyTypes.map(t => (<div key={t} className="flex items-center space-x-2"><RadioGroupItem value={t} id={`c-${t}`}/><Label htmlFor={`c-${t}`} className="font-normal">{t}</Label></div>))}
-                </RadioGroup>
-              </div>
+                <div className="pl-6 pt-4 border-l-2 ml-2 mt-2 space-y-4">
+                  <Label className="font-semibold">Tipo de Cortesia</Label>
+                  <RadioGroup value={selectedCourtesyType || ''} onValueChange={(v) => setSelectedCourtesyType(v as CourtesyType)} className="gap-4 mt-2">
+                    {courtesyTypes.map(t => (<div key={t} className="flex items-center space-x-2"><RadioGroupItem value={t} id={`c-${t}`} /><Label htmlFor={`c-${t}`} className="font-normal">{t}</Label></div>))}
+                  </RadioGroup>
+                </div>
               )}
             </div>
           </div>
