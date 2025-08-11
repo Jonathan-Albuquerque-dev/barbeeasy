@@ -40,10 +40,6 @@ const editAppointmentSchema = z.object({
 type EditAppointmentFormValues = z.infer<typeof editAppointmentSchema>;
 type BarbershopSettings = { operatingHours: DayHours; appointmentInterval: 30 | 60 };
 
-const paymentMethods = ['Dinheiro', 'Cartão de Crédito/Débito', 'Pix', 'Cortesia'] as const;
-const courtesyTypes = ['Pontos Fidelidade', 'Prêmio'] as const;
-type CourtesyType = typeof courtesyTypes[number];
-
 interface EditAppointmentDialogProps {
   onAppointmentUpdate: () => void;
   children: React.ReactNode;
@@ -64,7 +60,6 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('Dinheiro');
-  const [selectedCourtesyType, setSelectedCourtesyType] = useState<CourtesyType | null>(null);
   const [totalValue, setTotalValue] = useState(0);
 
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -223,11 +218,11 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
     finally { setDeleteLoading(false); }
   };
 
-  const handleStatusChange = async (newStatus: AppointmentStatus, paymentData?: { method: string, total: number }) => {
+  const handleStatusChange = async (newStatus: AppointmentStatus, paymentMethod?: string) => {
     if (!user || newStatus === appointment.status) return;
     setLoading(true);
     try {
-      await updateAppointmentStatus(user.uid, appointment.id, newStatus, paymentData?.method);
+      await updateAppointmentStatus(user.uid, appointment.id, newStatus, paymentMethod);
       onAppointmentUpdate();
       toast({ title: 'Sucesso!', description: 'Status do agendamento atualizado.' });
       if (paymentDialogOpen) setPaymentDialogOpen(false);
@@ -269,8 +264,7 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
   };
   
   const handleConfirmCompletion = async () => {
-    const finalPaymentMethod = selectedPaymentMethod === 'Cortesia' ? `Cortesia (${selectedCourtesyType})` : selectedPaymentMethod;
-    await handleStatusChange('Concluído', { method: finalPaymentMethod, total: valueToPay });
+    await handleStatusChange('Concluído', selectedPaymentMethod);
   };
 
   const isClientSubscribedAndActive = useMemo(() => {
@@ -280,13 +274,12 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
   
   const serviceIsIncludedInSubscription = useMemo(() => isClientSubscribedAndActive && !!appointment.client.subscription?.includedServices.some(s => s.serviceName === appointment.service), [isClientSubscribedAndActive, appointment.client.subscription, appointment.service]);
 
-  const productsTotal = useMemo(() => (appointment.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0), [appointment.soldProducts]);
-  
   const valueToPay = useMemo(() => {
-    if (selectedPaymentMethod === 'Assinante') return productsTotal;
-    if (selectedPaymentMethod === 'Cortesia') return 0;
+    if (selectedPaymentMethod === 'Assinante') {
+      return (appointment.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
+    }
     return totalValue;
-  }, [selectedPaymentMethod, totalValue, productsTotal]);
+  }, [selectedPaymentMethod, totalValue, appointment.soldProducts]);
 
   return (
     <>
@@ -383,7 +376,6 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
                   </div>
                 )}
               </div>
-
               <DialogFooter className="sm:justify-between">
                 {isEditing ? (
                   <div className="flex w-full justify-between items-center">
@@ -443,23 +435,17 @@ export function EditAppointmentDialog({ onAppointmentUpdate, children, appointme
             </div>
             <div>
               <Label className="font-semibold">Forma de Pagamento</Label>
-              <RadioGroup value={selectedPaymentMethod} onValueChange={(v) => { setSelectedPaymentMethod(v); if (v !== 'Cortesia') setSelectedCourtesyType(null); }} className="gap-4 mt-2">
-                {paymentMethods.map(m => (<div key={m} className="flex items-center space-x-2"><RadioGroupItem value={m} id={`p-${m}`} /><Label htmlFor={`p-${m}`} className="font-normal">{m}</Label></div>))}
-                {serviceIsIncludedInSubscription && <div className="flex items-center space-x-2"><RadioGroupItem value="Assinante" id="p-sub" /><Label htmlFor="p-sub" className="font-normal">Assinante</Label></div>}
+              <RadioGroup value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod} className="gap-4 mt-2">
+                <div className="flex items-center space-x-2"><RadioGroupItem value="Dinheiro" id="p-dinheiro" /><Label htmlFor="p-dinheiro" className="font-normal">Dinheiro</Label></div>
+                <div className="flex items-center space-x-2"><RadioGroupItem value="Cartão de Crédito/Débito" id="p-cartao" /><Label htmlFor="p-cartao" className="font-normal">Cartão de Crédito/Débito</Label></div>
+                <div className="flex items-center space-x-2"><RadioGroupItem value="Pix" id="p-pix" /><Label htmlFor="p-pix" className="font-normal">Pix</Label></div>
+                {serviceIsIncludedInSubscription && <div className="flex items-center space-x-2"><RadioGroupItem value="Assinante" id="p-assinante" /><Label htmlFor="p-assinante" className="font-normal">Assinante</Label></div>}
               </RadioGroup>
-              {selectedPaymentMethod === 'Cortesia' && (
-                <div className="pl-6 pt-4 border-l-2 ml-2 mt-2 space-y-4">
-                  <Label className="font-semibold">Tipo de Cortesia</Label>
-                  <RadioGroup value={selectedCourtesyType || ''} onValueChange={(v) => setSelectedCourtesyType(v as CourtesyType)} className="gap-4 mt-2">
-                    {courtesyTypes.map(t => (<div key={t} className="flex items-center space-x-2"><RadioGroupItem value={t} id={`c-${t}`} /><Label htmlFor={`c-${t}`} className="font-normal">{t}</Label></div>))}
-                  </RadioGroup>
-                </div>
-              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleConfirmCompletion} disabled={loading || (selectedPaymentMethod === 'Cortesia' && !selectedCourtesyType)}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Confirmar Conclusão'}</Button>
+            <Button onClick={handleConfirmCompletion} disabled={loading}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Confirmar Conclusão'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

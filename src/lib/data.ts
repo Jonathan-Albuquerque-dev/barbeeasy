@@ -1,5 +1,4 @@
 
-
 // src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
@@ -274,7 +273,7 @@ export async function getServiceHistoryForClient(userId: string, clientId: strin
             const serviceInfo = serviceMap.get(app.service);
             const barberInfo = staffMap.get(app.barberId);
             const dateObject = new Date(`${app.date}T00:00:00`); 
-            const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
+            const isCourtesy = app.paymentMethod === 'Cortesia';
             const productsTotal = (app.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
             const totalValue = (serviceInfo?.price || 0) + productsTotal;
             
@@ -681,7 +680,7 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
             }
             
             const loyaltySettings = barbershopSettings.loyaltyProgram;
-            if (loyaltySettings?.enabled && paymentMethod === 'Cortesia (Pontos Fidelidade)') {
+            if (loyaltySettings?.enabled && paymentMethod === 'Cortesia') {
                 const rewardInfo = loyaltySettings.rewards.find(r => r.serviceName === appointmentData.service);
                 const pointsCost = Number(rewardInfo?.pointsCost || 0);
                 if (pointsCost === 0) throw new Error(`Este serviço não está configurado para resgate.`);
@@ -690,11 +689,11 @@ export async function updateAppointmentStatus(userId: string, appointmentId: str
 
             // --- WRITE PHASE ---
             if (loyaltySettings?.enabled) {
-                if (paymentMethod === 'Cortesia (Pontos Fidelidade)') {
+                if (paymentMethod === 'Cortesia') {
                     const rewardInfo = loyaltySettings.rewards.find(r => r.serviceName === appointmentData.service);
                     const pointsCost = Number(rewardInfo?.pointsCost || 0);
                     transaction.update(clientDocRef, { loyaltyPoints: increment(-pointsCost) });
-                } else if (!paymentMethod?.startsWith('Cortesia') && paymentMethod !== 'Assinante') {
+                } else if (paymentMethod !== 'Assinante') {
                     const serviceRule = loyaltySettings.rewards.find(r => r.serviceName === appointmentData.service);
                     const pointsToAdd = Number(serviceRule?.pointsGenerated ?? loyaltySettings?.pointsPerService ?? 1);
                     if (pointsToAdd > 0) {
@@ -742,7 +741,7 @@ export async function getDashboardStats(userId: string) {
         const serviceDurationMap = new Map(services.map(s => [s.name, s.duration]));
         
         const todaysRevenue = todayAppointments
-            .filter(a => a.status === 'Concluído' && !a.paymentMethod?.startsWith('Cortesia'))
+            .filter(a => a.status === 'Concluído' && a.paymentMethod !== 'Cortesia')
             .reduce((sum, app) => {
                 const isSubscription = app.paymentMethod === 'Assinante';
                 const servicePrice = isSubscription ? 0 : (servicePriceMap.get(app.service) || 0);
@@ -898,7 +897,7 @@ export async function getFinancialOverview(
         const staffInfo = staffMap.get(app.barberId);
         const clientInfo = clientMap.get(app.clientId);
 
-        const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
+        const isCourtesy = app.paymentMethod === 'Cortesia';
         const isSubscription = app.paymentMethod === 'Assinante';
 
         const serviceValue = serviceInfo?.price || 0;
@@ -1099,7 +1098,7 @@ export async function getCommissionsForPeriod(userId: string, barberId: string, 
             const clientName = clientMap.get(app.clientId) || 'Cliente de Balcão';
             
             const isSubscription = app.paymentMethod === 'Assinante';
-            const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
+            const isCourtesy = app.paymentMethod === 'Cortesia';
             const servicePrice = servicePriceMap.get(app.service) || 0;
             let serviceCommission = 0;
 
@@ -1309,7 +1308,7 @@ export async function getStaffPerformanceHistory(
             let serviceValue: string | number;
             if (app.paymentMethod === 'Assinante') {
                 serviceValue = 'Assinatura';
-            } else if (app.paymentMethod?.startsWith('Cortesia')) {
+            } else if (app.paymentMethod === 'Cortesia') {
                 serviceValue = 'Cortesia';
             } else {
                 serviceValue = serviceMap.get(app.service)?.price || 0;
@@ -1528,7 +1527,7 @@ export async function getAllAppointmentsForClient(userId: string, clientId: stri
             const serviceInfo = serviceMap.get(app.service);
             const barberInfo = staffMap.get(app.barberId);
             
-            const isCourtesy = app.paymentMethod?.startsWith('Cortesia');
+            const isCourtesy = app.paymentMethod === 'Cortesia';
             const productsTotal = (app.soldProducts || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
             const totalValue = (serviceInfo?.price || 0) + productsTotal;
             
