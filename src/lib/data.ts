@@ -2,7 +2,7 @@
 // src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit, Timestamp } from 'firebase/firestore';
 import { db, storage } from './firebase';
-import { format, sub, addDays } from 'fns';
+import { format, sub, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile, User } from 'firebase/auth';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
@@ -447,15 +447,8 @@ export async function getProducts(userId: string): Promise<Product[]> {
 
 export async function addProduct(userId: string, productData: Partial<Omit<Product, 'id'>>) {
     try {
-        const dataToSave = { ...productData };
-
-        if (dataToSave.imageUrl && dataToSave.imageUrl.startsWith('data:image')) {
-            const path = `products/${userId}_${Date.now()}.jpeg`;
-            dataToSave.imageUrl = await uploadImage(path, dataToSave.imageUrl);
-        }
-
         const productsCol = collection(db, getCollectionPath(userId, 'products'));
-        await addDoc(productsCol, dataToSave);
+        await addDoc(productsCol, productData);
     } catch (error) {
         console.error("Erro ao adicionar produto:", error);
         throw new Error("Não foi possível adicionar o produto.");
@@ -464,15 +457,8 @@ export async function addProduct(userId: string, productData: Partial<Omit<Produ
 
 export async function updateProduct(userId: string, productId: string, productData: Partial<Omit<Product, 'id'>>) {
     try {
-        const dataToUpdate = { ...productData };
-
-        if (dataToUpdate.imageUrl && dataToUpdate.imageUrl.startsWith('data:image')) {
-            const path = `products/${userId}_${productId}_${Date.now()}.jpeg`;
-            dataToUpdate.imageUrl = await uploadImage(path, dataToUpdate.imageUrl);
-        }
-
         const productDocRef = doc(db, getCollectionPath(userId, 'products'), productId);
-        await updateDoc(productDocRef, dataToUpdate);
+        await updateDoc(productDocRef, productData);
     } catch (error) {
         console.error("Erro ao atualizar produto:", error);
         throw new Error("Não foi possível atualizar os dados do produto.");
@@ -862,32 +848,13 @@ export async function getBarbershopSettings(userId: string): Promise<BarbershopS
 export async function updateBarbershopProfile(userId: string, data: { name: string; avatarUrl: string; whatsappNumber?: string; }) {
     try {
         const barbershopDocRef = doc(db, 'barbershops', userId);
-        const auth = getAuth();
-        const currentUser = auth.currentUser;
-
-        let finalAvatarUrl = data.avatarUrl;
-
-        // Se uma nova imagem for enviada (data URL), faça o upload
-        if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
-            const path = `barbershop_logos/${userId}_${Date.now()}.png`;
-            finalAvatarUrl = await uploadImage(path, finalAvatarUrl);
-        }
-
         const settingsToUpdate: Partial<BarbershopSettings> = {
             name: data.name,
             whatsappNumber: data.whatsappNumber || '',
-            avatarUrl: finalAvatarUrl,
+            avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
         };
-
         await updateDoc(barbershopDocRef, settingsToUpdate);
 
-        // Atualiza também o perfil de autenticação do Firebase para consistência
-        if (currentUser && (data.name !== currentUser.displayName || finalAvatarUrl !== currentUser.photoURL)) {
-             await updateAuthProfile(currentUser, { 
-                displayName: data.name, 
-                photoURL: finalAvatarUrl 
-            });
-        }
     } catch (error) {
         console.error("Erro ao atualizar perfil da barbearia:", error);
         throw new Error("Não foi possível atualizar o perfil.");
