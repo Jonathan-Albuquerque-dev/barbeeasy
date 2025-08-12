@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -16,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { ImagePicker } from '../ui/image-picker';
 
 type Profession = {
   id: string;
@@ -29,7 +29,7 @@ const staffSchema = z.object({
   serviceCommissionRate: z.coerce.number().min(0, { message: 'A comissão não pode ser negativa.' }).max(100, { message: 'A comissão não pode ser maior que 100.' }),
   productCommissionRate: z.coerce.number().min(0, { message: 'A comissão não pode ser negativa.' }).max(100, { message: 'A comissão não pode ser maior que 100.' }),
   bio: z.string().min(10, { message: 'A biografia deve ter pelo menos 10 caracteres.' }),
-  avatarUrl: z.string().url({ message: 'Por favor, insira uma URL de imagem válida.' }).or(z.literal('')).optional(),
+  avatarUrl: z.string().nullable(),
 });
 
 type StaffFormValues = z.infer<typeof staffSchema>;
@@ -56,7 +56,7 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
       serviceCommissionRate: 0,
       productCommissionRate: 0,
       bio: '',
-      avatarUrl: '',
+      avatarUrl: null,
     },
   });
 
@@ -75,7 +75,7 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
         serviceCommissionRate: staffMember.serviceCommissionRate * 100,
         productCommissionRate: staffMember.productCommissionRate * 100,
         bio: staffMember.bio,
-        avatarUrl: staffMember.avatarUrl || '',
+        avatarUrl: staffMember.avatarUrl || null,
       });
     }
   }, [open, staffMember, form]);
@@ -97,7 +97,7 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
         serviceCommissionRate: data.serviceCommissionRate / 100,
         productCommissionRate: data.productCommissionRate / 100,
         bio: data.bio,
-        avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
+        avatarUrl: data.avatarUrl,
       };
 
       await updateStaff(user.uid, staffMember.id, transformedData);
@@ -134,6 +134,23 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <FormField
+              control={form.control}
+              name="avatarUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                     <ImagePicker
+                        label="Foto de Perfil"
+                        currentImage={field.value}
+                        onImageChange={field.onChange}
+                        fallbackText={form.watch('name')?.charAt(0) || 'S'}
+                      />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="name"
@@ -221,19 +238,6 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
                 )}
                 />
             </div>
-             <FormField
-              control={form.control}
-              name="avatarUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL da Foto de Perfil</FormLabel>
-                  <FormControl>
-                    <Input type="url" placeholder="https://exemplo.com/foto.png" {...field} value={field.value || ''}/>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">Cancelar</Button>

@@ -13,11 +13,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { ImagePicker } from '../ui/image-picker';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'O nome do estabelecimento é obrigatório.'),
-  avatarUrl: z.string().url('Insira uma URL de imagem válida.').or(z.literal('')),
+  avatarUrl: z.string().nullable(),
   whatsappNumber: z.string().optional(),
 });
 
@@ -31,12 +31,12 @@ export function ProfileSettings() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: '',
-      avatarUrl: '',
+      avatarUrl: null,
       whatsappNumber: '',
     },
   });
 
-  const { formState: { isSubmitting, isDirty }, reset, watch } = form;
+  const { formState: { isSubmitting, isDirty }, reset } = form;
 
   useEffect(() => {
     if (user) {
@@ -44,7 +44,7 @@ export function ProfileSettings() {
         if (settings) {
           reset({
             name: settings.name,
-            avatarUrl: settings.avatarUrl || '',
+            avatarUrl: settings.avatarUrl || null,
             whatsappNumber: settings.whatsappNumber || '',
           });
         }
@@ -60,7 +60,9 @@ export function ProfileSettings() {
         title: 'Sucesso!',
         description: 'O perfil do seu negócio foi atualizado.',
       });
-      reset(data); // Resets the form's dirty state
+      // A função de atualização lida com o upload, então podemos resetar com a URL do data URL
+      // ou a URL original, pois a UI já está mostrando a prévia.
+      reset(data);
     } catch (error) {
       console.error(error);
       toast({
@@ -70,8 +72,6 @@ export function ProfileSettings() {
       });
     }
   };
-  
-  const watchedAvatarUrl = watch('avatarUrl');
 
   return (
     <Card>
@@ -88,19 +88,17 @@ export function ProfileSettings() {
                 control={form.control}
                 name="avatarUrl"
                 render={({ field }) => (
-                <FormItem className='flex items-center gap-4'>
-                    <Avatar className='h-20 w-20'>
-                        <AvatarImage src={watchedAvatarUrl} data-ai-hint="logo barbershop" />
-                        <AvatarFallback>{form.watch('name')?.charAt(0) || 'B'}</AvatarFallback>
-                    </Avatar>
-                    <div className='flex-grow space-y-2'>
-                        <FormLabel>URL da Foto/Logo</FormLabel>
-                        <FormControl>
-                            <Input placeholder="https://exemplo.com/sua-logo.png" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </div>
-                </FormItem>
+                  <FormItem>
+                    <FormControl>
+                       <ImagePicker
+                          label="Foto/Logo do Estabelecimento"
+                          currentImage={field.value}
+                          onImageChange={field.onChange}
+                          fallbackText={form.watch('name')?.charAt(0) || 'B'}
+                        />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
             />
             <FormField
