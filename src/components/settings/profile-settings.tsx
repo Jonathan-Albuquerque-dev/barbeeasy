@@ -7,19 +7,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getBarbershopSettings, updateBarbershopProfile, BarbershopSettings } from '@/lib/data';
+import { getBarbershopSettings, updateBarbershopProfile } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Edit } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { getAuth, updateProfile } from 'firebase/auth';
+import { ImageCropper } from '../ui/image-cropper';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'O nome do estabelecimento é obrigatório.'),
-  avatarUrl: z.string().url("Por favor, insira uma URL de imagem válida.").or(z.literal("")).optional(),
+  avatarUrl: z.string().optional(),
   whatsappNumber: z.string().optional(),
 });
 
@@ -28,6 +29,8 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 export function ProfileSettings() {
   const { user, forceUserRefresh } = useAuth();
   const { toast } = useToast();
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
+  const [newAvatarDataUrl, setNewAvatarDataUrl] = useState<string | null>(null);
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -38,7 +41,7 @@ export function ProfileSettings() {
     },
   });
 
-  const { formState: { isSubmitting, isDirty }, reset, watch } = form;
+  const { formState: { isSubmitting, isDirty }, reset, watch, setValue } = form;
 
   useEffect(() => {
     if (user) {
@@ -53,33 +56,42 @@ export function ProfileSettings() {
       });
     }
   }, [user, reset]);
-
-  const onSubmit = async (data: ProfileFormValues) => {
+  
+  const onProfileSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
 
     try {
       const auth = getAuth();
       const currentUser = auth.currentUser;
       
+      // Use the new Base64 string if it exists, otherwise use the existing URL
+      const finalAvatarUrl = newAvatarDataUrl || data.avatarUrl;
+
       const settingsToUpdate = {
           name: data.name,
           whatsappNumber: data.whatsappNumber || '',
-          avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
+          avatarUrl: finalAvatarUrl || `https://placehold.co/400x400.png`,
       };
       
       await updateBarbershopProfile(user.uid, settingsToUpdate);
 
-      if (currentUser && settingsToUpdate.avatarUrl !== currentUser.photoURL) {
-        await updateProfile(currentUser, { photoURL: settingsToUpdate.avatarUrl });
-        forceUserRefresh(); // Force refresh of user state in context
+      // Only update Auth profile if there's a new image.
+      // Firebase Auth photoURL requires a live URL, not a Data URI.
+      // For this implementation, we will skip updating the auth profile photo
+      // and rely on fetching the Data URI from Firestore.
+      if (currentUser && newAvatarDataUrl) {
+         // In a Storage-based approach, you would update the auth profile here:
+         // await updateProfile(currentUser, { photoURL: uploadedImageUrl });
+         forceUserRefresh(); // Force refresh to get potentially updated user data.
       }
       
       toast({
         title: 'Sucesso!',
         description: 'O perfil do seu negócio foi atualizado.',
       });
-
-      reset(settingsToUpdate);
+      
+      setNewAvatarDataUrl(null); // Clear the temp new avatar state
+      reset(settingsToUpdate); // Update form with new values and reset dirty state
 
     } catch (error) {
       console.error(error);
@@ -91,76 +103,91 @@ export function ProfileSettings() {
     }
   };
   
+  const handleCroppedImage = (dataUrl: string) => {
+    setNewAvatarDataUrl(dataUrl);
+    setValue('avatarUrl', dataUrl, { shouldDirty: true });
+    setIsCropperOpen(false);
+  };
+
   const watchedName = watch('name');
   const watchedAvatarUrl = watch('avatarUrl');
 
+  const isFormDirty = isDirty || newAvatarDataUrl !== null;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Perfil do Estabelecimento</CardTitle>
-        <CardDescription>
-          Atualize o nome e as informações de contato do seu negócio.
-        </CardDescription>
-      </CardHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6">
-            <div className='flex items-center gap-4'>
-                <Avatar className='h-20 w-20'>
-                    <AvatarImage src={watchedAvatarUrl || undefined} data-ai-hint="logo barbershop" />
-                    <AvatarFallback>{watchedName?.charAt(0) || 'B'}</AvatarFallback>
-                </Avatar>
-                <div className='flex-grow'>
-                     <FormField
-                        control={form.control}
-                        name="avatarUrl"
-                        render={({ field }) => (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Perfil do Estabelecimento</CardTitle>
+          <CardDescription>
+            Atualize o nome e as informações de contato do seu negócio.
+          </CardDescription>
+        </CardHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onProfileSubmit)}>
+            <CardContent className="space-y-6">
+              <div className='flex items-center gap-4'>
+                  <div className="relative">
+                      <Avatar className='h-20 w-20'>
+                          <AvatarImage src={newAvatarDataUrl || watchedAvatarUrl || undefined} data-ai-hint="logo barbershop" />
+                          <AvatarFallback>{watchedName?.charAt(0) || 'B'}</AvatarFallback>
+                      </Avatar>
+                       <Button 
+                          type="button" 
+                          size="icon" 
+                          variant="secondary" 
+                          className="absolute bottom-0 right-0 rounded-full h-7 w-7"
+                          onClick={() => setIsCropperOpen(true)}
+                        >
+                          <Edit className="h-4 w-4" />
+                          <span className="sr-only">Alterar foto</span>
+                       </Button>
+                  </div>
+                  <div className='flex-grow'>
+                       <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
                             <FormItem>
-                                <FormLabel>URL da Foto/Logo</FormLabel>
-                                <FormControl>
-                                <Input placeholder="https://exemplo.com/sua-foto.png" {...field} value={field.value || ''} />
-                                </FormControl>
-                                <FormMessage />
+                              <FormLabel>Nome do Estabelecimento</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Seu Salão" {...field} />
+                              </FormControl>
+                              <FormMessage />
                             </FormItem>
-                        )}
-                    />
-                </div>
-            </div>
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Estabelecimento</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Seu Salão" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="whatsappNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Número do WhatsApp</FormLabel>
-                  <FormControl>
-                    <Input type="tel" placeholder="5511999998888" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-          <CardFooter className="border-t px-6 py-4">
-            <Button type="submit" disabled={isSubmitting || !isDirty}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Salvar Alterações
-            </Button>
-          </CardFooter>
-        </form>
-      </Form>
-    </Card>
+                          )}
+                        />
+                  </div>
+              </div>
+              <FormField
+                control={form.control}
+                name="whatsappNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número do WhatsApp</FormLabel>
+                    <FormControl>
+                      <Input type="tel" placeholder="5511999998888" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4">
+              <Button type="submit" disabled={isSubmitting || !isFormDirty}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar Alterações
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+      </Card>
+      
+      <ImageCropper 
+        isOpen={isCropperOpen} 
+        onClose={() => setIsCropperOpen(false)}
+        onImageCropped={handleCroppedImage}
+      />
+    </>
   );
 }
