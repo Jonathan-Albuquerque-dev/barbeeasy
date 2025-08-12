@@ -14,12 +14,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2 } from 'lucide-react';
-import { ImagePicker } from '../ui/image-picker';
 
 const productSchema = z.object({
   name: z.string().min(2, { message: 'O nome do produto é obrigatório.' }),
   description: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
-  imageUrl: z.string().nullable(),
+  imageUrl: z.string().url({ message: 'Insira uma URL de imagem válida.' }).or(z.literal('')).optional(),
   purchasePrice: z.coerce.number().positive({ message: 'O preço de compra deve ser um número positivo.' }),
   price: z.coerce.number().positive({ message: 'O preço de venda deve ser um número positivo.' }),
   stock: z.coerce.number().int().min(0, { message: 'O estoque não pode ser negativo.' }),
@@ -43,7 +42,7 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
     defaultValues: {
       name: '',
       description: '',
-      imageUrl: null,
+      imageUrl: '',
       purchasePrice: '' as any,
       price: '' as any,
       stock: '' as any,
@@ -92,23 +91,6 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-             <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                     <ImagePicker
-                        label="Foto do Produto"
-                        currentImage={field.value}
-                        onImageChange={field.onChange}
-                        fallbackText="P"
-                      />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="name"
@@ -130,6 +112,19 @@ export function AddProductDialog({ onProductAdded, children }: AddProductDialogP
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Descreva o produto..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL da Imagem (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input type="url" placeholder="https://exemplo.com/imagem.png" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

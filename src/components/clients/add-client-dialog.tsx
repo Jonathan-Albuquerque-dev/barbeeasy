@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { ImagePicker } from '../ui/image-picker';
 
 const clientSchema = z.object({
   name: z.string().min(2, { message: 'O nome do cliente é obrigatório.' }),
@@ -22,7 +21,7 @@ const clientSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   loyaltyStatus: z.enum(['Bronze', 'Prata', 'Ouro'], { required_error: 'O status de fidelidade é obrigatório.' }),
-  avatarUrl: z.string().nullable(),
+  avatarUrl: z.string().url({ message: 'Por favor, insira uma URL de imagem válida.' }).or(z.literal('')).optional(),
 });
 
 type ClientFormValues = z.infer<typeof clientSchema>;
@@ -46,7 +45,7 @@ export function AddClientDialog({ onClientAdded, children }: AddClientDialogProp
       phone: '',
       address: '',
       loyaltyStatus: 'Bronze',
-      avatarUrl: null,
+      avatarUrl: '',
     },
   });
 
@@ -63,6 +62,7 @@ export function AddClientDialog({ onClientAdded, children }: AddClientDialogProp
         email: data.email || '',
         phone: data.phone || '',
         address: data.address || '',
+        avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
         preferences: {
             preferredServices: [],
             preferredBarber: 'Nenhum',
@@ -107,23 +107,6 @@ export function AddClientDialog({ onClientAdded, children }: AddClientDialogProp
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-             <FormField
-              control={form.control}
-              name="avatarUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                     <ImagePicker
-                        label="Foto de Perfil (Opcional)"
-                        currentImage={field.value}
-                        onImageChange={field.onChange}
-                        fallbackText={form.watch('name')?.charAt(0) || 'C'}
-                      />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="name"
@@ -173,6 +156,19 @@ export function AddClientDialog({ onClientAdded, children }: AddClientDialogProp
                   <FormLabel>Endereço (Opcional)</FormLabel>
                   <FormControl>
                     <Input placeholder="Rua das Flores, 123" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="avatarUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL da Foto de Perfil (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input type="url" placeholder="https://exemplo.com/foto.png" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

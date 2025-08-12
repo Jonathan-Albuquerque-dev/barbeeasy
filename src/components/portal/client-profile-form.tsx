@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -13,12 +14,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
-import { ImagePicker } from '../ui/image-picker';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'O nome é obrigatório.'),
   phone: z.string().min(8, 'Insira um telefone válido.'),
-  avatarUrl: z.string().nullable(),
+  avatarUrl: z.string().url('Insira uma URL de imagem válida.').or(z.literal('')),
 });
 
 const passwordSchema = z.object({
@@ -39,12 +40,12 @@ interface ClientProfileFormProps {
 
 export function ClientProfileForm({ client }: ClientProfileFormProps) {
   const { toast } = useToast();
-  const { session, setClientSession } = useClientSession();
+  const { session } = useClientSession();
 
   // Profile Form
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { name: '', phone: '', avatarUrl: null },
+    defaultValues: { name: '', phone: '', avatarUrl: '' },
   });
   
   // Password Form
@@ -58,7 +59,7 @@ export function ClientProfileForm({ client }: ClientProfileFormProps) {
         profileForm.reset({
             name: client.name,
             phone: client.phone,
-            avatarUrl: client.avatarUrl || null,
+            avatarUrl: client.avatarUrl || '',
         });
     }
   }, [client, profileForm]);
@@ -69,11 +70,10 @@ export function ClientProfileForm({ client }: ClientProfileFormProps) {
     try {
       await updateClientProfile(session.barbershopId, client.id, data);
       toast({ title: 'Sucesso!', description: 'Seu perfil foi atualizado.' });
-      
+      profileForm.reset(data);
+      // Optional: update session storage if name/avatar changes
       const updatedSession = { ...session, name: data.name, avatarUrl: data.avatarUrl };
-      setClientSession(updatedSession);
-      
-      profileForm.reset(data); // Reseta para o novo estado
+      localStorage.setItem('clientSession', JSON.stringify(updatedSession));
     } catch (error) {
       console.error(error);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o perfil.' });
@@ -95,6 +95,8 @@ export function ClientProfileForm({ client }: ClientProfileFormProps) {
     }
   };
 
+  const watchedAvatarUrl = profileForm.watch('avatarUrl');
+
   return (
     <div className="space-y-8">
         {/* Profile Details Form */}
@@ -110,17 +112,17 @@ export function ClientProfileForm({ client }: ClientProfileFormProps) {
                             control={profileForm.control}
                             name="avatarUrl"
                             render={({ field }) => (
-                                <FormItem>
-                                    <FormControl>
-                                        <ImagePicker
-                                            label="Sua Foto de Perfil"
-                                            currentImage={field.value}
-                                            onImageChange={field.onChange}
-                                            fallbackText={profileForm.watch('name')?.charAt(0) || 'U'}
-                                        />
-                                    </FormControl>
+                            <FormItem className='flex items-center gap-4'>
+                                <Avatar className='h-20 w-20'>
+                                    <AvatarImage src={watchedAvatarUrl} data-ai-hint="person face" />
+                                    <AvatarFallback>{profileForm.watch('name')?.charAt(0) || 'U'}</AvatarFallback>
+                                </Avatar>
+                                <div className='flex-grow space-y-2'>
+                                    <FormLabel>URL da Foto</FormLabel>
+                                    <FormControl><Input placeholder="https://exemplo.com/sua-foto.png" {...field} /></FormControl>
                                     <FormMessage />
-                                </FormItem>
+                                </div>
+                            </FormItem>
                             )}
                         />
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

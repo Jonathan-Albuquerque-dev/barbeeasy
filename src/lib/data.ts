@@ -7,6 +7,7 @@ import { ptBR } from 'date-fns/locale';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile, User } from 'firebase/auth';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 
+
 // Helper para construir o caminho da coleção para um usuário específico
 const getCollectionPath = (userId: string, collectionName: string) => {
     return `barbershops/${userId}/${collectionName}`;
@@ -23,20 +24,6 @@ const getData = <T>(snapshot: any): T | undefined => {
 const getDatas = <T>(snapshot: any): T[] => {
   return snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 };
-
-// --- Funções de Upload ---
-export async function uploadImage(barbershopId: string, path: string, dataUrl: string): Promise<string> {
-    const storageRef = ref(storage, `barbershops/${barbershopId}/${path}`);
-    try {
-        const snapshot = await uploadString(storageRef, dataUrl, 'data_url');
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        return downloadURL;
-    } catch (error) {
-        console.error("Erro no upload da imagem:", error);
-        throw new Error("Não foi possível carregar a imagem.");
-    }
-}
-
 
 // --- Definições de Tipo ---
 export type Client = {
@@ -214,6 +201,12 @@ export type SubscriptionStats = {
 
 // --- Funções da API usando o Firestore ---
 
+export async function uploadImage(userId: string, path: string, dataUrl: string): Promise<string> {
+    const storageRef = ref(storage, path);
+    const snapshot = await uploadString(storageRef, dataUrl, 'data_url');
+    return getDownloadURL(snapshot.ref);
+}
+
 export async function getClients(userId: string) {
   try {
     const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
@@ -241,18 +234,18 @@ export async function getClients(userId: string) {
   }
 }
 
-export async function addClient(userId: string, clientData: Omit<Client, 'id' | 'avatarUrl'> & { avatarUrl: string | null }): Promise<string> {
+export async function addClient(userId: string, clientData: Omit<Client, 'id'>): Promise<string> {
     try {
-        let finalAvatarUrl = 'https://placehold.co/400x400.png';
-        if (clientData.avatarUrl && clientData.avatarUrl.startsWith('data:image')) {
+        let finalAvatarUrl = clientData.avatarUrl;
+        if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
             const path = `client_avatars/${userId}_${Date.now()}.png`;
-            finalAvatarUrl = await uploadImage(userId, path, clientData.avatarUrl);
+            finalAvatarUrl = await uploadImage(userId, path, finalAvatarUrl);
         }
 
         const dataToSave = {
-          ...clientData,
-          avatarUrl: finalAvatarUrl,
-        };
+            ...clientData,
+            avatarUrl: finalAvatarUrl || `https://placehold.co/400x400.png`,
+        }
 
         const clientsCol = collection(db, getCollectionPath(userId, 'clients'));
         const docRef: DocumentReference = await addDoc(clientsCol, dataToSave);
@@ -346,19 +339,19 @@ export async function getStaffById(userId: string, id: string): Promise<Staff | 
   }
 }
 
-export async function addStaff(userId: string, staffData: Omit<Staff, 'id' | 'avatarUrl'> & { avatarUrl: string | null }) {
+export async function addStaff(userId: string, staffData: Omit<Staff, 'id'>) {
     try {
-        let finalAvatarUrl = 'https://placehold.co/400x400.png';
-        if (staffData.avatarUrl && staffData.avatarUrl.startsWith('data:image')) {
+        let finalAvatarUrl = staffData.avatarUrl;
+        if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
             const path = `staff_avatars/${userId}_${Date.now()}.png`;
-            finalAvatarUrl = await uploadImage(userId, path, staffData.avatarUrl);
+            finalAvatarUrl = await uploadImage(userId, path, finalAvatarUrl);
         }
 
         const dataToSave = {
-          ...staffData,
-          avatarUrl: finalAvatarUrl,
-        };
-        
+            ...staffData,
+            avatarUrl: finalAvatarUrl || `https://placehold.co/400x400.png`,
+        }
+
         const staffCol = collection(db, getCollectionPath(userId, 'staff'));
         await addDoc(staffCol, dataToSave);
     } catch (error) {
@@ -367,7 +360,7 @@ export async function addStaff(userId: string, staffData: Omit<Staff, 'id' | 'av
     }
 }
 
-export async function updateStaff(userId: string, staffId: string, staffData: Partial<Omit<Staff, 'id' | 'avatarUrl'>> & { avatarUrl: string | null }) {
+export async function updateStaff(userId: string, staffId: string, staffData: Partial<Omit<Staff, 'id'>>) {
     try {
         let finalAvatarUrl = staffData.avatarUrl;
         if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
@@ -377,8 +370,8 @@ export async function updateStaff(userId: string, staffId: string, staffData: Pa
 
         const dataToUpdate = {
             ...staffData,
-            avatarUrl: finalAvatarUrl,
-        };
+            avatarUrl: finalAvatarUrl || staffData.avatarUrl, // Keep old if new one is not provided
+        }
 
         const staffDocRef = doc(db, getCollectionPath(userId, 'staff'), staffId);
         await updateDoc(staffDocRef, dataToUpdate);
@@ -451,18 +444,19 @@ export async function getProducts(userId: string): Promise<Product[]> {
   }
 }
 
-export async function addProduct(userId: string, productData: Omit<Product, 'id' | 'imageUrl'> & { imageUrl: string | null }) {
+export async function addProduct(userId: string, productData: Omit<Product, 'id'>) {
     try {
-        let finalImageUrl = 'https://placehold.co/600x400.png';
-        if (productData.imageUrl && productData.imageUrl.startsWith('data:image')) {
-            const path = `product_images/${userId}_${Date.now()}.png`;
-            finalImageUrl = await uploadImage(userId, path, productData.imageUrl);
+        let finalImageUrl = productData.imageUrl;
+        if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
+            const path = `products/${userId}_${Date.now()}.png`;
+            finalImageUrl = await uploadImage(userId, path, finalImageUrl);
         }
 
         const dataToSave = {
-          ...productData,
-          imageUrl: finalImageUrl,
-        };
+            ...productData,
+            imageUrl: finalImageUrl || `https://placehold.co/600x400.png`,
+        }
+
         const productsCol = collection(db, getCollectionPath(userId, 'products'));
         await addDoc(productsCol, dataToSave);
     } catch (error) {
@@ -471,18 +465,18 @@ export async function addProduct(userId: string, productData: Omit<Product, 'id'
     }
 }
 
-export async function updateProduct(userId: string, productId: string, productData: Partial<Omit<Product, 'id' | 'imageUrl'>> & { imageUrl: string | null }) {
+export async function updateProduct(userId: string, productId: string, productData: Partial<Omit<Product, 'id'>>) {
     try {
         let finalImageUrl = productData.imageUrl;
         if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
-            const path = `product_images/${userId}_${productId}_${Date.now()}.png`;
+            const path = `products/${userId}_${productId}_${Date.now()}.png`;
             finalImageUrl = await uploadImage(userId, path, finalImageUrl);
         }
 
         const dataToUpdate = {
             ...productData,
-            imageUrl: finalImageUrl,
-        };
+            imageUrl: finalImageUrl || productData.imageUrl,
+        }
 
         const productDocRef = doc(db, getCollectionPath(userId, 'products'), productId);
         await updateDoc(productDocRef, dataToUpdate);
@@ -668,7 +662,7 @@ export async function addAppointment(userId: string, appointmentData: Omit<Appoi
     }
 }
 
-export async function updateAppointmentDetails(userId: string, appointmentId: string, data: { date: string, time: string; barberId: string; service: string }) {
+export async function updateAppointmentDetails(userId: string, appointmentId: string, data: { time: string; barberId: string; date: string; service: string }) {
     const appointmentDocRef = doc(db, getCollectionPath(userId, 'appointments'), appointmentId);
     try {
         await updateDoc(appointmentDocRef, data);
@@ -892,7 +886,7 @@ export async function updateBarbershopProfile(userId: string, data: { name: stri
         const dataToUpdate: Partial<BarbershopSettings> = {
           name: data.name,
           whatsappNumber: data.whatsappNumber || '',
-          avatarUrl: finalAvatarUrl
+          avatarUrl: finalAvatarUrl || undefined
         };
         await updateDoc(barbershopDocRef, dataToUpdate);
         
@@ -1500,7 +1494,7 @@ export async function createStandaloneSale(userId: string, saleData: {
 
 // --- New Functions for Customer Portal ---
 
-export async function updateClientProfile(barbershopId: string, clientId: string, data: { name: string; phone: string; avatarUrl: string | null }) {
+export async function updateClientProfile(barbershopId: string, clientId: string, data: { name: string; phone: string; avatarUrl: string }) {
     try {
         let finalAvatarUrl = data.avatarUrl;
         if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
@@ -1511,9 +1505,9 @@ export async function updateClientProfile(barbershopId: string, clientId: string
         const dataToUpdate = {
             name: data.name,
             phone: data.phone,
-            avatarUrl: finalAvatarUrl,
-        };
-        
+            avatarUrl: finalAvatarUrl || `https://placehold.co/400x400.png`,
+        }
+
         const clientDocRef = doc(db, getCollectionPath(barbershopId, 'clients'), clientId);
         await updateDoc(clientDocRef, dataToUpdate);
     } catch (error) {
@@ -1656,3 +1650,5 @@ export async function getAllAppointmentsForClient(userId: string, clientId: stri
         return [];
     }
 }
+
+    
