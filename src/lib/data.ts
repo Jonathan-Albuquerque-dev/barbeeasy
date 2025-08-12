@@ -2,7 +2,7 @@
 // src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit, Timestamp } from 'firebase/firestore';
 import { db, storage } from './firebase';
-import { format, sub, addDays } from 'date-fns';
+import { format, sub, addDays } from 'fns';
 import { ptBR } from 'date-fns/locale';
 import { getAuth, createUserWithEmailAndPassword, updateProfile as updateAuthProfile, User } from 'firebase/auth';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
@@ -445,17 +445,13 @@ export async function getProducts(userId: string): Promise<Product[]> {
   }
 }
 
-export async function addProduct(userId: string, productData: Omit<Product, 'id'>) {
+export async function addProduct(userId: string, productData: Partial<Omit<Product, 'id'>>) {
     try {
-        let finalImageUrl = productData.imageUrl;
-        if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
-            const path = `products/${userId}_${Date.now()}.jpeg`;
-            finalImageUrl = await uploadImage(path, finalImageUrl);
-        }
+        const dataToSave = { ...productData };
 
-        const dataToSave = {
-            ...productData,
-            imageUrl: finalImageUrl || `https://placehold.co/600x400.png`,
+        if (dataToSave.imageUrl && dataToSave.imageUrl.startsWith('data:image')) {
+            const path = `products/${userId}_${Date.now()}.jpeg`;
+            dataToSave.imageUrl = await uploadImage(path, dataToSave.imageUrl);
         }
 
         const productsCol = collection(db, getCollectionPath(userId, 'products'));
@@ -866,6 +862,9 @@ export async function getBarbershopSettings(userId: string): Promise<BarbershopS
 export async function updateBarbershopProfile(userId: string, data: { name: string; avatarUrl: string; whatsappNumber?: string; }) {
     try {
         const barbershopDocRef = doc(db, 'barbershops', userId);
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+
         let finalAvatarUrl = data.avatarUrl;
 
         // Se uma nova imagem for enviada (data URL), faça o upload
@@ -882,6 +881,13 @@ export async function updateBarbershopProfile(userId: string, data: { name: stri
 
         await updateDoc(barbershopDocRef, settingsToUpdate);
 
+        // Atualiza também o perfil de autenticação do Firebase para consistência
+        if (currentUser && (data.name !== currentUser.displayName || finalAvatarUrl !== currentUser.photoURL)) {
+             await updateAuthProfile(currentUser, { 
+                displayName: data.name, 
+                photoURL: finalAvatarUrl 
+            });
+        }
     } catch (error) {
         console.error("Erro ao atualizar perfil da barbearia:", error);
         throw new Error("Não foi possível atualizar o perfil.");
