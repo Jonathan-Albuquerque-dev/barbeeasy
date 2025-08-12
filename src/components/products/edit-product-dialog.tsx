@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,11 +15,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2 } from 'lucide-react';
+import { ImagePicker } from '../ui/image-picker';
 
 const productSchema = z.object({
   name: z.string().min(2, { message: 'O nome do produto é obrigatório.' }),
   description: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
-  imageUrl: z.string().url({ message: 'Insira uma URL de imagem válida.' }).or(z.literal('')).optional(),
+  imageUrl: z.string().optional(),
   purchasePrice: z.coerce.number().positive({ message: 'O preço de compra deve ser um número positivo.' }),
   price: z.coerce.number().positive({ message: 'O preço de venda deve ser um número positivo.' }),
   stock: z.coerce.number().int().min(0, { message: 'O estoque não pode ser negativo.' }),
@@ -106,6 +108,23 @@ export function EditProductDialog({ product, onProductUpdated, children }: EditP
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormField
+                control={form.control}
+                name="imageUrl"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Foto do Produto</FormLabel>
+                    <FormControl>
+                        <ImagePicker 
+                            value={field.value} 
+                            onChange={field.onChange}
+                            fallbackText={form.watch('name')?.charAt(0) || '?'}
+                        />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
@@ -126,19 +145,6 @@ export function EditProductDialog({ product, onProductUpdated, children }: EditP
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Descreva o produto..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL da Imagem</FormLabel>
-                  <FormControl>
-                    <Input type="url" placeholder="https://exemplo.com/imagem.png" {...field} value={field.value || ''}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -189,7 +195,7 @@ export function EditProductDialog({ product, onProductUpdated, children }: EditP
               <DialogClose asChild>
                 <Button type="button" variant="outline">Cancelar</Button>
               </DialogClose>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || !form.formState.isDirty}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Alterações'}
               </Button>
             </DialogFooter>
