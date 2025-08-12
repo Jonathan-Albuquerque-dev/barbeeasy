@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'O nome do estabelecimento é obrigatório.'),
-  avatarUrl: z.string().url('Insira uma URL de imagem válida.').or(z.literal('')),
+  avatarUrl: z.any(),
   whatsappNumber: z.string().optional(),
 });
 
@@ -26,17 +27,19 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 export function ProfileSettings() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [preview, setPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: '',
-      avatarUrl: '',
+      avatarUrl: null,
       whatsappNumber: '',
     },
   });
 
-  const { formState: { isSubmitting, isDirty }, reset, watch } = form;
+  const { formState: { isSubmitting, isDirty }, reset, watch, setValue } = form;
 
   useEffect(() => {
     if (user) {
@@ -44,23 +47,73 @@ export function ProfileSettings() {
         if (settings) {
           reset({
             name: settings.name,
-            avatarUrl: settings.avatarUrl || '',
+            avatarUrl: settings.avatarUrl || null,
             whatsappNumber: settings.whatsappNumber || '',
           });
+          if (settings.avatarUrl) {
+            setPreview(settings.avatarUrl);
+          }
         }
       });
     }
   }, [user, reset]);
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setValue('avatarUrl', file, { shouldDirty: true });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
     try {
-      await updateBarbershopProfile(user.uid, data);
+        let avatarUrlToSave = data.avatarUrl;
+        if (data.avatarUrl instanceof File) {
+            const reader = new FileReader();
+            avatarUrlToSave = await new Promise((resolve) => {
+                reader.onload = (e) => resolve(e.target?.result as string);
+                reader.readAsDataURL(data.avatarUrl);
+            });
+        }
+      
+      const updateData = {
+        name: data.name,
+        whatsappNumber: data.whatsappNumber,
+        avatarUrl: avatarUrlToSave,
+      };
+
+      await updateBarbershopProfile(user.uid, updateData);
+      
       toast({
         title: 'Sucesso!',
         description: 'O perfil do seu negócio foi atualizado.',
       });
-      reset(data); // Resets the form's dirty state
+
+      // After successful save, reset form with the new URL if a new file was uploaded
+      if(updateData.avatarUrl.startsWith('data:image')) {
+        // This is a bit of a trick: we refetch settings to get the new `https://` URL
+        // and avoid keeping the large base64 string in state.
+         getBarbershopSettings(user.uid).then(settings => {
+             if (settings) {
+                 const newData = {
+                    name: settings.name,
+                    avatarUrl: settings.avatarUrl || null,
+                    whatsappNumber: settings.whatsappNumber || '',
+                 };
+                reset(newData);
+                setPreview(settings.avatarUrl || null);
+             }
+         });
+      } else {
+         reset(data); // Resets the form's dirty state
+      }
+
     } catch (error) {
       console.error(error);
       toast({
@@ -71,7 +124,7 @@ export function ProfileSettings() {
     }
   };
   
-  const watchedAvatarUrl = watch('avatarUrl');
+  const watchedName = watch('name');
 
   return (
     <Card>
@@ -84,25 +137,30 @@ export function ProfileSettings() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-6">
-             <FormField
-                control={form.control}
-                name="avatarUrl"
-                render={({ field }) => (
-                <FormItem className='flex items-center gap-4'>
-                    <Avatar className='h-20 w-20'>
-                        <AvatarImage src={watchedAvatarUrl} data-ai-hint="logo barbershop" />
-                        <AvatarFallback>{form.watch('name')?.charAt(0) || 'B'}</AvatarFallback>
-                    </Avatar>
-                    <div className='flex-grow space-y-2'>
-                        <FormLabel>URL da Foto/Logo</FormLabel>
-                        <FormControl>
-                            <Input placeholder="https://exemplo.com/sua-logo.png" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </div>
-                </FormItem>
-                )}
-            />
+             <div className='flex items-center gap-4'>
+                <Avatar className='h-20 w-20'>
+                    <AvatarImage src={preview || undefined} data-ai-hint="logo barbershop" />
+                    <AvatarFallback>{watchedName?.charAt(0) || 'B'}</AvatarFallback>
+                </Avatar>
+                <div className='flex-grow space-y-2'>
+                    <FormLabel>Foto/Logo</FormLabel>
+                    <FormControl>
+                      <>
+                        <Input 
+                            type="file" 
+                            className="hidden" 
+                            ref={fileInputRef} 
+                            onChange={handleFileChange}
+                            accept="image/png, image/jpeg, image/webp"
+                        />
+                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                            Selecionar Foto
+                        </Button>
+                      </>
+                    </FormControl>
+                    <FormMessage />
+                </div>
+            </div>
             <FormField
               control={form.control}
               name="name"
