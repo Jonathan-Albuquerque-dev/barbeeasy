@@ -16,6 +16,36 @@ interface ImagePickerProps {
   fallbackText: string;
 }
 
+const MAX_IMAGE_WIDTH = 1024;
+const IMAGE_QUALITY = 0.8;
+
+// Helper function to compress and resize image
+const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const scaleFactor = MAX_IMAGE_WIDTH / img.width;
+                canvas.width = img.width > MAX_IMAGE_WIDTH ? MAX_IMAGE_WIDTH : img.width;
+                canvas.height = img.width > MAX_IMAGE_WIDTH ? img.height * scaleFactor : img.height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    return reject(new Error('Could not get canvas context'));
+                }
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/jpeg', IMAGE_QUALITY));
+            };
+            img.onerror = (error) => reject(error);
+        };
+        reader.onerror = (error) => reject(error);
+    });
+};
+
+
 export function ImagePicker({ value, onChange, fallbackText }: ImagePickerProps) {
   const [preview, setPreview] = useState<string | undefined>(value);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,16 +92,20 @@ export function ImagePicker({ value, onChange, fallbackText }: ImagePickerProps)
   }, [cameraOpen, toast]);
 
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setPreview(base64String);
-        onChange(base64String);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedDataUrl = await compressImage(file);
+        setPreview(compressedDataUrl);
+        onChange(compressedDataUrl);
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao processar imagem',
+          description: 'Não foi possível comprimir a imagem selecionada.',
+        });
+      }
     }
   };
 
@@ -79,12 +113,19 @@ export function ImagePicker({ value, onChange, fallbackText }: ImagePickerProps)
     if (videoRef.current && canvasRef.current) {
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        
+        // Resize based on MAX_WIDTH
+        const scaleFactor = MAX_IMAGE_WIDTH / video.videoWidth;
+        const targetWidth = video.videoWidth > MAX_IMAGE_WIDTH ? MAX_IMAGE_WIDTH : video.videoWidth;
+        const targetHeight = video.videoWidth > MAX_IMAGE_WIDTH ? video.videoHeight * scaleFactor : video.videoHeight;
+        
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
         const context = canvas.getContext('2d');
+        
         if (context) {
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/png');
+            const dataUrl = canvas.toDataURL('image/jpeg', IMAGE_QUALITY);
             setPreview(dataUrl);
             onChange(dataUrl);
             setCameraOpen(false);
