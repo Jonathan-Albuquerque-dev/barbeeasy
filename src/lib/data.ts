@@ -1,3 +1,4 @@
+
 // src/lib/data.ts
 import { collection, doc, getDoc, getDocs, query, where, addDoc, updateDoc, DocumentReference, runTransaction, increment, deleteDoc, setDoc, limit, Timestamp } from 'firebase/firestore';
 import { db, storage } from './firebase';
@@ -873,28 +874,34 @@ export async function getBarbershopSettings(userId: string): Promise<BarbershopS
 
 export async function updateBarbershopProfile(userId: string, data: { name: string; whatsappNumber?: string; avatarUrl: string | null; }) {
     try {
-        const barbershopDocRef = doc(db, 'barbershops', userId);
-        const currentDataSnap = await getDoc(barbershopDocRef);
-        const currentData = currentDataSnap.data();
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (!user) throw new Error("Usuário não autenticado.");
 
+        const barbershopDocRef = doc(db, 'barbershops', userId);
+        
         let finalAvatarUrl = data.avatarUrl;
 
-        // Only upload if the avatarUrl is a new data URL
+        // Somente faz o upload se o avatarUrl for um novo data URL
         if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
             const path = `barbershop_logos/${userId}_${Date.now()}.png`;
             finalAvatarUrl = await uploadImage(userId, path, finalAvatarUrl);
-        } else {
-            // Keep the existing URL if no new image is provided
-            finalAvatarUrl = currentData?.avatarUrl || null;
         }
 
+        // Atualiza o documento da barbearia no Firestore
         const dataToUpdate: Partial<BarbershopSettings> = {
           name: data.name,
           whatsappNumber: data.whatsappNumber || '',
           avatarUrl: finalAvatarUrl
         };
-        
         await updateDoc(barbershopDocRef, dataToUpdate);
+        
+        // Atualiza o perfil do usuário no Firebase Auth
+        await updateAuthProfile(user, {
+            displayName: data.name,
+            photoURL: finalAvatarUrl
+        });
+        
     } catch (error) {
         console.error("Erro ao atualizar perfil da barbearia:", error);
         throw new Error("Não foi possível atualizar o perfil.");
