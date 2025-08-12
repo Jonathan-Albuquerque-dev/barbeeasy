@@ -1,21 +1,23 @@
+
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { app, db } from '@/lib/firebase';
-import { Loader2 } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isBarberOwner: boolean;
+  forceUserRefresh: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   isBarberOwner: false,
+  forceUserRefresh: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -23,9 +25,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isBarberOwner, setIsBarberOwner] = useState(false);
 
+  const auth = getAuth(app);
+
+  const forceUserRefresh = useCallback(async () => {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+          await currentUser.reload();
+          setUser({ ...currentUser });
+      }
+  }, [auth]);
 
   useEffect(() => {
-    const auth = getAuth(app);
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
         if (user) {
@@ -47,9 +57,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [auth]);
 
-  const value = { user, loading, isBarberOwner };
+  const value = { user, loading, isBarberOwner, forceUserRefresh };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

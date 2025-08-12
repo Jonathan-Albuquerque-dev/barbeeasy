@@ -158,7 +158,8 @@ export type LoyaltyProgramSettings = {
   pointsPerService?: number; // Keep for backward compatibility during migration
 }
 
-type BarbershopSettings = {
+export type BarbershopSettings = {
+    id: string;
     name: string;
     avatarUrl: string;
     whatsappNumber?: string;
@@ -866,35 +867,31 @@ export async function getBarbershopSettings(userId: string): Promise<BarbershopS
     }
 }
 
-export async function updateBarbershopProfile(userId: string, data: { name: string; whatsappNumber?: string; avatarUrl: string | null; }) {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (!user) throw new Error("Usuário não autenticado.");
-
-    const barbershopDocRef = doc(db, 'barbershops', userId);
-    
-    let finalAvatarUrl = data.avatarUrl;
-
+export async function updateBarbershopProfile(userId: string, data: { name: string; avatarUrl: string | File | null; whatsappNumber?: string; }): Promise<Partial<BarbershopSettings>> {
     try {
-        // Somente faz o upload se o avatarUrl for um novo data URL
-        if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
+        const barbershopDocRef = doc(db, 'barbershops', userId);
+        let currentAvatarUrl = data.avatarUrl;
+
+        if (currentAvatarUrl instanceof File) {
             const path = `barbershop_logos/${userId}_${Date.now()}.png`;
-            finalAvatarUrl = await uploadImage(userId, path, finalAvatarUrl);
+             const dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target?.result as string);
+                reader.onerror = (e) => reject(e);
+                reader.readAsDataURL(currentAvatarUrl as File);
+            });
+            currentAvatarUrl = await uploadImage(userId, path, dataUrl);
         }
 
-        // Atualiza o documento da barbearia no Firestore
         const dataToUpdate: Partial<BarbershopSettings> = {
           name: data.name,
           whatsappNumber: data.whatsappNumber || '',
-          avatarUrl: finalAvatarUrl || undefined
+          avatarUrl: currentAvatarUrl as string,
         };
+        
         await updateDoc(barbershopDocRef, dataToUpdate);
-        
-        // Atualiza o perfil do usuário no Firebase Auth
-        await updateAuthProfile(user, {
-            photoURL: finalAvatarUrl
-        });
-        
+
+        return dataToUpdate;
     } catch (error) {
         console.error("Erro ao atualizar perfil da barbearia:", error);
         throw new Error("Não foi possível atualizar o perfil.");

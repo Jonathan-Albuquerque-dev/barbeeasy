@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getBarbershopSettings, updateBarbershopProfile } from '@/lib/data';
+import { getBarbershopSettings, updateBarbershopProfile, BarbershopSettings } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { getAuth, updateProfile } from 'firebase/auth';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'O nome do estabelecimento é obrigatório.'),
@@ -25,7 +26,7 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export function ProfileSettings() {
-  const { user } = useAuth();
+  const { user, forceUserRefresh } = useAuth();
   const { toast } = useToast();
   const [preview, setPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,47 +73,33 @@ export function ProfileSettings() {
 
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
+
     try {
-      let avatarUrlToSave = data.avatarUrl;
-      if (data.avatarUrl instanceof File) {
-          const reader = new FileReader();
-          avatarUrlToSave = await new Promise((resolve) => {
-              reader.onload = (e) => resolve(e.target?.result as string);
-              reader.readAsDataURL(data.avatarUrl);
-          });
-      }
-      
-      const updateData = {
+      const updatedSettings = await updateBarbershopProfile(user.uid, {
         name: data.name,
         whatsappNumber: data.whatsappNumber,
-        avatarUrl: avatarUrlToSave,
-      };
+        avatarUrl: data.avatarUrl,
+      });
 
-      await updateBarbershopProfile(user.uid, updateData);
+      // After successful save to Firestore, update Auth profile
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (currentUser && updatedSettings.avatarUrl !== currentUser.photoURL) {
+        await updateProfile(currentUser, { photoURL: updatedSettings.avatarUrl });
+        forceUserRefresh(); // Force refresh of user state in context
+      }
       
       toast({
         title: 'Sucesso!',
         description: 'O perfil do seu negócio foi atualizado.',
       });
 
-      // After successful save, reset form with the new URL if a new file was uploaded
-      if(avatarUrlToSave && typeof avatarUrlToSave === 'string' && avatarUrlToSave.startsWith('data:image')) {
-        // This is a bit of a trick: we refetch settings to get the new `https://` URL
-        // and avoid keeping the large base64 string in state.
-         getBarbershopSettings(user.uid).then(settings => {
-             if (settings) {
-                 const newData = {
-                    name: settings.name,
-                    avatarUrl: settings.avatarUrl || null,
-                    whatsappNumber: settings.whatsappNumber || '',
-                 };
-                reset(newData);
-                setPreview(settings.avatarUrl || null);
-             }
-         });
-      } else {
-         reset({ ...data, avatarUrl: avatarUrlToSave }); // Resets the form's dirty state
-      }
+      reset({
+          name: updatedSettings.name,
+          avatarUrl: updatedSettings.avatarUrl || null,
+          whatsappNumber: updatedSettings.whatsappNumber || '',
+      });
+      setPreview(updatedSettings.avatarUrl || null);
 
     } catch (error) {
       console.error(error);
