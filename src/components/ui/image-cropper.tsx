@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Camera, Upload, Scissors, Check, X } from 'lucide-react';
+import { Camera, Upload, Check, X } from 'lucide-react';
 
 import ReactCrop, { centerCrop, makeAspectCrop, Crop, PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -28,8 +28,7 @@ interface ImageCropperProps {
 // Function to get the cropped image as a Data URL
 function getCroppedImg(
   image: HTMLImageElement,
-  crop: PixelCrop,
-  fileName: string
+  crop: PixelCrop
 ): Promise<string> {
   const canvas = document.createElement('canvas');
   const scaleX = image.naturalWidth / image.width;
@@ -92,7 +91,7 @@ export function ImageCropper({ isOpen, onClose, onImageCropped }: ImageCropperPr
   const handleCrop = async () => {
     if (completedCrop && imgRef.current) {
       try {
-        const dataUrl = await getCroppedImg(imgRef.current, completedCrop, 'newFile.jpg');
+        const dataUrl = await getCroppedImg(imgRef.current, completedCrop);
         onImageCropped(dataUrl);
       } catch (e) {
         console.error(e);
@@ -119,13 +118,11 @@ export function ImageCropper({ isOpen, onClose, onImageCropped }: ImageCropperPr
   };
   
   const getCameraPermission = async () => {
+    if (stream) return; // Already have permission and stream
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
       setHasCameraPermission(true);
       setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
     } catch (error) {
       console.error('Error accessing camera:', error);
       setHasCameraPermission(false);
@@ -136,6 +133,20 @@ export function ImageCropper({ isOpen, onClose, onImageCropped }: ImageCropperPr
       });
     }
   };
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'camera') {
+      getCameraPermission();
+    } else {
+      stopCamera();
+    }
+  }, [isOpen, activeTab]);
+  
+  useEffect(() => {
+    if (stream && videoRef.current) {
+        videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
 
   const handleCapture = () => {
     if (videoRef.current) {
@@ -166,6 +177,8 @@ export function ImageCropper({ isOpen, onClose, onImageCropped }: ImageCropperPr
     onClose();
     setTimeout(() => {
         setImgSrc('');
+        setCrop(undefined);
+        setCompletedCrop(undefined);
         setActiveTab('upload');
     }, 300);
   }
@@ -181,7 +194,7 @@ export function ImageCropper({ isOpen, onClose, onImageCropped }: ImageCropperPr
                 <TabsTrigger value="upload" disabled={!!imgSrc}>
                     <Upload className="mr-2 h-4 w-4" /> Enviar Arquivo
                 </TabsTrigger>
-                <TabsTrigger value="camera" onClick={getCameraPermission} disabled={!!imgSrc}>
+                <TabsTrigger value="camera" disabled={!!imgSrc}>
                     <Camera className="mr-2 h-4 w-4" /> Tirar Foto
                 </TabsTrigger>
             </TabsList>
@@ -192,14 +205,14 @@ export function ImageCropper({ isOpen, onClose, onImageCropped }: ImageCropperPr
                 <Input type="file" accept="image/*" ref={fileInputRef} onChange={onSelectFile} className="hidden"/>
             </TabsContent>
             <TabsContent value="camera" className="mt-4">
-                {hasCameraPermission ? (
+                {activeTab === 'camera' && (
                     <div className="space-y-4">
-                        <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
-                        <Button className="w-full" onClick={handleCapture}>
+                        <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
+                        <Button className="w-full" onClick={handleCapture} disabled={!hasCameraPermission}>
                             <Camera className="mr-2 h-4 w-4" /> Capturar Foto
                         </Button>
                     </div>
-                ) : <p className="text-center text-muted-foreground">Aguardando permissão da câmera...</p>}
+                )}
             </TabsContent>
              <TabsContent value="crop" className="mt-4 flex flex-col items-center">
                 {imgSrc && (
@@ -215,9 +228,7 @@ export function ImageCropper({ isOpen, onClose, onImageCropped }: ImageCropperPr
             </TabsContent>
         </Tabs>
         <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline"><X className="mr-2 h-4 w-4" /> Cancelar</Button>
-          </DialogClose>
+          <Button variant="outline" onClick={handleDialogClose}><X className="mr-2 h-4 w-4" /> Cancelar</Button>
           {activeTab === 'crop' && (
             <Button onClick={handleCrop} disabled={!completedCrop}>
               <Check className="mr-2 h-4 w-4" /> Salvar Foto
