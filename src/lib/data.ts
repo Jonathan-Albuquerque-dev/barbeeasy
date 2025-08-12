@@ -873,25 +873,34 @@ export async function getBarbershopSettings(userId: string): Promise<BarbershopS
 
 export async function updateBarbershopProfile(userId: string, data: { name: string; whatsappNumber?: string; avatarUrl: string | null; }) {
     try {
+        const barbershopDocRef = doc(db, 'barbershops', userId);
+        const currentDataSnap = await getDoc(barbershopDocRef);
+        const currentData = currentDataSnap.data();
+
         let finalAvatarUrl = data.avatarUrl;
+
+        // Only upload if the avatarUrl is a new data URL
         if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
             const path = `barbershop_logos/${userId}_${Date.now()}.png`;
             finalAvatarUrl = await uploadImage(userId, path, finalAvatarUrl);
+        } else {
+            // Keep the existing URL if no new image is provided
+            finalAvatarUrl = currentData?.avatarUrl || null;
         }
 
-        const dataToUpdate = {
+        const dataToUpdate: Partial<BarbershopSettings> = {
           name: data.name,
-          whatsappNumber: data.whatsappNumber,
+          whatsappNumber: data.whatsappNumber || '',
           avatarUrl: finalAvatarUrl
         };
         
-        const barbershopDocRef = doc(db, 'barbershops', userId);
         await updateDoc(barbershopDocRef, dataToUpdate);
     } catch (error) {
         console.error("Erro ao atualizar perfil da barbearia:", error);
         throw new Error("Não foi possível atualizar o perfil.");
     }
 }
+
 
 export async function updateOperatingHours(userId: string, data: { hours: DayHours; appointmentInterval: number }) {
     try {
