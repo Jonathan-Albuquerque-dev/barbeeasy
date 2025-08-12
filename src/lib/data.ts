@@ -202,7 +202,7 @@ export type SubscriptionStats = {
 
 // --- Funções da API usando o Firestore ---
 
-export async function uploadImage(userId: string, path: string, dataUrl: string): Promise<string> {
+async function uploadImage(path: string, dataUrl: string): Promise<string> {
     const storageRef = ref(storage, path);
     const snapshot = await uploadString(storageRef, dataUrl, 'data_url');
     return getDownloadURL(snapshot.ref);
@@ -240,7 +240,7 @@ export async function addClient(userId: string, clientData: Omit<Client, 'id'>):
         let finalAvatarUrl = clientData.avatarUrl;
         if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
             const path = `client_avatars/${userId}_${Date.now()}.png`;
-            finalAvatarUrl = await uploadImage(userId, path, finalAvatarUrl);
+            finalAvatarUrl = await uploadImage(path, finalAvatarUrl);
         }
 
         const dataToSave = {
@@ -345,7 +345,7 @@ export async function addStaff(userId: string, staffData: Omit<Staff, 'id'>) {
         let finalAvatarUrl = staffData.avatarUrl;
         if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
             const path = `staff_avatars/${userId}_${Date.now()}.png`;
-            finalAvatarUrl = await uploadImage(userId, path, finalAvatarUrl);
+            finalAvatarUrl = await uploadImage(path, finalAvatarUrl);
         }
 
         const dataToSave = {
@@ -366,7 +366,7 @@ export async function updateStaff(userId: string, staffId: string, staffData: Pa
         let finalAvatarUrl = staffData.avatarUrl;
         if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
             const path = `staff_avatars/${userId}_${staffId}_${Date.now()}.png`;
-            finalAvatarUrl = await uploadImage(userId, path, finalAvatarUrl);
+            finalAvatarUrl = await uploadImage(path, finalAvatarUrl);
         }
 
         const dataToUpdate = {
@@ -449,8 +449,8 @@ export async function addProduct(userId: string, productData: Omit<Product, 'id'
     try {
         let finalImageUrl = productData.imageUrl;
         if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
-            const path = `products/${userId}_${Date.now()}.png`;
-            finalImageUrl = await uploadImage(userId, path, finalImageUrl);
+            const path = `products/${userId}_${Date.now()}.jpeg`;
+            finalImageUrl = await uploadImage(path, finalImageUrl);
         }
 
         const dataToSave = {
@@ -471,9 +471,8 @@ export async function updateProduct(userId: string, productId: string, productDa
         const dataToUpdate = { ...productData };
 
         if (dataToUpdate.imageUrl && dataToUpdate.imageUrl.startsWith('data:image')) {
-            const path = `products/${userId}_${productId}_${Date.now()}.png`;
-            const newImageUrl = await uploadImage(userId, path, dataToUpdate.imageUrl);
-            dataToUpdate.imageUrl = newImageUrl;
+            const path = `products/${userId}_${productId}_${Date.now()}.jpeg`;
+            dataToUpdate.imageUrl = await uploadImage(path, dataToUpdate.imageUrl);
         }
 
         const productDocRef = doc(db, getCollectionPath(userId, 'products'), productId);
@@ -872,13 +871,7 @@ export async function updateBarbershopProfile(userId: string, data: { name: stri
         // Se uma nova imagem for enviada (data URL), faça o upload
         if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
             const path = `barbershop_logos/${userId}_${Date.now()}.png`;
-            finalAvatarUrl = await uploadImage(userId, path, finalAvatarUrl);
-            
-            // Atualiza também a foto de perfil no Firebase Auth
-            const auth = getAuth();
-            if (auth.currentUser) {
-                await updateAuthProfile(auth.currentUser, { photoURL: finalAvatarUrl });
-            }
+            finalAvatarUrl = await uploadImage(path, finalAvatarUrl);
         }
 
         const settingsToUpdate: Partial<BarbershopSettings> = {
@@ -1493,7 +1486,7 @@ export async function updateClientProfile(barbershopId: string, clientId: string
         let finalAvatarUrl = data.avatarUrl;
         if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
             const path = `client_avatars/${barbershopId}_${clientId}_${Date.now()}.png`;
-            finalAvatarUrl = await uploadImage(barbershopId, path, finalAvatarUrl);
+            finalAvatarUrl = await uploadImage(path, finalAvatarUrl);
         }
 
         const dataToUpdate = {

@@ -19,7 +19,7 @@ interface ImagePickerProps {
 const MAX_IMAGE_WIDTH = 1024;
 const IMAGE_QUALITY = 0.8;
 
-// Helper function to compress and resize image
+// Helper function to compress and resize image, returning a Base64 data URL
 const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -29,9 +29,18 @@ const compressImage = (file: File): Promise<string> => {
             img.src = event.target?.result as string;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const scaleFactor = MAX_IMAGE_WIDTH / img.width;
-                canvas.width = img.width > MAX_IMAGE_WIDTH ? MAX_IMAGE_WIDTH : img.width;
-                canvas.height = img.width > MAX_IMAGE_WIDTH ? img.height * scaleFactor : img.height;
+                
+                let width = img.width;
+                let height = img.height;
+
+                if (width > MAX_IMAGE_WIDTH) {
+                    height = (MAX_IMAGE_WIDTH / width) * height;
+                    width = MAX_IMAGE_WIDTH;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
                     return reject(new Error('Could not get canvas context'));
@@ -62,10 +71,11 @@ export function ImagePicker({ value, onChange, fallbackText }: ImagePickerProps)
   }, [value]);
   
   useEffect(() => {
-    if (cameraOpen) {
-      const getCameraPermission = async () => {
+    let stream: MediaStream | null = null;
+    const getCameraPermission = async () => {
+      if (cameraOpen) {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
           setHasCameraPermission(true);
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
@@ -79,14 +89,14 @@ export function ImagePicker({ value, onChange, fallbackText }: ImagePickerProps)
             description: 'Please enable camera permissions in your browser settings.',
           });
         }
-      };
-      getCameraPermission();
-    } else {
-        // Stop camera stream when dialog closes
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
+      }
+    };
+    getCameraPermission();
+
+    return () => {
+        // Stop camera stream when component unmounts or dialog closes
+        if (stream) {
             stream.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
         }
     }
   }, [cameraOpen, toast]);
@@ -114,13 +124,16 @@ export function ImagePicker({ value, onChange, fallbackText }: ImagePickerProps)
         const video = videoRef.current;
         const canvas = canvasRef.current;
         
-        // Resize based on MAX_WIDTH
-        const scaleFactor = MAX_IMAGE_WIDTH / video.videoWidth;
-        const targetWidth = video.videoWidth > MAX_IMAGE_WIDTH ? MAX_IMAGE_WIDTH : video.videoWidth;
-        const targetHeight = video.videoWidth > MAX_IMAGE_WIDTH ? video.videoHeight * scaleFactor : video.videoHeight;
+        let width = video.videoWidth;
+        let height = video.videoHeight;
+
+        if (width > MAX_IMAGE_WIDTH) {
+            height = (MAX_IMAGE_WIDTH / width) * height;
+            width = MAX_IMAGE_WIDTH;
+        }
         
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
+        canvas.width = width;
+        canvas.height = height;
         const context = canvas.getContext('2d');
         
         if (context) {
@@ -190,7 +203,7 @@ export function ImagePicker({ value, onChange, fallbackText }: ImagePickerProps)
             </Dialog>
         </div>
         <p className="text-xs text-muted-foreground">
-          Escolha um arquivo ou use sua câmera.
+          A imagem será otimizada antes do envio.
         </p>
       </div>
     </div>
