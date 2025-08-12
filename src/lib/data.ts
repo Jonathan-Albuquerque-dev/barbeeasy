@@ -468,15 +468,12 @@ export async function addProduct(userId: string, productData: Omit<Product, 'id'
 
 export async function updateProduct(userId: string, productId: string, productData: Partial<Omit<Product, 'id'>>) {
     try {
-        let finalImageUrl = productData.imageUrl;
-        if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
-            const path = `products/${userId}_${productId}_${Date.now()}.png`;
-            finalImageUrl = await uploadImage(userId, path, finalImageUrl);
-        }
+        const dataToUpdate = { ...productData };
 
-        const dataToUpdate = {
-            ...productData,
-            imageUrl: finalImageUrl || productData.imageUrl,
+        if (dataToUpdate.imageUrl && dataToUpdate.imageUrl.startsWith('data:image')) {
+            const path = `products/${userId}_${productId}_${Date.now()}.png`;
+            const newImageUrl = await uploadImage(userId, path, dataToUpdate.imageUrl);
+            dataToUpdate.imageUrl = newImageUrl;
         }
 
         const productDocRef = doc(db, getCollectionPath(userId, 'products'), productId);
@@ -870,12 +867,28 @@ export async function getBarbershopSettings(userId: string): Promise<BarbershopS
 export async function updateBarbershopProfile(userId: string, data: { name: string; avatarUrl: string; whatsappNumber?: string; }) {
     try {
         const barbershopDocRef = doc(db, 'barbershops', userId);
-        const dataToUpdate: Partial<BarbershopSettings> = {
-          name: data.name,
-          whatsappNumber: data.whatsappNumber || '',
-          avatarUrl: data.avatarUrl,
+        let finalAvatarUrl = data.avatarUrl;
+
+        // Se uma nova imagem for enviada (data URL), faça o upload
+        if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
+            const path = `barbershop_logos/${userId}_${Date.now()}.png`;
+            finalAvatarUrl = await uploadImage(userId, path, finalAvatarUrl);
+            
+            // Atualiza também a foto de perfil no Firebase Auth
+            const auth = getAuth();
+            if (auth.currentUser) {
+                await updateAuthProfile(auth.currentUser, { photoURL: finalAvatarUrl });
+            }
+        }
+
+        const settingsToUpdate: Partial<BarbershopSettings> = {
+            name: data.name,
+            whatsappNumber: data.whatsappNumber || '',
+            avatarUrl: finalAvatarUrl,
         };
-        await updateDoc(barbershopDocRef, dataToUpdate);
+
+        await updateDoc(barbershopDocRef, settingsToUpdate);
+
     } catch (error) {
         console.error("Erro ao atualizar perfil da barbearia:", error);
         throw new Error("Não foi possível atualizar o perfil.");
