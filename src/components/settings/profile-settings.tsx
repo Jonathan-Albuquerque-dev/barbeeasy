@@ -73,14 +73,14 @@ export function ProfileSettings() {
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
     try {
-        let avatarUrlToSave = data.avatarUrl;
-        if (data.avatarUrl instanceof File) {
-            const reader = new FileReader();
-            avatarUrlToSave = await new Promise((resolve) => {
-                reader.onload = (e) => resolve(e.target?.result as string);
-                reader.readAsDataURL(data.avatarUrl);
-            });
-        }
+      let avatarUrlToSave = data.avatarUrl;
+      if (data.avatarUrl instanceof File) {
+          const reader = new FileReader();
+          avatarUrlToSave = await new Promise((resolve) => {
+              reader.onload = (e) => resolve(e.target?.result as string);
+              reader.readAsDataURL(data.avatarUrl);
+          });
+      }
       
       const updateData = {
         name: data.name,
@@ -96,7 +96,7 @@ export function ProfileSettings() {
       });
 
       // After successful save, reset form with the new URL if a new file was uploaded
-      if(updateData.avatarUrl.startsWith('data:image')) {
+      if(avatarUrlToSave && typeof avatarUrlToSave === 'string' && avatarUrlToSave.startsWith('data:image')) {
         // This is a bit of a trick: we refetch settings to get the new `https://` URL
         // and avoid keeping the large base64 string in state.
          getBarbershopSettings(user.uid).then(settings => {
@@ -111,7 +111,7 @@ export function ProfileSettings() {
              }
          });
       } else {
-         reset(data); // Resets the form's dirty state
+         reset({ ...data, avatarUrl: avatarUrlToSave }); // Resets the form's dirty state
       }
 
     } catch (error) {
@@ -137,30 +137,36 @@ export function ProfileSettings() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-6">
-             <div className='flex items-center gap-4'>
-                <Avatar className='h-20 w-20'>
-                    <AvatarImage src={preview || undefined} data-ai-hint="logo barbershop" />
-                    <AvatarFallback>{watchedName?.charAt(0) || 'B'}</AvatarFallback>
-                </Avatar>
-                <div className='flex-grow space-y-2'>
-                    <FormLabel>Foto/Logo</FormLabel>
-                    <FormControl>
-                      <>
-                        <Input 
-                            type="file" 
-                            className="hidden" 
-                            ref={fileInputRef} 
-                            onChange={handleFileChange}
-                            accept="image/png, image/jpeg, image/webp"
-                        />
-                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                            Selecionar Foto
-                        </Button>
-                      </>
-                    </FormControl>
-                    <FormMessage />
-                </div>
-            </div>
+            <FormField
+              control={form.control}
+              name="avatarUrl"
+              render={() => (
+                <FormItem className='flex items-center gap-4'>
+                    <Avatar className='h-20 w-20'>
+                        <AvatarImage src={preview || undefined} data-ai-hint="logo barbershop" />
+                        <AvatarFallback>{watchedName?.charAt(0) || 'B'}</AvatarFallback>
+                    </Avatar>
+                    <div className='flex-grow space-y-2'>
+                        <FormLabel>Foto/Logo</FormLabel>
+                        <FormControl>
+                          <div>
+                            <Input 
+                                type="file" 
+                                className="hidden" 
+                                ref={fileInputRef} 
+                                onChange={handleFileChange}
+                                accept="image/png, image/jpeg, image/webp"
+                            />
+                            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                Selecionar Foto
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                    </div>
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="name"
