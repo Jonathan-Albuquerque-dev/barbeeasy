@@ -867,31 +867,15 @@ export async function getBarbershopSettings(userId: string): Promise<BarbershopS
     }
 }
 
-export async function updateBarbershopProfile(userId: string, data: { name: string; avatarUrl: string | File | null; whatsappNumber?: string; }): Promise<Partial<BarbershopSettings>> {
+export async function updateBarbershopProfile(userId: string, data: { name: string; avatarUrl: string; whatsappNumber?: string; }) {
     try {
         const barbershopDocRef = doc(db, 'barbershops', userId);
-        let currentAvatarUrl = data.avatarUrl;
-
-        if (currentAvatarUrl instanceof File) {
-            const path = `barbershop_logos/${userId}_${Date.now()}.png`;
-             const dataUrl = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target?.result as string);
-                reader.onerror = (e) => reject(e);
-                reader.readAsDataURL(currentAvatarUrl as File);
-            });
-            currentAvatarUrl = await uploadImage(userId, path, dataUrl);
-        }
-
         const dataToUpdate: Partial<BarbershopSettings> = {
           name: data.name,
           whatsappNumber: data.whatsappNumber || '',
-          avatarUrl: currentAvatarUrl as string,
+          avatarUrl: data.avatarUrl,
         };
-        
         await updateDoc(barbershopDocRef, dataToUpdate);
-
-        return dataToUpdate;
     } catch (error) {
         console.error("Erro ao atualizar perfil da barbearia:", error);
         throw new Error("Não foi possível atualizar o perfil.");

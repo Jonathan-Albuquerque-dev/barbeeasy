@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -19,7 +19,7 @@ import { getAuth, updateProfile } from 'firebase/auth';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'O nome do estabelecimento é obrigatório.'),
-  avatarUrl: z.any(),
+  avatarUrl: z.string().url("Por favor, insira uma URL de imagem válida.").or(z.literal("")).optional(),
   whatsappNumber: z.string().optional(),
 });
 
@@ -28,19 +28,17 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 export function ProfileSettings() {
   const { user, forceUserRefresh } = useAuth();
   const { toast } = useToast();
-  const [preview, setPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: '',
-      avatarUrl: null,
+      avatarUrl: '',
       whatsappNumber: '',
     },
   });
 
-  const { formState: { isSubmitting, isDirty }, reset, watch, setValue } = form;
+  const { formState: { isSubmitting, isDirty }, reset, watch } = form;
 
   useEffect(() => {
     if (user) {
@@ -48,44 +46,31 @@ export function ProfileSettings() {
         if (settings) {
           reset({
             name: settings.name,
-            avatarUrl: settings.avatarUrl || null,
+            avatarUrl: settings.avatarUrl || '',
             whatsappNumber: settings.whatsappNumber || '',
           });
-          if (settings.avatarUrl) {
-            setPreview(settings.avatarUrl);
-          }
         }
       });
     }
   }, [user, reset]);
-  
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setValue('avatarUrl', file, { shouldDirty: true });
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
 
     try {
-      const updatedSettings = await updateBarbershopProfile(user.uid, {
-        name: data.name,
-        whatsappNumber: data.whatsappNumber,
-        avatarUrl: data.avatarUrl,
-      });
-
-      // After successful save to Firestore, update Auth profile
       const auth = getAuth();
       const currentUser = auth.currentUser;
-      if (currentUser && updatedSettings.avatarUrl !== currentUser.photoURL) {
-        await updateProfile(currentUser, { photoURL: updatedSettings.avatarUrl });
+      
+      const settingsToUpdate = {
+          name: data.name,
+          whatsappNumber: data.whatsappNumber || '',
+          avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
+      };
+      
+      await updateBarbershopProfile(user.uid, settingsToUpdate);
+
+      if (currentUser && settingsToUpdate.avatarUrl !== currentUser.photoURL) {
+        await updateProfile(currentUser, { photoURL: settingsToUpdate.avatarUrl });
         forceUserRefresh(); // Force refresh of user state in context
       }
       
@@ -94,12 +79,7 @@ export function ProfileSettings() {
         description: 'O perfil do seu negócio foi atualizado.',
       });
 
-      reset({
-          name: updatedSettings.name,
-          avatarUrl: updatedSettings.avatarUrl || null,
-          whatsappNumber: updatedSettings.whatsappNumber || '',
-      });
-      setPreview(updatedSettings.avatarUrl || null);
+      reset(settingsToUpdate);
 
     } catch (error) {
       console.error(error);
@@ -112,6 +92,7 @@ export function ProfileSettings() {
   };
   
   const watchedName = watch('name');
+  const watchedAvatarUrl = watch('avatarUrl');
 
   return (
     <Card>
@@ -124,36 +105,27 @@ export function ProfileSettings() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-6">
-            <FormField
-              control={form.control}
-              name="avatarUrl"
-              render={() => (
-                <FormItem className='flex items-center gap-4'>
-                    <Avatar className='h-20 w-20'>
-                        <AvatarImage src={preview || undefined} data-ai-hint="logo barbershop" />
-                        <AvatarFallback>{watchedName?.charAt(0) || 'B'}</AvatarFallback>
-                    </Avatar>
-                    <div className='flex-grow space-y-2'>
-                        <FormLabel>Foto/Logo</FormLabel>
-                        <FormControl>
-                          <div>
-                            <Input 
-                                type="file" 
-                                className="hidden" 
-                                ref={fileInputRef} 
-                                onChange={handleFileChange}
-                                accept="image/png, image/jpeg, image/webp"
-                            />
-                            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                Selecionar Foto
-                            </Button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                    </div>
-                </FormItem>
-              )}
-            />
+            <div className='flex items-center gap-4'>
+                <Avatar className='h-20 w-20'>
+                    <AvatarImage src={watchedAvatarUrl || undefined} data-ai-hint="logo barbershop" />
+                    <AvatarFallback>{watchedName?.charAt(0) || 'B'}</AvatarFallback>
+                </Avatar>
+                <div className='flex-grow'>
+                     <FormField
+                        control={form.control}
+                        name="avatarUrl"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>URL da Foto/Logo</FormLabel>
+                                <FormControl>
+                                <Input placeholder="https://exemplo.com/sua-foto.png" {...field} value={field.value || ''} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+            </div>
             <FormField
               control={form.control}
               name="name"
