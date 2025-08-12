@@ -16,9 +16,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { app, db } from '@/lib/firebase';
+import { app } from '@/lib/firebase';
 import { useAuth } from '@/contexts/auth-context';
-import { doc, getDoc } from 'firebase/firestore';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
@@ -37,10 +36,9 @@ export default function LoginPage() {
   const { user, loading: authLoading, isBarberOwner } = useAuth();
 
   useEffect(() => {
-    if (!authLoading) {
-      if (user && isBarberOwner) {
-        router.replace('/dashboard');
-      }
+    // Redirect if user is already logged in and confirmed as an owner
+    if (!authLoading && user && isBarberOwner) {
+      router.replace('/dashboard');
     }
   }, [user, authLoading, isBarberOwner, router]);
 
@@ -57,33 +55,18 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-      
-      // Verification: Check if the barbershop document exists
-      const barbershopDocRef = doc(db, 'barbershops', userCredential.user.uid);
-      const barbershopDoc = await getDoc(barbershopDocRef);
-
-      if (!barbershopDoc.exists()) {
-        await auth.signOut(); // Log out the user
-        toast({
-          variant: 'destructive',
-          title: 'Conta de Administrador Não Encontrada',
-          description: 'Não encontramos um perfil de salão para esta conta. Por favor, cadastre-se.',
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Reload the page to let auth providers and layouts manage the redirect with the correct login state.
-      window.location.reload();
-
+      await signInWithEmailAndPassword(auth, data.email, data.password);
+      // The auth context and protected layout will handle the redirect
+      // to either the dashboard or the setup page.
+      // We can just push to a default protected route.
+      router.push('/dashboard'); 
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Erro de Login',
         description: 'Email ou senha inválidos. Por favor, tente novamente.',
       });
-      setLoading(false); // Ensure the button is re-enabled on error.
+      setLoading(false);
     }
   };
   
@@ -114,6 +97,7 @@ export default function LoginPage() {
     }
   };
 
+  // Show a loader if auth is still loading or if a redirect is imminent
   if (authLoading || (user && isBarberOwner)) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">

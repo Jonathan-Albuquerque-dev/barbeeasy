@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { getAuth, onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { app, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isBarberOwner: boolean;
+  setupComplete: boolean; // New state to track if Firestore profile exists
   forceUserRefresh: () => void;
 }
 
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   isBarberOwner: false,
+  setupComplete: false,
   forceUserRefresh: () => {},
 });
 
@@ -24,6 +26,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isBarberOwner, setIsBarberOwner] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
 
   const auth = getAuth(app);
 
@@ -37,39 +40,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      try {
-        if (user) {
+      setLoading(true);
+      if (user) {
+        setUser(user);
+        try {
           const barbershopDocRef = doc(db, 'barbershops', user.uid);
           const barbershopDoc = await getDoc(barbershopDocRef);
           
           if (barbershopDoc.exists()) {
-            setUser(user);
             setIsBarberOwner(true);
+            setSetupComplete(true);
           } else {
-            // User exists in Auth, but not as a barbershop owner in Firestore.
-            // This could be a client or an invalid admin account.
-            // We sign them out to prevent access to protected admin routes.
-            await signOut(auth);
-            setUser(null);
+            // User exists in Auth, but not in Firestore. They need to complete the setup.
             setIsBarberOwner(false);
+            setSetupComplete(false);
           }
-        } else {
-          setUser(null);
-          setIsBarberOwner(false);
+        } catch (error) {
+            console.error("Error checking Firestore profile:", error);
+            setIsBarberOwner(false);
+            setSetupComplete(false);
         }
-      } catch (error) {
-        console.error("Error during auth state change:", error);
+      } else {
         setUser(null);
         setIsBarberOwner(false);
-      } finally {
-        setLoading(false);
+        setSetupComplete(false); // Or true, depending on desired behavior for logged-out users
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [auth]);
 
-  const value = { user, loading, isBarberOwner, forceUserRefresh };
+  const value = { user, loading, isBarberOwner, setupComplete, forceUserRefresh };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

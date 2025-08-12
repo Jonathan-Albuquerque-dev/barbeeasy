@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -5,8 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,6 @@ import { app } from '@/lib/firebase';
 import Link from 'next/link';
 
 const signupSchema = z.object({
-  barbershopName: z.string().min(2, { message: 'O nome do salão é obrigatório.' }),
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
 });
@@ -39,56 +38,30 @@ export default function SignupPage() {
   });
 
   const auth = getAuth(app);
-  const db = getFirestore(app);
 
   const onSubmit = async (data: SignupFormValues) => {
     setLoading(true);
     try {
       // 1. Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
+      await createUserWithEmailAndPassword(auth, data.email, data.password);
 
-      // 2. Update user profile with barbershop name
-      await updateProfile(user, {
-        displayName: data.barbershopName,
-      });
-
-      // 3. Create a document for the barbershop in Firestore
-      await setDoc(doc(db, "barbershops", user.uid), {
-        name: data.barbershopName,
-        email: data.email,
-        ownerId: user.uid,
-        createdAt: new Date(),
-        avatarUrl: `https://placehold.co/400x400.png`,
-        whatsappNumber: '',
-        operatingHours: {
-            monday: { open: true, start: '09:00', end: '18:00', hasBreak: false, breakStart: '12:00', breakEnd: '13:00' },
-            tuesday: { open: true, start: '09:00', end: '18:00', hasBreak: false, breakStart: '12:00', breakEnd: '13:00' },
-            wednesday: { open: true, start: '09:00', end: '18:00', hasBreak: false, breakStart: '12:00', breakEnd: '13:00' },
-            thursday: { open: true, start: '09:00', end: '18:00', hasBreak: false, breakStart: '12:00', breakEnd: '13:00' },
-            friday: { open: true, start: '09:00', end: '18:00', hasBreak: false, breakStart: '12:00', breakEnd: '13:00' },
-            saturday: { open: true, start: '09:00', end: '14:00', hasBreak: false, breakStart: '12:00', breakEnd: '13:00' },
-            sunday: { open: false, start: '09:00', end: '18:00', hasBreak: false, breakStart: '12:00', breakEnd: '13:00' },
-        },
-        appointmentInterval: 30,
-        loyaltyProgram: {
-          enabled: false,
-          pointsPerService: 1,
-          rewards: [],
-        },
-      });
+      // 2. Do NOT create the Firestore document here.
+      // The user will be redirected to the /setup page by the
+      // protected layout to complete their profile.
 
       toast({
         title: 'Conta Criada com Sucesso!',
-        description: `Bem-vindo, ${data.barbershopName}!`,
+        description: `Agora, complete o perfil do seu salão.`,
       });
 
-      router.push('/dashboard');
+      // Redirect to a protected route, which will then redirect to /setup
+      router.push('/dashboard'); 
+
     } catch (error: any) {
       console.error(error);
       let description = 'Ocorreu um erro. Por favor, tente novamente.';
       if (error.code === 'auth/email-already-in-use') {
-        description = 'Este email já está em uso. Tente outro.';
+        description = 'Este email já está em uso. Tente outro ou faça login.';
       }
       toast({
         variant: 'destructive',
@@ -118,18 +91,7 @@ export default function SignupPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="barbershopName">Nome do Salão</Label>
-              <Input
-                id="barbershopName"
-                type="text"
-                placeholder="Ex: Salão da Maria"
-                {...register('barbershopName')}
-                className={errors.barbershopName ? 'border-destructive' : ''}
-              />
-              {errors.barbershopName && <p className="text-sm text-destructive">{errors.barbershopName.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email de Acesso</Label>
               <Input
                 id="email"
                 type="email"
