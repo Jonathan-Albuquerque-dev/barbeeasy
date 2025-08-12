@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { app, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -39,10 +39,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
         if (user) {
-          setUser(user);
           const barbershopDocRef = doc(db, 'barbershops', user.uid);
           const barbershopDoc = await getDoc(barbershopDocRef);
-          setIsBarberOwner(barbershopDoc.exists());
+          
+          if (barbershopDoc.exists()) {
+            setUser(user);
+            setIsBarberOwner(true);
+          } else {
+            // User exists in Auth, but not as a barbershop owner in Firestore.
+            // This could be a client or an invalid admin account.
+            // We sign them out to prevent access to protected admin routes.
+            await signOut(auth);
+            setUser(null);
+            setIsBarberOwner(false);
+          }
         } else {
           setUser(null);
           setIsBarberOwner(false);

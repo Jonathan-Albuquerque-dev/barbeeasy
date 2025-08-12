@@ -16,8 +16,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { app } from '@/lib/firebase';
+import { app, db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/auth-context';
+import { doc, getDoc } from 'firebase/firestore';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
@@ -56,17 +57,33 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
-      // Recarrega a página para que os provedores de autenticação e layout
-      // gerenciem o redirecionamento com o estado de login correto.
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      
+      // Verification: Check if the barbershop document exists
+      const barbershopDocRef = doc(db, 'barbershops', userCredential.user.uid);
+      const barbershopDoc = await getDoc(barbershopDocRef);
+
+      if (!barbershopDoc.exists()) {
+        await auth.signOut(); // Log out the user
+        toast({
+          variant: 'destructive',
+          title: 'Conta de Administrador Não Encontrada',
+          description: 'Não encontramos um perfil de salão para esta conta. Por favor, cadastre-se.',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Reload the page to let auth providers and layouts manage the redirect with the correct login state.
       window.location.reload();
+
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Erro de Login',
         description: 'Email ou senha inválidos. Por favor, tente novamente.',
       });
-      setLoading(false); // Garante que o botão seja reativado em caso de erro.
+      setLoading(false); // Ensure the button is re-enabled on error.
     }
   };
   
@@ -147,6 +164,12 @@ export default function LoginPage() {
             </Button>
           </form>
           <div className="mt-6 text-center text-sm space-y-4">
+             <p>
+                Não tem uma conta de administrador?{' '}
+                <Link href="/signup" className="font-medium text-primary hover:underline">
+                    Cadastre-se aqui
+                </Link>
+            </p>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="link" className="p-0 h-auto font-medium text-primary">
