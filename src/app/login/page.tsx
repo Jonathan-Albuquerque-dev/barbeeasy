@@ -178,12 +178,6 @@ export default function LoginPage() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <p>
-                Não tem uma conta?{' '}
-                <Link href="/signup" className="font-medium text-primary hover:underline">
-                  Cadastre-se
-                </Link>
-              </p>
           </div>
         </CardContent>
       </Card>
