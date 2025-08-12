@@ -873,15 +873,15 @@ export async function getBarbershopSettings(userId: string): Promise<BarbershopS
 }
 
 export async function updateBarbershopProfile(userId: string, data: { name: string; whatsappNumber?: string; avatarUrl: string | null; }) {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) throw new Error("Usuário não autenticado.");
+
+    const barbershopDocRef = doc(db, 'barbershops', userId);
+    
+    let finalAvatarUrl = data.avatarUrl;
+
     try {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        if (!user) throw new Error("Usuário não autenticado.");
-
-        const barbershopDocRef = doc(db, 'barbershops', userId);
-        
-        let finalAvatarUrl = data.avatarUrl;
-
         // Somente faz o upload se o avatarUrl for um novo data URL
         if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image')) {
             const path = `barbershop_logos/${userId}_${Date.now()}.png`;
@@ -898,7 +898,6 @@ export async function updateBarbershopProfile(userId: string, data: { name: stri
         
         // Atualiza o perfil do usuário no Firebase Auth
         await updateAuthProfile(user, {
-            displayName: data.name,
             photoURL: finalAvatarUrl
         });
         
