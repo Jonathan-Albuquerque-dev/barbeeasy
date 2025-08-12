@@ -14,12 +14,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Edit } from 'lucide-react';
+import { ImageCropper } from '../ui/image-cropper';
+import Image from 'next/image';
 
 const productSchema = z.object({
   name: z.string().min(2, { message: 'O nome do produto é obrigatório.' }),
   description: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
-  imageUrl: z.string().url({ message: 'Por favor, insira uma URL de imagem válida.' }).or(z.literal('')).optional(),
+  imageUrl: z.string().optional(),
   purchasePrice: z.coerce.number().positive({ message: 'O preço de compra deve ser um número positivo.' }),
   price: z.coerce.number().positive({ message: 'O preço de venda deve ser um número positivo.' }),
   stock: z.coerce.number().int().min(0, { message: 'O estoque não pode ser negativo.' }),
@@ -38,18 +40,14 @@ export function EditProductDialog({ product, onProductUpdated, children }: EditP
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
+  const [newImageDataUrl, setNewImageDataUrl] = useState<string | null>(null);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: {
-      name: '',
-      description: '',
-      imageUrl: '',
-      purchasePrice: 0,
-      price: 0,
-      stock: 0,
-    },
   });
+  
+  const { setValue, watch, reset, formState: { isDirty } } = form;
   
   useEffect(() => {
     if (open) {
@@ -61,9 +59,15 @@ export function EditProductDialog({ product, onProductUpdated, children }: EditP
         price: product.price,
         stock: product.stock,
       });
+      setNewImageDataUrl(null);
     }
   }, [open, product, form]);
 
+  const handleCroppedImage = (dataUrl: string) => {
+    setNewImageDataUrl(dataUrl);
+    setValue('imageUrl', dataUrl, { shouldDirty: true });
+    setIsCropperOpen(false);
+  };
 
   const onSubmit = async (data: ProductFormValues) => {
     if (!user) {
@@ -73,7 +77,11 @@ export function EditProductDialog({ product, onProductUpdated, children }: EditP
 
     setLoading(true);
     try {
-      await updateProduct(user.uid, product.id, data);
+      const productData = {
+          ...data,
+          imageUrl: newImageDataUrl || data.imageUrl || 'https://placehold.co/600x400.png',
+      };
+      await updateProduct(user.uid, product.id, productData);
       toast({
         title: 'Sucesso!',
         description: 'O produto foi atualizado.',
@@ -91,112 +99,122 @@ export function EditProductDialog({ product, onProductUpdated, children }: EditP
       setLoading(false);
     }
   };
+  
+  const watchedImageUrl = watch('imageUrl');
+  const isFormDirty = isDirty || newImageDataUrl !== null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Editar Produto</DialogTitle>
-          <DialogDescription>
-            Atualize os detalhes do produto.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Produto</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Pomada Modeladora" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descrição</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Descreva o produto..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL da Imagem do Produto (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input type="url" placeholder="https://exemplo.com/imagem.png" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <div className="grid grid-cols-2 gap-4">
-                <FormField
+    <>
+      <Dialog open={open} onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) {
+            reset();
+            setNewImageDataUrl(null);
+        }
+      }}>
+        <DialogTrigger asChild>
+          {children}
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Produto</DialogTitle>
+            <DialogDescription>
+              Atualize os detalhes do produto.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+               <div className="relative aspect-video w-full bg-muted rounded-md flex items-center justify-center">
+                  <Image src={newImageDataUrl || watchedImageUrl || 'https://placehold.co/600x400.png'} alt="Prévia do produto" fill className="object-cover rounded-md" data-ai-hint="product cosmetics" />
+                  <Button type="button" variant="secondary" onClick={() => setIsCropperOpen(true)} className="absolute bottom-2 right-2">
+                    <Edit className="mr-2 h-4 w-4" /> Alterar Foto
+                  </Button>
+              </div>
+
+              <FormField
                 control={form.control}
-                name="purchasePrice"
+                name="name"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Preço de Compra (R$)</FormLabel>
+                  <FormItem>
+                    <FormLabel>Nome do Produto</FormLabel>
                     <FormControl>
-                        <Input type="number" step="0.01" placeholder="Ex: 25.00" {...field} />
+                      <Input placeholder="Ex: Pomada Modeladora" {...field} />
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
-                <FormField
+              />
+              <FormField
                 control={form.control}
-                name="price"
+                name="description"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Preço de Venda (R$)</FormLabel>
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
                     <FormControl>
-                        <Input type="number" step="0.01" placeholder="Ex: 55.00" {...field} />
+                      <Textarea placeholder="Descreva o produto..." {...field} />
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
-            </div>
-             <FormField
-                control={form.control}
-                name="stock"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Estoque</FormLabel>
-                    <FormControl>
-                        <Input type="number" step="1" placeholder="Ex: 10" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">Cancelar</Button>
-              </DialogClose>
-              <Button type="submit" disabled={loading || !form.formState.isDirty}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Alterações'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              />
+              <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                  control={form.control}
+                  name="purchasePrice"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Preço de Compra (R$)</FormLabel>
+                      <FormControl>
+                          <Input type="number" step="0.01" placeholder="Ex: 25.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                  />
+                  <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Preço de Venda (R$)</FormLabel>
+                      <FormControl>
+                          <Input type="number" step="0.01" placeholder="Ex: 55.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                  />
+              </div>
+              <FormField
+                  control={form.control}
+                  name="stock"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Estoque</FormLabel>
+                      <FormControl>
+                          <Input type="number" step="1" placeholder="Ex: 10" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+              />
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button type="submit" disabled={loading || !isFormDirty}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Alterações'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      <ImageCropper
+        isOpen={isCropperOpen}
+        onClose={() => setIsCropperOpen(false)}
+        onImageCropped={handleCroppedImage}
+      />
+    </>
   );
 }

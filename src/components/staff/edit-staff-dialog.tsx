@@ -14,8 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Edit } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { ImageCropper } from '../ui/image-cropper';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 type Profession = {
   id: string;
@@ -29,7 +31,7 @@ const staffSchema = z.object({
   serviceCommissionRate: z.coerce.number().min(0, { message: 'A comissão não pode ser negativa.' }).max(100, { message: 'A comissão não pode ser maior que 100.' }),
   productCommissionRate: z.coerce.number().min(0, { message: 'A comissão não pode ser negativa.' }).max(100, { message: 'A comissão não pode ser maior que 100.' }),
   bio: z.string().min(10, { message: 'A biografia deve ter pelo menos 10 caracteres.' }),
-  avatarUrl: z.string().url({ message: 'Por favor, insira uma URL de imagem válida.' }).or(z.literal('')).optional(),
+  avatarUrl: z.string().optional(),
 });
 
 type StaffFormValues = z.infer<typeof staffSchema>;
@@ -46,19 +48,14 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [professions, setProfessions] = useState<Profession[]>([]);
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
+  const [newAvatarDataUrl, setNewAvatarDataUrl] = useState<string | null>(null);
 
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffSchema),
-    defaultValues: {
-      name: '',
-      professionId: '',
-      specializations: '',
-      serviceCommissionRate: 0,
-      productCommissionRate: 0,
-      bio: '',
-      avatarUrl: '',
-    },
   });
+  
+  const { setValue, watch, reset, formState: { isDirty } } = form;
 
   useEffect(() => {
     if (open && user?.uid) {
@@ -77,8 +74,15 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
         bio: staffMember.bio,
         avatarUrl: staffMember.avatarUrl || '',
       });
+      setNewAvatarDataUrl(null);
     }
   }, [open, staffMember, form]);
+  
+  const handleCroppedImage = (dataUrl: string) => {
+    setNewAvatarDataUrl(dataUrl);
+    setValue('avatarUrl', dataUrl, { shouldDirty: true });
+    setIsCropperOpen(false);
+  };
 
   const onSubmit = async (data: StaffFormValues) => {
     if (!user) {
@@ -97,7 +101,7 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
         serviceCommissionRate: data.serviceCommissionRate / 100,
         productCommissionRate: data.productCommissionRate / 100,
         bio: data.bio,
-        avatarUrl: data.avatarUrl || `https://placehold.co/400x400.png`,
+        avatarUrl: newAvatarDataUrl || data.avatarUrl || `https://placehold.co/400x400.png`,
       };
 
       await updateStaff(user.uid, staffMember.id, transformedData);
@@ -119,132 +123,156 @@ export function EditStaffDialog({ staffMember, onStaffUpdated, children }: EditS
       setLoading(false);
     }
   };
+  
+  const watchedName = watch('name');
+  const watchedAvatarUrl = watch('avatarUrl');
+  const isFormDirty = isDirty || newAvatarDataUrl !== null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Editar Funcionário</DialogTitle>
-          <DialogDescription>
-            Atualize os detalhes do membro da equipe.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome Completo</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Carlos Silva" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="professionId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Profissão</FormLabel>
-                   <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma profissão" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {professions.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="bio"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Biografia</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Uma breve descrição sobre o barbeiro..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="specializations"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Especializações</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Corte, Barba, Coloração (separado por vírgula)" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-                <FormField
+    <>
+      <Dialog open={open} onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) {
+            reset();
+            setNewAvatarDataUrl(null);
+        }
+      }}>
+        <DialogTrigger asChild>
+          {children}
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Funcionário</DialogTitle>
+            <DialogDescription>
+              Atualize os detalhes do membro da equipe.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+              <div className='flex items-center gap-4'>
+                    <div className="relative">
+                        <Avatar className='h-20 w-20'>
+                            <AvatarImage src={newAvatarDataUrl || watchedAvatarUrl || undefined} data-ai-hint="person face" />
+                            <AvatarFallback>{watchedName?.charAt(0) || 'P'}</AvatarFallback>
+                        </Avatar>
+                        <Button 
+                            type="button" 
+                            size="icon" 
+                            variant="secondary" 
+                            className="absolute bottom-0 right-0 rounded-full h-7 w-7"
+                            onClick={() => setIsCropperOpen(true)}
+                        >
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Alterar foto</span>
+                        </Button>
+                    </div>
+                    <div className='flex-grow'>
+                        <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Nome Completo</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Ex: Carlos Silva" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    </div>
+                </div>
+              <FormField
                 control={form.control}
-                name="serviceCommissionRate"
+                name="professionId"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Comissão Serviço (%)</FormLabel>
+                  <FormItem>
+                    <FormLabel>Profissão</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma profissão" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {professions.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="bio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Biografia</FormLabel>
                     <FormControl>
-                        <Input type="number" min="0" max="100" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                      <Textarea placeholder="Uma breve descrição sobre o barbeiro..." {...field} />
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
-                 <FormField
+              />
+              <FormField
                 control={form.control}
-                name="productCommissionRate"
+                name="specializations"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Comissão Produto (%)</FormLabel>
+                  <FormItem>
+                    <FormLabel>Especializações</FormLabel>
                     <FormControl>
-                        <Input type="number" min="0" max="100" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                      <Input placeholder="Corte, Barba, Coloração (separado por vírgula)" {...field} />
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
-            </div>
-             <FormField
-              control={form.control}
-              name="avatarUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL da Foto de Perfil</FormLabel>
-                  <FormControl>
-                    <Input type="url" placeholder="https://exemplo.com/foto.png" {...field} value={field.value || ''}/>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">Cancelar</Button>
-              </DialogClose>
-              <Button type="submit" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Alterações'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              />
+              <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                  control={form.control}
+                  name="serviceCommissionRate"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Comissão Serviço (%)</FormLabel>
+                      <FormControl>
+                          <Input type="number" min="0" max="100" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                  />
+                  <FormField
+                  control={form.control}
+                  name="productCommissionRate"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Comissão Produto (%)</FormLabel>
+                      <FormControl>
+                          <Input type="number" min="0" max="100" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                  />
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button type="submit" disabled={loading || !isFormDirty}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Salvar Alterações'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+       <ImageCropper 
+        isOpen={isCropperOpen} 
+        onClose={() => setIsCropperOpen(false)}
+        onImageCropped={handleCroppedImage}
+      />
+    </>
   );
 }
