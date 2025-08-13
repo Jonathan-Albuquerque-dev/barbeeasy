@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, Suspense } from 'react';
@@ -36,6 +37,22 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
 
   const isAuthPage = pathname.includes('/portal/login') || pathname.includes('/portal/signup');
   const barbershopIdFromUrl = searchParams.get('barbershopId');
+  
+  const setClientSession = (sessionData: ClientSession | null) => {
+    setSession(sessionData);
+    if (sessionData) {
+      localStorage.setItem('clientSession', JSON.stringify(sessionData));
+    } else {
+      localStorage.removeItem('clientSession');
+    }
+  };
+  
+  const logout = () => {
+    const currentBarbershopId = session?.barbershopId || searchParams.get('barbershopId');
+    setClientSession(null);
+    const loginUrl = currentBarbershopId ? `/portal/login?barbershopId=${currentBarbershopId}` : '/portal/login';
+    router.push(loginUrl);
+  };
 
   useEffect(() => {
     try {
@@ -57,6 +74,12 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
 
+    // Se o usuário está logado e acessa uma URL de outra barbearia, deslogue e redirecione para o login da nova.
+    if (session && barbershopIdFromUrl && session.barbershopId !== barbershopIdFromUrl) {
+        logout();
+        return;
+    }
+
     const currentBarbershopId = session?.barbershopId || barbershopIdFromUrl;
 
     if (session && isAuthPage) {
@@ -68,22 +91,6 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
       router.replace(loginUrl);
     }
   }, [session, loading, isAuthPage, pathname, router, barbershopIdFromUrl]);
-  
-  const setClientSession = (sessionData: ClientSession | null) => {
-    setSession(sessionData);
-    if (sessionData) {
-      localStorage.setItem('clientSession', JSON.stringify(sessionData));
-    } else {
-      localStorage.removeItem('clientSession');
-    }
-  };
-  
-  const logout = () => {
-    const currentBarbershopId = session?.barbershopId || searchParams.get('barbershopId');
-    setClientSession(null);
-    const loginUrl = currentBarbershopId ? `/portal/login?barbershopId=${currentBarbershopId}` : '/portal/login';
-    router.push(loginUrl);
-  };
   
   const contextValue = { session, loading, setClientSession, logout };
 
