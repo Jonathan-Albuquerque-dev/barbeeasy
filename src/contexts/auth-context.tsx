@@ -5,12 +5,19 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { app, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import type { BarbershopSettings } from '@/lib/data';
+
+interface BarberProfile {
+  name: string;
+  avatarUrl: string;
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isBarberOwner: boolean;
-  setupComplete: boolean; // New state to track if Firestore profile exists
+  setupComplete: boolean;
+  barberProfile: BarberProfile | null;
   forceUserRefresh: () => void;
 }
 
@@ -19,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isBarberOwner: false,
   setupComplete: false,
+  barberProfile: null,
   forceUserRefresh: () => {},
 });
 
@@ -27,6 +35,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isBarberOwner, setIsBarberOwner] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
+  const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
 
   const auth = getAuth(app);
 
@@ -48,22 +57,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const barbershopDoc = await getDoc(barbershopDocRef);
           
           if (barbershopDoc.exists()) {
+            const settings = barbershopDoc.data() as BarbershopSettings;
+            setBarberProfile({ name: settings.name, avatarUrl: settings.avatarUrl });
             setIsBarberOwner(true);
             setSetupComplete(true);
           } else {
-            // User exists in Auth, but not in Firestore. They need to complete the setup.
             setIsBarberOwner(false);
             setSetupComplete(false);
+            setBarberProfile(null);
           }
         } catch (error) {
             console.error("Error checking Firestore profile:", error);
             setIsBarberOwner(false);
             setSetupComplete(false);
+            setBarberProfile(null);
         }
       } else {
         setUser(null);
         setIsBarberOwner(false);
-        setSetupComplete(false); // Or true, depending on desired behavior for logged-out users
+        setSetupComplete(false);
+        setBarberProfile(null);
       }
       setLoading(false);
     });
@@ -71,7 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [auth]);
 
-  const value = { user, loading, isBarberOwner, setupComplete, forceUserRefresh };
+  const value = { user, loading, isBarberOwner, setupComplete, forceUserRefresh, barberProfile };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

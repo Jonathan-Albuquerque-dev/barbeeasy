@@ -55,7 +55,7 @@ const menuItems = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, barberProfile } = useAuth();
   const auth = getAuth(app);
 
   const handleSignOut = async () => {
@@ -63,9 +63,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
   
-  const getInitials = (email: string | null | undefined) => {
-    if (!email) return 'AD';
-    return email.substring(0, 2).toUpperCase();
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'AD';
+    return name.substring(0, 2).toUpperCase();
   }
 
   return (
@@ -104,11 +104,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarFooter className="p-4">
             <div className="flex items-center gap-3">
              <Avatar className="size-9">
-              <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'Admin'} data-ai-hint="person face" />
-              <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
+              <AvatarImage src={barberProfile?.avatarUrl || ''} alt={barberProfile?.name || 'Admin'} data-ai-hint="person face" />
+              <AvatarFallback>{getInitials(barberProfile?.name)}</AvatarFallback>
             </Avatar>
             <div className="group-data-[collapsible=icon]:hidden flex flex-col overflow-hidden">
-              <span className="text-sm font-semibold truncate">{user?.displayName || 'Usuário'}</span>
+              <span className="text-sm font-semibold truncate">{barberProfile?.name || 'Usuário'}</span>
               <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
             </div>
             <Button variant="ghost" size="icon" className="ml-auto group-data-[collapsible=icon]:hidden" onClick={handleSignOut} aria-label="Sair">
