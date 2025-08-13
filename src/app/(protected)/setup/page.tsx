@@ -145,50 +145,73 @@ export default function SetupPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-               <div className='flex items-center gap-4'>
-                    <div className="relative">
-                        <Avatar className='h-24 w-24'>
-                            <AvatarImage src={newAvatarDataUrl || watchedAvatarUrl || undefined} data-ai-hint="logo barbershop" />
-                            <AvatarFallback>{watchedName?.charAt(0) || 'S'}</AvatarFallback>
-                        </Avatar>
-                        <Button 
-                            type="button" 
-                            size="icon" 
-                            variant="secondary" 
-                            className="absolute bottom-0 right-0 rounded-full h-8 w-8"
-                            onClick={() => setIsCropperOpen(true)}
-                        >
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Alterar foto</span>
-                        </Button>
-                    </div>
-                    <div className='flex-grow space-y-2'>
-                       <div>
-                         <Label htmlFor="barbershopName">Nome do Salão/Barbearia</Label>
-                          <Input
-                            id="barbershopName"
-                            type="text"
-                            placeholder="Ex: Salão da Maria"
-                            {...register('barbershopName')}
-                            className={errors.barbershopName ? 'border-destructive' : ''}
-                          />
-                          {errors.barbershopName && <p className="text-sm text-destructive">{errors.barbershopName.message}</p>}
-                       </div>
-                       <div>
-                           <Label htmlFor="whatsappNumber">WhatsApp (Opcional)</Label>
-                            <Input
-                                id="whatsappNumber"
-                                type="tel"
-                                placeholder="5511999998888"
-                                {...register('whatsappNumber')}
-                                className={errors.whatsappNumber ? 'border-destructive' : ''}
-                            />
-                            {errors.whatsappNumber && <p className="text-sm text-destructive">{errors.whatsappNumber.message}</p>}
-                       </div>
-                    </div>
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage
+                      src={newAvatarDataUrl || watchedAvatarUrl || undefined}
+                      data-ai-hint="logo barbershop"
+                    />
+                    <AvatarFallback>
+                      {watchedName?.charAt(0) || "S"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="absolute bottom-0 right-0 rounded-full h-8 w-8"
+                    onClick={() => setIsCropperOpen(true)}
+                  >
+                    <Edit className="h-4 w-4" />
+                    <span className="sr-only">Alterar foto</span>
+                  </Button>
                 </div>
+                <div className="w-full space-y-4">
+                  <div>
+                    <Label htmlFor="barbershopName">
+                      Nome do Salão/Barbearia
+                    </Label>
+                    <Input
+                      id="barbershopName"
+                      type="text"
+                      placeholder="Ex: Salão da Maria"
+                      {...register("barbershopName")}
+                      className={
+                        errors.barbershopName ? "border-destructive" : ""
+                      }
+                    />
+                    {errors.barbershopName && (
+                      <p className="text-sm text-destructive">
+                        {errors.barbershopName.message}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="whatsappNumber">WhatsApp (Opcional)</Label>
+                    <Input
+                      id="whatsappNumber"
+                      type="tel"
+                      placeholder="5511999998888"
+                      {...register("whatsappNumber")}
+                      className={
+                        errors.whatsappNumber ? "border-destructive" : ""
+                      }
+                    />
+                    {errors.whatsappNumber && (
+                      <p className="text-sm text-destructive">
+                        {errors.whatsappNumber.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" /> : 'Salvar e Continuar'}
+                {loading ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  "Salvar e Continuar"
+                )}
               </Button>
             </form>
           </CardContent>
